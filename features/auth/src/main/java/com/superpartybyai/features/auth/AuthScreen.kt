@@ -60,6 +60,8 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
                 coroutineScope.launch {
                     try {
                         Log.d("AuthScreen", "WEB_CLIENT_ID = $WEB_CLIENT_ID")
+                        Log.d("AuthScreen", "SUPABASE_URL = ${com.superpartybyai.core.AppConfig.SUPABASE_URL}")
+                        Log.d("AuthScreen", "SUPABASE_ANON_KEY = ${com.superpartybyai.core.AppConfig.SUPABASE_ANON_KEY}")
                         val credentialManager = CredentialManager.create(context)
                         
                         val googleIdOption = GetGoogleIdOption.Builder()
@@ -112,8 +114,8 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
                         Log.e("AuthScreen", "CredentialManager err: ${e.message}", e)
                         isLoading = false
                     } catch (e: Exception) {
-                        errorMessage = "Supabase Auth Error: \${e.message}"
-                        Log.e("AuthScreen", "Auth error", e)
+                        errorMessage = "Supabase Auth Error: ${e.message}"
+                        Log.e("AuthScreen", "Auth error: ${e.message}", e)
                         isLoading = false
                     }
                 }

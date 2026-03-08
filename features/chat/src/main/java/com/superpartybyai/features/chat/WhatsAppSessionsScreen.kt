@@ -1,0 +1,205 @@
+package com.superpartybyai.features.chat
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import com.superpartybyai.core.SupabaseClient
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import android.widget.Toast
+
+@Serializable
+data class WhatsAppSessionModel(
+    val session_key: String,
+    val phone_number: String? = null,
+    val status: String,
+    val last_seen_at: String? = null
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WhatsAppSessionsScreen(
+    modifier: Modifier = Modifier,
+    onViewQrClick: (String) -> Unit
+) {
+    var sessionsList by remember { mutableStateOf<List<WhatsAppSessionModel>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val loadSessions: () -> Unit = {
+        coroutineScope.launch {
+            try {
+                if (sessionsList.isEmpty()) isLoading = true
+                val response = SupabaseClient.client.postgrest["whatsapp_sessions"]
+                    .select()
+                    .decodeList<WhatsAppSessionModel>()
+                sessionsList = response.sortedByDescending { it.last_seen_at ?: "" }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadSessions()
+
+        launch {
+            try {
+                val channel = SupabaseClient.client.channel("public-whatsapp_sessions")
+                val flow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                    table = "whatsapp_sessions"
+                }
+                channel.subscribe()
+                flow.collect {
+                    loadSessions()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun callRestEndpoint(endpoint: String, sessionId: String) {
+        coroutineScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/sessions/\$endpoint")
+                    val conn = url.openConnection() as HttpURLConnection
+                    val method = if (endpoint == "logout" || endpoint == "reconnect" || endpoint == "start") "POST" else "DELETE"
+                    
+                    if (endpoint.contains("/")) {
+                        // For DELETE /api/sessions/:sessionId
+                        val delUrl = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/sessions/\$sessionId")
+                        val delConn = delUrl.openConnection() as HttpURLConnection
+                        delConn.requestMethod = "DELETE"
+                        delConn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
+                        if (delConn.responseCode !in 200..299) throw Exception("HTTP \${delConn.responseCode}")
+                        return@withContext
+                    }
+                    
+                    conn.requestMethod = method
+                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                    conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
+                    
+                    if (method == "POST") {
+                        conn.doOutput = true
+                        val jsonBody = JSONObject().apply { put("sessionId", sessionId) }
+                        conn.outputStream.use { os ->
+                            val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                            os.write(input, 0, input.size)
+                        }
+                    }
+                    
+                    if (conn.responseCode !in 200..299) {
+                        throw Exception("HTTP \${conn.responseCode}")
+                    }
+                }
+                Toast.makeText(context, "Comanda trimisa catre \$endpoint!", Toast.LENGTH_SHORT).show()
+                loadSessions()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Eroare: \${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text("WA Sessions Admin") },
+                actions = {
+                    IconButton(onClick = loadSessions) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { onViewQrClick("default") }) {
+                Icon(Icons.Default.Add, contentDescription = "New Link")
+            }
+        }
+    ) { padding ->
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (sessionsList.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No WhatsApp sessions active in Supabase CRM.")
+            }
+        } else {
+            LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
+                items(sessionsList.size) { index ->
+                    val s = sessionsList[index]
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("Session: \${s.session_key}", style = MaterialTheme.typography.titleMedium)
+                            
+                            val phoneDisplay = s.phone_number ?: "Unknown / Pending"
+                            Text("Phone: " + phoneDisplay)
+                            
+                            Text("Status: " + s.status, color = if (s.status == "CONNECTED") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                            
+                            val lastSeenDisplay = s.last_seen_at?.substringBefore('T') ?: ""
+                            Text("Last Seen: " + lastSeenDisplay)
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (s.status == "AWAITING_QR") {
+                                    Button(onClick = { onViewQrClick(s.session_key) }) {
+                                        Text("View QR")
+                                    }
+                                } else if (s.status == "DISCONNECTED" || s.status == "CONFLICT" || s.status == "UNPAIRED") {
+                                    Button(onClick = { callRestEndpoint("reconnect", s.session_key) }) {
+                                        Text("Reconnect")
+                                    }
+                                    Button(
+                                        onClick = { callRestEndpoint(s.session_key, s.session_key) }, // DELETE trick encoded in UI
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                    ) {
+                                        Text("Kill")
+                                    }
+                                } else if (s.status == "CONNECTED") {
+                                    Button(
+                                        onClick = { callRestEndpoint("logout", s.session_key) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                    ) {
+                                        Text("Logout")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

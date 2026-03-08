@@ -67,6 +67,13 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("wa_link") {
+                            com.superpartybyai.features.chat.WhatsAppSessionsScreen(
+                                onViewQrClick = { sessionId ->
+                                    navController.navigate("wa_session")
+                                }
+                            )
+                        }
+                        composable("wa_session") {
                             com.superpartybyai.features.chat.WhatsAppSessionScreen(
                                 onBack = { navController.popBackStack() }
                             )

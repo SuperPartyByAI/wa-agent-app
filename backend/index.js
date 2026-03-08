@@ -223,6 +223,21 @@ function logger(sessionId, level, message) {
   );
 }
 
+async function upsertSessionStatus(sessionId, status, phoneNumber = null) {
+  try {
+    const payload = {
+      session_key: sessionId,
+      status: status,
+      last_seen_at: new Date().toISOString()
+    };
+    if (phoneNumber) payload.phone_number = phoneNumber;
+    
+    await supabase.from('whatsapp_sessions').upsert(payload, { onConflict: 'session_key' });
+  } catch (err) {
+    console.error(`[Supabase Session Status Error] ${err.message}`);
+  }
+}
+
 /**
  * Watchdog & Recovery Factory
  */
@@ -233,6 +248,7 @@ async function startSession(sessionId) {
 
   // Mark as starting
   sessions.set(sessionId, { status: "STARTING", client: null, qrCode: null });
+  upsertSessionStatus(sessionId, 'STARTING');
   logger(sessionId, "info", "Initializing new WA session...");
 
   try {
@@ -255,6 +271,12 @@ async function startSession(sessionId) {
       client: client,
       qrCode: null,
     });
+    let botNumber = null;
+    try {
+        const me = await client.getMe();
+        if (me && me.wid) botNumber = me.wid.replace('@c.us', '').split(':')[0];
+    } catch(e) {}
+    upsertSessionStatus(sessionId, 'CONNECTED', botNumber);
     logger(sessionId, "info", "Successfully connected and paired!");
 
     // Start historical seed in background
@@ -293,6 +315,11 @@ async function startSession(sessionId) {
           "Session was disconnected from the phone. Manual re-scan required.",
         );
         sessions.get(sessionId).status = "DISCONNECTED";
+        upsertSessionStatus(sessionId, 'DISCONNECTED');
+      } else if (state === "CONFLICT") {
+        upsertSessionStatus(sessionId, 'CONFLICT');
+      } else {
+        upsertSessionStatus(sessionId, state);
       }
     });
 
@@ -340,6 +367,7 @@ wa.ev.on("qr.**", async (qrcode, sessionId) => {
   if (sessions.has(sessionId)) {
     sessions.get(sessionId).status = "AWAITING_QR";
     sessions.get(sessionId).qrCode = qrcode; // Save raw image data or string
+    upsertSessionStatus(sessionId, 'AWAITING_QR');
   }
 });
 
@@ -378,6 +406,37 @@ app.get("/api/sessions/status/:sessionId?", requireApiKey, (req, res) => {
     status: data.status,
   }));
   res.json({ sessions: all });
+});
+
+app.post("/api/sessions/logout", requireApiKey, async (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId) return res.status(400).json({ error: "sessionId is required" });
+  const session = sessions.get(sessionId);
+  if (session && session.client) {
+    try { await session.client.logout(); } catch(e) {}
+    try { await session.client.kill(); } catch(e) {}
+  }
+  sessions.delete(sessionId);
+  await upsertSessionStatus(sessionId, 'DISCONNECTED');
+  return res.json({ message: "Logged out successfully" });
+});
+
+app.post("/api/sessions/reconnect", requireApiKey, async (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId) return res.status(400).json({ error: "sessionId is required" });
+  startSession(sessionId);
+  res.json({ message: `Session ${sessionId} reconnection started.` });
+});
+
+app.delete("/api/sessions/:sessionId", requireApiKey, async (req, res) => {
+  const { sessionId } = req.params;
+  const session = sessions.get(sessionId);
+  if (session && session.client) {
+    try { await session.client.kill(); } catch(e) {}
+  }
+  sessions.delete(sessionId);
+  await upsertSessionStatus(sessionId, 'DISCONNECTED');
+  res.json({ message: `Session ${sessionId} killed and removed.` });
 });
 
 // 3. Send Message

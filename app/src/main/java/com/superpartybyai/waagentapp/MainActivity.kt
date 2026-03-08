@@ -45,6 +45,9 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToChat = { contactId ->
                                     navController.navigate("conversation/$contactId")
                                 },
+                                onNavigateToWaLink = {
+                                    navController.navigate("wa_link")
+                                },
                                 onLogout = {
                                     GlobalScope.launch {
                                         com.superpartybyai.core.SupabaseClient.client.auth.signOut()
@@ -59,6 +62,11 @@ class MainActivity : ComponentActivity() {
                             val contactId = backStackEntry.arguments?.getString("contactId") ?: ""
                             com.superpartybyai.features.chat.ConversationScreen(
                                 contactId = contactId,
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable("wa_link") {
+                            com.superpartybyai.features.chat.WhatsAppSessionScreen(
                                 onBack = { navController.popBackStack() }
                             )
                         }

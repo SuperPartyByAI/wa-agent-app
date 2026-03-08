@@ -15,7 +15,7 @@ import com.superpartybyai.waagentapp.ui.events.EventsListScreen
 import androidx.compose.material.icons.filled.Event
 
 @Composable
-fun MainShellScreen(onNavigateToChat: (String) -> Unit, onLogout: () -> Unit) {
+fun MainShellScreen(onNavigateToChat: (String) -> Unit, onNavigateToWaLink: () -> Unit, onLogout: () -> Unit) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf(
         "Inbox" to Icons.Default.Email, 
@@ -40,7 +40,7 @@ fun MainShellScreen(onNavigateToChat: (String) -> Unit, onLogout: () -> Unit) {
     ) { paddingValues ->
         val modifier = Modifier.padding(paddingValues)
         when (selectedTab) {
-            0 -> InboxScreen(modifier = modifier, onChatClick = onNavigateToChat)
+            0 -> InboxScreen(modifier = modifier, onChatClick = onNavigateToChat, onWaLinkClick = onNavigateToWaLink)
             1 -> CallsScreen(modifier = modifier)
             2 -> EventsListScreen(modifier = modifier, onEventClick = {}) 
             3 -> ProfileScreen(modifier = modifier, onLogout = onLogout)

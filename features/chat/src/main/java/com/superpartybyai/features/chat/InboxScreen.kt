@@ -15,6 +15,8 @@ import com.superpartybyai.core.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.Serializable
 
+import androidx.compose.material.icons.filled.AddCircle
+
 @Serializable
 data class ClientRef(val full_name: String, val phone: String?)
 
@@ -28,7 +30,7 @@ data class ConversationModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit) {
+fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, onWaLinkClick: () -> Unit = {}) {
     var conversations by remember { mutableStateOf<List<ConversationModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
@@ -51,7 +53,16 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit) {
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("WhatsApp Inbox") }) }
+        topBar = { 
+            TopAppBar(
+                title = { Text("WhatsApp Inbox") },
+                actions = {
+                    IconButton(onClick = onWaLinkClick) {
+                        Icon(Icons.Default.AddCircle, contentDescription = "Link WA")
+                    }
+                }
+            ) 
+        }
     ) { padding ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

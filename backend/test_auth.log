@@ -1,0 +1,7 @@
+spawn ssh -o StrictHostKeyChecking=no root@91.98.16.90 echo 'Auth Success: Password'
+root@91.98.16.90's password: 
+Permission denied, please try again.
+root@91.98.16.90's password: 
+Permission denied, please try again.
+root@91.98.16.90's password: 
+root@91.98.16.90: Permission denied (publickey,password).

@@ -1,0 +1,13 @@
+SSH Connection Error:  Error: All configured authentication methods failed
+    at doNextAuth (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/client.js:863:21)
+    at tryNextAuth (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/client.js:1080:7)
+    at USERAUTH_FAILURE (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/client.js:428:11)
+    at 51 (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/protocol/handlers.misc.js:408:16)
+    at Protocol.onPayload (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/protocol/Protocol.js:2059:10)
+    at AESGCMDecipherBinding.decrypt (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/protocol/crypto.js:1086:26)
+    at Protocol.parsePacket [as _parse] (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/protocol/Protocol.js:2028:25)
+    at Protocol.parse (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/protocol/Protocol.js:313:16)
+    at Socket.<anonymous> (/Users/universparty/wa-web-launcher/wa-agent-app/backend/node_modules/ssh2/lib/client.js:773:21)
+    at Socket.emit (node:events:524:28) {
+  level: 'client-authentication'
+}

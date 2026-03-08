@@ -1,0 +1,213 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.superpartybyai.waagentapp"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:3:5-67
+11-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:3:22-64
+12
+13    <permission
+13-->[androidx.core:core:1.12.0] /Users/universparty/.gradle/caches/transforms-3/eac1cd78244f1371104c98f58a55397f/transformed/core-1.12.0/AndroidManifest.xml:22:5-24:47
+14        android:name="com.superpartybyai.waagentapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+14-->[androidx.core:core:1.12.0] /Users/universparty/.gradle/caches/transforms-3/eac1cd78244f1371104c98f58a55397f/transformed/core-1.12.0/AndroidManifest.xml:23:9-81
+15        android:protectionLevel="signature" />
+15-->[androidx.core:core:1.12.0] /Users/universparty/.gradle/caches/transforms-3/eac1cd78244f1371104c98f58a55397f/transformed/core-1.12.0/AndroidManifest.xml:24:9-44
+16
+17    <uses-permission android:name="com.superpartybyai.waagentapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+17-->[androidx.core:core:1.12.0] /Users/universparty/.gradle/caches/transforms-3/eac1cd78244f1371104c98f58a55397f/transformed/core-1.12.0/AndroidManifest.xml:26:5-97
+17-->[androidx.core:core:1.12.0] /Users/universparty/.gradle/caches/transforms-3/eac1cd78244f1371104c98f58a55397f/transformed/core-1.12.0/AndroidManifest.xml:26:22-94
+18
+19    <application
+19-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:4:5-19:19
+20        android:allowBackup="true"
+20-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:5:9-35
+21        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+21-->[androidx.core:core:1.12.0] /Users/universparty/.gradle/caches/transforms-3/eac1cd78244f1371104c98f58a55397f/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
+22        android:debuggable="true"
+23        android:extractNativeLibs="false"
+24        android:icon="@android:drawable/sym_def_app_icon"
+24-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:6:9-58
+25        android:label="@string/app_name"
+25-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:7:9-41
+26        android:supportsRtl="true"
+26-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:8:9-35
+27        android:theme="@style/Theme.WAAgentApp" >
+27-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:9:9-48
+28        <activity
+28-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:10:9-18:20
+29            android:name="com.superpartybyai.waagentapp.MainActivity"
+29-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:11:13-41
+30            android:exported="true"
+30-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:12:13-36
+31            android:theme="@style/Theme.WAAgentApp" >
+31-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:13:13-52
+32            <intent-filter>
+32-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:14:13-17:29
+33                <action android:name="android.intent.action.MAIN" />
+33-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:15:17-69
+33-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:15:25-66
+34
+35                <category android:name="android.intent.category.LAUNCHER" />
+35-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:16:17-77
+35-->/Users/universparty/wa-web-launcher/wa-agent-app/app/src/main/AndroidManifest.xml:16:27-74
+36            </intent-filter>
+37        </activity>
+38
+39        <provider
+39-->[io.github.jan-tennert.supabase:gotrue-kt-android-debug:2.2.3] /Users/universparty/.gradle/caches/transforms-3/262010730c9cc93752391feea3cbca51/transformed/gotrue-kt-debug/AndroidManifest.xml:9:9-17:20
+40            android:name="androidx.startup.InitializationProvider"
+40-->[io.github.jan-tennert.supabase:gotrue-kt-android-debug:2.2.3] /Users/universparty/.gradle/caches/transforms-3/262010730c9cc93752391feea3cbca51/transformed/gotrue-kt-debug/AndroidManifest.xml:10:13-67
+41            android:authorities="com.superpartybyai.waagentapp.androidx-startup"
+41-->[io.github.jan-tennert.supabase:gotrue-kt-android-debug:2.2.3] /Users/universparty/.gradle/caches/transforms-3/262010730c9cc93752391feea3cbca51/transformed/gotrue-kt-debug/AndroidManifest.xml:11:13-68
+42            android:exported="false" >
+42-->[io.github.jan-tennert.supabase:gotrue-kt-android-debug:2.2.3] /Users/universparty/.gradle/caches/transforms-3/262010730c9cc93752391feea3cbca51/transformed/gotrue-kt-debug/AndroidManifest.xml:12:13-37
+43            <meta-data
+43-->[io.github.jan-tennert.supabase:gotrue-kt-android-debug:2.2.3] /Users/universparty/.gradle/caches/transforms-3/262010730c9cc93752391feea3cbca51/transformed/gotrue-kt-debug/AndroidManifest.xml:14:13-16:52
+44                android:name="io.github.jan.supabase.gotrue.SupabaseInitializer"
+44-->[io.github.jan-tennert.supabase:gotrue-kt-android-debug:2.2.3] /Users/universparty/.gradle/caches/transforms-3/262010730c9cc93752391feea3cbca51/transformed/gotrue-kt-debug/AndroidManifest.xml:15:17-81
+45                android:value="androidx.startup" />
+45-->[io.github.jan-tennert.supabase:gotrue-kt-android-debug:2.2.3] /Users/universparty/.gradle/caches/transforms-3/262010730c9cc93752391feea3cbca51/transformed/gotrue-kt-debug/AndroidManifest.xml:16:17-49
+46            <meta-data
+46-->[androidx.emoji2:emoji2:1.4.0] /Users/universparty/.gradle/caches/transforms-3/565e17d74369fa41f27150703aa264f5/transformed/emoji2-1.4.0/AndroidManifest.xml:29:13-31:52
+47                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+47-->[androidx.emoji2:emoji2:1.4.0] /Users/universparty/.gradle/caches/transforms-3/565e17d74369fa41f27150703aa264f5/transformed/emoji2-1.4.0/AndroidManifest.xml:30:17-75
+48                android:value="androidx.startup" />
+48-->[androidx.emoji2:emoji2:1.4.0] /Users/universparty/.gradle/caches/transforms-3/565e17d74369fa41f27150703aa264f5/transformed/emoji2-1.4.0/AndroidManifest.xml:31:17-49
+49            <meta-data
+49-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/universparty/.gradle/caches/transforms-3/70b855a4538a4d31d3b99f486866349b/transformed/lifecycle-process-2.7.0/AndroidManifest.xml:29:13-31:52
+50                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+50-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/universparty/.gradle/caches/transforms-3/70b855a4538a4d31d3b99f486866349b/transformed/lifecycle-process-2.7.0/AndroidManifest.xml:30:17-78
+51                android:value="androidx.startup" />
+51-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/universparty/.gradle/caches/transforms-3/70b855a4538a4d31d3b99f486866349b/transformed/lifecycle-process-2.7.0/AndroidManifest.xml:31:17-49
+52            <meta-data
+52-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:29:13-31:52
+53                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+53-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:30:17-85
+54                android:value="androidx.startup" />
+54-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:31:17-49
+55            <meta-data
+55-->[com.russhwolf:multiplatform-settings-no-arg-android-debug:1.1.1] /Users/universparty/.gradle/caches/transforms-3/a5bf2d4fdfe9c417430091f600b3532e/transformed/multiplatform-settings-no-arg-debug/AndroidManifest.xml:29:13-31:52
+56                android:name="com.russhwolf.settings.SettingsInitializer"
+56-->[com.russhwolf:multiplatform-settings-no-arg-android-debug:1.1.1] /Users/universparty/.gradle/caches/transforms-3/a5bf2d4fdfe9c417430091f600b3532e/transformed/multiplatform-settings-no-arg-debug/AndroidManifest.xml:30:17-74
+57                android:value="androidx.startup" />
+57-->[com.russhwolf:multiplatform-settings-no-arg-android-debug:1.1.1] /Users/universparty/.gradle/caches/transforms-3/a5bf2d4fdfe9c417430091f600b3532e/transformed/multiplatform-settings-no-arg-debug/AndroidManifest.xml:31:17-49
+58        </provider>
+59
+60        <service
+60-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:24:9-32:19
+61            android:name="androidx.credentials.playservices.CredentialProviderMetadataHolder"
+61-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:25:13-94
+62            android:enabled="true"
+62-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:26:13-35
+63            android:exported="false" >
+63-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:27:13-37
+64            <meta-data
+64-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:29:13-31:104
+65                android:name="androidx.credentials.CREDENTIAL_PROVIDER_KEY"
+65-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:30:17-76
+66                android:value="androidx.credentials.playservices.CredentialProviderPlayServicesImpl" />
+66-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:31:17-101
+67        </service>
+68
+69        <activity
+69-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:34:9-41:20
+70            android:name="androidx.credentials.playservices.HiddenActivity"
+70-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:35:13-76
+71            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+71-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:36:13-87
+72            android:enabled="true"
+72-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:37:13-35
+73            android:exported="false"
+73-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:38:13-37
+74            android:fitsSystemWindows="true"
+74-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:39:13-45
+75            android:theme="@style/Theme.Hidden" >
+75-->[androidx.credentials:credentials-play-services-auth:1.2.1] /Users/universparty/.gradle/caches/transforms-3/1b4b0610d4d2afda35d5c2e1cfc834b5/transformed/credentials-play-services-auth-1.2.1/AndroidManifest.xml:40:13-48
+76        </activity>
+77        <activity
+77-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:23:9-27:75
+78            android:name="com.google.android.gms.auth.api.signin.internal.SignInHubActivity"
+78-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:24:13-93
+79            android:excludeFromRecents="true"
+79-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:25:13-46
+80            android:exported="false"
+80-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:26:13-37
+81            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+81-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:27:13-72
+82        <!--
+83            Service handling Google Sign-In user revocation. For apps that do not integrate with
+84            Google Sign-In, this service will never be started.
+85        -->
+86        <service
+86-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:33:9-37:51
+87            android:name="com.google.android.gms.auth.api.signin.RevocationBoundService"
+87-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:34:13-89
+88            android:exported="true"
+88-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:35:13-36
+89            android:permission="com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION"
+89-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:36:13-107
+90            android:visibleToInstantApps="true" />
+90-->[com.google.android.gms:play-services-auth:20.7.0] /Users/universparty/.gradle/caches/transforms-3/dbb95b90eb98d15daa96ad4cb5a7b531/transformed/play-services-auth-20.7.0/AndroidManifest.xml:37:13-48
+91
+92        <activity
+92-->[com.google.android.gms:play-services-base:18.0.1] /Users/universparty/.gradle/caches/transforms-3/876da79c8fa56c57ab4d2bab38d4dbe2/transformed/play-services-base-18.0.1/AndroidManifest.xml:20:9-22:45
+93            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+93-->[com.google.android.gms:play-services-base:18.0.1] /Users/universparty/.gradle/caches/transforms-3/876da79c8fa56c57ab4d2bab38d4dbe2/transformed/play-services-base-18.0.1/AndroidManifest.xml:20:19-85
+94            android:exported="false"
+94-->[com.google.android.gms:play-services-base:18.0.1] /Users/universparty/.gradle/caches/transforms-3/876da79c8fa56c57ab4d2bab38d4dbe2/transformed/play-services-base-18.0.1/AndroidManifest.xml:22:19-43
+95            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+95-->[com.google.android.gms:play-services-base:18.0.1] /Users/universparty/.gradle/caches/transforms-3/876da79c8fa56c57ab4d2bab38d4dbe2/transformed/play-services-base-18.0.1/AndroidManifest.xml:21:19-78
+96
+97        <meta-data
+97-->[com.google.android.gms:play-services-basement:18.2.0] /Users/universparty/.gradle/caches/transforms-3/5a4a2483335cfa9cf92d92f1848e2530/transformed/play-services-basement-18.2.0/AndroidManifest.xml:21:9-23:69
+98            android:name="com.google.android.gms.version"
+98-->[com.google.android.gms:play-services-basement:18.2.0] /Users/universparty/.gradle/caches/transforms-3/5a4a2483335cfa9cf92d92f1848e2530/transformed/play-services-basement-18.2.0/AndroidManifest.xml:22:13-58
+99            android:value="@integer/google_play_services_version" />
+99-->[com.google.android.gms:play-services-basement:18.2.0] /Users/universparty/.gradle/caches/transforms-3/5a4a2483335cfa9cf92d92f1848e2530/transformed/play-services-basement-18.2.0/AndroidManifest.xml:23:13-66
+100
+101        <receiver
+101-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:34:9-52:20
+102            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+102-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:35:13-76
+103            android:directBootAware="false"
+103-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:36:13-44
+104            android:enabled="true"
+104-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:37:13-35
+105            android:exported="true"
+105-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:38:13-36
+106            android:permission="android.permission.DUMP" >
+106-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:39:13-57
+107            <intent-filter>
+107-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:40:13-42:29
+108                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+108-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:41:17-91
+108-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:41:25-88
+109            </intent-filter>
+110            <intent-filter>
+110-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:43:13-45:29
+111                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+111-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:44:17-85
+111-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:44:25-82
+112            </intent-filter>
+113            <intent-filter>
+113-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:46:13-48:29
+114                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+114-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:47:17-88
+114-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:47:25-85
+115            </intent-filter>
+116            <intent-filter>
+116-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:49:13-51:29
+117                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+117-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:50:17-95
+117-->[androidx.profileinstaller:profileinstaller:1.3.0] /Users/universparty/.gradle/caches/transforms-3/eda152ff665404e864fa3cc7a57cfd15/transformed/profileinstaller-1.3.0/AndroidManifest.xml:50:25-92
+118            </intent-filter>
+119        </receiver>
+120    </application>
+121
+122</manifest>

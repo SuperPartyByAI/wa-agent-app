@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no root@91.98.16.90 "tail -n 100 /tmp/install.log"
+expect {
+    "password:" {
+        send "9vAxpqRLv7bF\r"
+        exp_continue
+    }
+    eof
+}

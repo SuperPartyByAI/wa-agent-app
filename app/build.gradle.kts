@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -18,10 +21,10 @@ android {
             useSupportLibrary = true
         }
 
-        val localProps = java.util.Properties()
-        val localPropsFile = rootProject.file("local.properties")
+        val localProps = Properties()
+        val localPropsFile = project.rootProject.file("local.properties")
         if (localPropsFile.exists()) {
-            localProps.load(java.io.FileInputStream(localPropsFile))
+            localProps.load(FileInputStream(localPropsFile))
         }
         buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("SUPABASE_URL", "https://mock.supabase.co")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("SUPABASE_ANON_KEY", "mock_key")}\"")
@@ -37,11 +40,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
     buildFeatures {
         compose = true

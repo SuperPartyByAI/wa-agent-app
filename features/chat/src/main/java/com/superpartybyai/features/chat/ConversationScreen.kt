@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import com.superpartybyai.core.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +44,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var isLoading by remember { mutableStateOf(true) }
     var targetPhone by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     LaunchedEffect(contactId) {
         coroutineScope.launch {
@@ -111,6 +114,12 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                             os.write(input, 0, input.size)
                                         }
                                         val rc = conn.responseCode
+                                        if (rc !in 200..299) {
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, "Eroare trimitere: HTTP $rc", Toast.LENGTH_LONG).show()
+                                            }
+                                            return@withContext
+                                        }
                                     }
                                     // Append locally optimistically
                                     messages = messages + MessageModel(
@@ -121,6 +130,9 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                     )
                                 } catch (e: Exception) {
                                     e.printStackTrace()
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Eroare rețea: ${e.message}", Toast.LENGTH_LONG).show()
+                                    }
                                 }
                             }
                         }

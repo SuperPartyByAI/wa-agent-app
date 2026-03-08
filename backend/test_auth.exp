@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+spawn ssh -o StrictHostKeyChecking=no root@91.98.16.90 "echo 'Auth Success: Password'"
+expect {
+    "password:" {
+        send "9vAxpqRLv7bF\r"
+        exp_continue
+    }
+    eof
+}

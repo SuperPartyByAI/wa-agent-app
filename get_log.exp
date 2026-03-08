@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+match_max 100000
+spawn ssh -o StrictHostKeyChecking=no root@91.98.16.90 "cat /tmp/install.log"
+expect {
+    "password:" {
+        send "9vAxpqRLv7bF\r"
+        exp_continue
+    }
+    eof
+}

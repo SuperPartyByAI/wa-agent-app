@@ -112,6 +112,55 @@ async function syncOutboundMessageToSupabase(phoneNumber, text, externalId) {
   }
 }
 
+async function syncHistoricalMessageToSupabase(message) {
+  try {
+    const isOutbound = message.fromMe;
+    const phoneNumber = isOutbound ? message.to.replace('@c.us', '') : message.from.replace('@c.us', '');
+    const senderName = isOutbound ? "Me" : (message.sender?.pushname || message.chat?.contact?.name || "WAC-" + phoneNumber);
+    
+    // 1. Client
+    let clientId;
+    const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', phoneNumber).single();
+    if (existingClient) {
+      clientId = existingClient.id;
+    } else {
+      const { data: newClient, error: clientErr } = await supabase.from('clients').insert({ full_name: senderName, phone: phoneNumber, source: 'whatsapp' }).select().single();
+      if (clientErr) throw clientErr;
+      clientId = newClient.id;
+    }
+    
+    // 2. Conversation
+    let convId;
+    const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').single();
+    if (existingConv) {
+      convId = existingConv.id;
+    } else {
+      const { data: newConv, error: convErr } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open', updated_at: new Date(message.timestamp * 1000).toISOString() }).select().single();
+      if (convErr) throw convErr;
+      convId = newConv.id;
+    }
+    
+    // 3. Message check for duplicates
+    const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', message.id).single();
+    if (existingMsg) return; // Skip duplicate
+
+    // 4. Insert Message
+    await supabase.from('messages').insert({
+      conversation_id: convId,
+      direction: isOutbound ? 'outbound' : 'inbound',
+      sender_type: isOutbound ? 'agent' : 'client',
+      content: message.body || message.text || "",
+      external_message_id: message.id,
+      status: isOutbound ? 'sent' : 'received',
+      created_at: new Date(message.timestamp * 1000).toISOString()
+    });
+  } catch (err) {
+    if (err.code !== '23505') {
+       console.error(`[Supabase History Sync Error] ${err.message}`);
+    }
+  }
+}
+
 async function sync3cxCallEvent(event, number, extension) {
   try {
     const formattedNumber = number.replace('+', '');
@@ -207,6 +256,29 @@ async function startSession(sessionId) {
       qrCode: null,
     });
     logger(sessionId, "info", "Successfully connected and paired!");
+
+    // Start historical seed in background
+    (async () => {
+      try {
+        logger(sessionId, "info", "Starting initial history seed for last 10 chats...");
+        const chats = await client.getAllChats();
+        const recentChats = chats.filter(c => c.id.server === 'c.us').slice(0, 10);
+        for (const chat of recentChats) {
+          try {
+            const msgs = await client.getAllMessagesInChat(chat.id._serialized || chat.id, true, true);
+            const last20 = msgs.slice(-20);
+            for (const msg of last20) {
+              await syncHistoricalMessageToSupabase(msg);
+            }
+          } catch (chatErr) {
+            console.error(`Failed to sync chat ${chat.id}: ${chatErr.message}`);
+          }
+        }
+        logger(sessionId, "info", "Initial history seed completed successfully.");
+      } catch (seedErr) {
+        logger(sessionId, "error", `Failed history seed: ${seedErr.message}`);
+      }
+    })();
 
     // Bind global event listeners for reconnecting and stability
     client.onStateChanged((state) => {

@@ -21,6 +21,9 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.PostgresAction
 
 @Serializable
 data class MessageModel(
@@ -46,10 +49,9 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     
-    LaunchedEffect(contactId) {
+    val loadMessages: () -> Unit = {
         coroutineScope.launch {
             try {
-                // Fetch message history for this conversation
                 val response = SupabaseClient.client.postgrest["messages"]
                     .select {
                         filter {
@@ -58,7 +60,19 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                         order("created_at", order = io.github.jan.supabase.postgrest.query.Order.ASCENDING)
                     }.decodeList<MessageModel>()
                 messages = response
-                
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    LaunchedEffect(contactId) {
+        loadMessages()
+        
+        coroutineScope.launch {
+            try {
                 val convInfo = SupabaseClient.client.postgrest["conversations"]
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone)")) {
                         filter { eq("id", contactId) }
@@ -66,8 +80,21 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 targetPhone = convInfo?.clients?.phone
             } catch (e: Exception) {
                 e.printStackTrace()
-            } finally {
-                isLoading = false
+            }
+        }
+        
+        launch {
+            try {
+                val channel = SupabaseClient.client.channel("public-messages-\$contactId")
+                val flow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                    table = "messages"
+                }
+                channel.subscribe()
+                flow.collect {
+                    loadMessages()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

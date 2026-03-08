@@ -16,6 +16,10 @@ import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.Serializable
 
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Refresh
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.PostgresAction
 
 @Serializable
 data class ClientRef(val full_name: String, val phone: String?)
@@ -35,18 +39,37 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    val loadConversations: () -> Unit = {
         coroutineScope.launch {
             try {
-                // Fetch conversations joined with Client details
+                if (conversations.isEmpty()) isLoading = true
                 val response = SupabaseClient.client.postgrest["conversations"]
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, status, updated_at, clients(full_name, phone)"))
                     .decodeList<ConversationModel>()
-                conversations = response
+                conversations = response.sortedByDescending { it.updated_at }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 isLoading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadConversations()
+        
+        launch {
+            try {
+                val channel = SupabaseClient.client.channel("public-conversations")
+                val flow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                    table = "conversations"
+                }
+                channel.subscribe()
+                flow.collect {
+                    loadConversations()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -57,6 +80,9 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
             TopAppBar(
                 title = { Text("WhatsApp Inbox") },
                 actions = {
+                    IconButton(onClick = { loadConversations() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
                     IconButton(onClick = onWaLinkClick) {
                         Icon(Icons.Default.AddCircle, contentDescription = "Link WA")
                     }

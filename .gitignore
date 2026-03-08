@@ -1,15 +1,31 @@
-*.iml
-.gradle
-/local.properties
-/.idea/
-.DS_Store
-build/
-captures/
+# Android Native / Build
 *.apk
+*.ap_
 *.aab
+*.dex
+*.class
+**/build/
+build/
+.gradle/
+local.properties
+/local.properties
+.idea/
+*.iml
+captures/
 .externalNativeBuild
 .cxx
-local.properties
-backend/node_modules/
-backend/sessions/
+
+# Node.js / Backend
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
 backend/.env
+backend/.env.*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes

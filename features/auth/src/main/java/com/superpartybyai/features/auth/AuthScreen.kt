@@ -85,8 +85,8 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
                             isLoading = false
                         }
                     } catch (e: GetCredentialException) {
-                        errorMessage = "Google Login App-Cancelled or Failed."
-                        Log.e("AuthScreen", "CredentialManager err", e)
+                        errorMessage = "Google Login Failed: ${e.message}"
+                        Log.e("AuthScreen", "CredentialManager err: ${e.message}", e)
                         isLoading = false
                     } catch (e: Exception) {
                         errorMessage = "Supabase Auth Error: \${e.message}"

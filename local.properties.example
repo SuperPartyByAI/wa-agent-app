@@ -1,0 +1,6 @@
+sdk.dir=/Users/your_user/Library/Android/sdk
+SUPABASE_URL=https://your-project.supabase.co
+API_KEY=your_secure_api_key_here
+BACKEND_URL=http://your_backend_ip:3000
+WEB_CLIENT_ID=your_google_web_client_id.apps.googleusercontent.com
+SUPABASE_ANON_KEY=your_supabase_publishable_anon_key

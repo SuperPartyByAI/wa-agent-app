@@ -1,53 +1,25 @@
-# Superparty Event Operations System (wa-agent-app)
+# SuperParty AI Agent App
 
-A full-stack, AI-orchestrated modular architecture designed to unify WhatsApp business messaging, 3CX Telephony, and a complete Client & Event CRM.
+The unified Hub for the AI Event Coordinator, bridging Google Authentication, full WhatsApp QR injection, 3CX Telephony, and Supabase synchronization.
 
-## Architectural Topology
+## Features
 
-1. **`backend/` (Open-WA Node.js & AI Worker)**: Multi-session WhatsApp Web manager bridging message sockets and pushing Webhooks to the 3CX PBX and the central Database. Features an intelligent background extractor for auto-drafting Events dynamically.
-2. **`app/` & `features/` (Android Native, Kotlin)**: The Jetpack Compose application empowering Staff/Agents on the field with live WhatsApp inboxes, AI Event assignments, and 3CX call tracking natively synchronised via Supabase PostgREST Realtime hooks.
-3. **Database (`supabase_schema_system.sql`)**: The master Postgres intelligence hub (live on Supabase Cloud) containing `events`, `clients`, `conversations`, `employees`, `tasks`, and the `ai_extractions`.
+- **Native Google Login**: Natively powered by the Android 14+ Credential Manager. Automatically syncs JWT identities with Supabase Edge Postgres.
+- **WhatsApp Web Injection**: Connects to the Baileys worker over REST (`POST /api/sessions/start`) securely using `X-API-KEY`. Generates dynamic QR matrices strictly inside the application.
+- **AI Worker Processing**: The background backend runs `ai-worker.js`, auto-drafting event proposals with event dates, themes, and guest counts based on real-time LLM entity extraction from Supabase Tables (`call_events` and `messages`).
+- **Complete Feature Flags**: Live synchronization for `InboxScreen`, `ConversationScreen`, `CallsScreen`, and `EventsListScreen`. All components leverage reactive Supabase Compose Listeners.
 
----
+## Installation & Deployment
 
-## Technical Delivery: 100% Core CRM Infrastructure Complete
+1. Clone repository.
+2. Ensure you have the secure tokens. Copy `local.properties.example` into `local.properties` and populate:
+   - `WEB_CLIENT_ID` (Your exact Google Web Application Client ID)
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY` (Supabase publishable key `sb_publishable...` or `anon_key` JWT)
+   - `BACKEND_URL` (IP of the active Open-WA API Server)
+   - `API_KEY` (Symmetric Security Token matched with Backend)
+3. Ensure the Backend environment (.env based on `backend/.env.example`) matches the App configuration exactly.
+4. From the root directory, compile via the daemon: `./gradlew assembleDebug`
+5. Connect your device via ADB and execute: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
 
-### 1. Google Login Real (Supabase Auth)
-
-- Integrated `androidx.credentials` natively routing Google tokens.
-- Bound Supabase GoTrue backend client directly into `AuthScreen` discarding mock loops.
-- Set up automated Postgres triggers `on_auth_user_created` bridging Auth to `profiles`.
-
-### 2. Inbox WhatsApp Real
-
-- Re-architected Node.js Open-WA bridge to auto-provision `clients` and `conversations`.
-- Hooked `InboxScreen.kt` and `ConversationScreen.kt` deeply into Supabase PostgREST for true two-way Android sync of WhatsApp payloads.
-
-### 3. Calls Screen Real
-
-- Bound the 3CX PBX `/3cx/event` Webhooks into local Postgres inserts.
-- Wired Android Jetpack Compose List `CallsScreen` accurately parsing real Caller states.
-
-### 4. Event Draft Automat
-
-- Injected backend regex patterns scanning inbound text strings to passively capture intention.
-- Implemented Supabase direct-insertion mapping these queries to new `draft` elements traversing immediately across the entire operations mesh.
-
-### 5. Android Event Screen
-
-- Fully prototyped the AI Events GUI into Android UI state-machines natively retrieving joined Client details from the PostgREST plugin mappings. Added to Main router.
-
-### 6. Structură AI Agent Node
-
-- Scaffolded `ai-worker.js`, creating persistent websockets querying `messages` and `call_events` PostgreSQL mutations natively.
-- Auto-extracts LLM structured context bridging `messages` to real-time `ai_extractions` & generates smart-reply structures inside `ai_actions` logic pools continuously.
-
-## Setup & Execution
-
-### Android
-
-Requirements: Pull down `google-services.json` from the Firebase Dashboard (tied to `com.superpartybyai.waagentapp`) into root `app/` environment or Credentials API will decline launch.
-
-### Backend (`/backend/`)
-
-Requirements: Deploy using Node >= 18. Provide actual API string mappings inside `.env` matching your live Hetzner architecture and Supabase Service Role identities to bootstrap background processes securely.
+_Note: Native Android Login strictly requires an `Android Client ID` footprint dynamically mapped in Google Console using your local machine's `debug.keystore` SHA-1 fingerprint._

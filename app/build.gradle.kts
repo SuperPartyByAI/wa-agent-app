@@ -17,6 +17,16 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        val localProps = java.util.Properties()
+        val localPropsFile = rootProject.file("local.properties")
+        if (localPropsFile.exists()) {
+            localProps.load(java.io.FileInputStream(localPropsFile))
+        }
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("SUPABASE_URL", "https://mock.supabase.co")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("SUPABASE_ANON_KEY", "mock_key")}\"")
+        buildConfigField("String", "WEB_CLIENT_ID", "\"${localProps.getProperty("WEB_CLIENT_ID", "mock_id")}\"")
+        buildConfigField("String", "BACKEND_URL", "\"${localProps.getProperty("BACKEND_URL", "http://10.0.2.2:3000")}\"")
     }
 
     buildTypes {
@@ -34,6 +44,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.10"

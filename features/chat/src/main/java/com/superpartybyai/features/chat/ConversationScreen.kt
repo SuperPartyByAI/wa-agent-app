@@ -14,6 +14,11 @@ import com.superpartybyai.core.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import kotlinx.serialization.Serializable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 
 @Serializable
 data class MessageModel(
@@ -23,12 +28,19 @@ data class MessageModel(
     val created_at: String
 )
 
+@Serializable
+data class ClientPhone(val phone: String)
+
+@Serializable
+data class ConvClientPhone(val clients: ClientPhone?)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var messages by remember { mutableStateOf<List<MessageModel>>(emptyList()) }
     var inputMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
+    var targetPhone by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     
     LaunchedEffect(contactId) {
@@ -43,6 +55,12 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                         order("created_at", order = io.github.jan.supabase.postgrest.query.Order.ASCENDING)
                     }.decodeList<MessageModel>()
                 messages = response
+                
+                val convInfo = SupabaseClient.client.postgrest["conversations"]
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone)")) {
+                        filter { eq("id", contactId) }
+                    }.decodeSingleOrNull<ConvClientPhone>()
+                targetPhone = convInfo?.clients?.phone
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -70,8 +88,41 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 )
                 Button(
                     onClick = { 
-                        // TODO: Triggers backend send API
-                        inputMessage = "" 
+                        if (inputMessage.isNotBlank() && targetPhone != null) {
+                            val textToSend = inputMessage
+                            inputMessage = ""
+                            coroutineScope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) {
+                                        val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/messages/send")
+                                        val conn = url.openConnection() as HttpURLConnection
+                                        conn.requestMethod = "POST"
+                                        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                                        conn.doOutput = true
+                                        
+                                        val jsonBody = JSONObject()
+                                        jsonBody.put("number", targetPhone)
+                                        jsonBody.put("text", textToSend)
+                                        jsonBody.put("sessionId", "default")
+                                        
+                                        conn.outputStream.use { os ->
+                                            val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                                            os.write(input, 0, input.size)
+                                        }
+                                        val rc = conn.responseCode
+                                    }
+                                    // Append locally optimistically
+                                    messages = messages + MessageModel(
+                                       id = java.util.UUID.randomVideoId().toString(),
+                                       sender_type = "agent",
+                                       content = textToSend,
+                                       created_at = java.time.Instant.now().toString()
+                                    )
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
                     }, 
                     modifier = Modifier.padding(end = 8.dp)
                 ) {

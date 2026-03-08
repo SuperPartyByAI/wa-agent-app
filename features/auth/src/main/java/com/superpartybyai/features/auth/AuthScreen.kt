@@ -20,7 +20,7 @@ import io.github.jan.supabase.gotrue.providers.builtin.IDToken
 import kotlinx.coroutines.launch
 import com.superpartybyai.core.SupabaseClient
 
-const val WEB_CLIENT_ID = "YOUR_WEB_CLIENT_ID_HERE" // TODO: Add real Google Cloud Web Client ID
+val WEB_CLIENT_ID get() = com.superpartybyai.core.AppConfig.WEB_CLIENT_ID
 
 @Composable
 fun AuthScreen(onLoginSuccess: () -> Unit) {

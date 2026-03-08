@@ -10,10 +10,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.Google
 import io.github.jan.supabase.gotrue.providers.builtin.IDToken
@@ -57,6 +59,7 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
                 errorMessage = null
                 coroutineScope.launch {
                     try {
+                        Log.d("AuthScreen", "WEB_CLIENT_ID = $WEB_CLIENT_ID")
                         val credentialManager = CredentialManager.create(context)
                         
                         val googleIdOption = GetGoogleIdOption.Builder()
@@ -72,17 +75,37 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
                         val result = credentialManager.getCredential(context, request)
                         val credential = result.credential
                         
-                        // Proceed to Supabase Auth if it's a valid Google Token
-                        if (credential is com.google.android.libraries.identity.googleid.GoogleIdTokenCredential) {
-                            val idToken = credential.idToken
-                            SupabaseClient.client.auth.signInWith(IDToken) {
-                                this.idToken = idToken
-                                provider = Google
+                        when {
+                            credential is CustomCredential &&
+                                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL -> {
+                                try {
+                                    val googleIdTokenCredential =
+                                        GoogleIdTokenCredential.createFrom(credential.data)
+
+                                    val idToken = googleIdTokenCredential.idToken
+
+                                    SupabaseClient.client.auth.signInWith(IDToken) {
+                                        this.idToken = idToken
+                                        provider = Google
+                                    }
+
+                                    onLoginSuccess()
+                                } catch (e: GoogleIdTokenParsingException) {
+                                    errorMessage = "Google token parsing failed: ${e.message}"
+                                    Log.e("AuthScreen", "Google token parsing failed", e)
+                                    isLoading = false
+                                }
                             }
-                            onLoginSuccess()
-                        } else {
-                            errorMessage = "Invalid Credential Type received."
-                            isLoading = false
+
+                            else -> {
+                                errorMessage =
+                                    "Invalid credential type: ${credential::class.java.simpleName}"
+                                Log.e(
+                                    "AuthScreen",
+                                    "Unexpected credential type: ${credential::class.java.name}"
+                                )
+                                isLoading = false
+                            }
                         }
                     } catch (e: GetCredentialException) {
                         errorMessage = "Google Login Failed: ${e.message}"

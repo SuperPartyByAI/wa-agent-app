@@ -8,3 +8,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+backend/node_modules/
+backend/sessions/
+backend/.env

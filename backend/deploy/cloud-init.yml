@@ -1,0 +1,25 @@
+#cloud-config
+package_update: true
+packages:
+  - curl
+  - git
+  - jq
+  - chromium-browser
+  - chromium
+  - libxss1
+  - libnss3
+  - libgconf-2-4
+  - libasound2
+runcmd:
+  - sed -i 's/^#*\s*PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  - sed -i 's/^#*\s*PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config
+  - systemctl restart ssh || systemctl restart sshd
+  - curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  - apt-get install -y nodejs
+  - npm install -g pm2
+  - git clone https://github.com/SuperPartyByAI/open-wq.git /root/open-wq
+  - cd /root/open-wq && npm install
+  - cd /root/open-wq && pm2 start index.js --name 'open-wa'
+  - cd /root/open-wq && pm2 save
+  - env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u root --hp /root | tail -n 1 > /tmp/pm2_setup.sh
+  - bash /tmp/pm2_setup.sh

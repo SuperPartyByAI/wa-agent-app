@@ -27,6 +27,7 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("SUPABASE_ANON_KEY", "mock_key")}\"")
         buildConfigField("String", "WEB_CLIENT_ID", "\"${localProps.getProperty("WEB_CLIENT_ID", "mock_id")}\"")
         buildConfigField("String", "BACKEND_URL", "\"${localProps.getProperty("BACKEND_URL", "http://10.0.2.2:3000")}\"")
+        buildConfigField("String", "API_KEY", "\"${localProps.getProperty("API_KEY", "SECRET_TOKEN_CHANGE_ME")}\"")
     }
 
     buildTypes {

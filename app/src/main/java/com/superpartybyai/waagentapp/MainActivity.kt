@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
         com.superpartybyai.core.AppConfig.SUPABASE_ANON_KEY = BuildConfig.SUPABASE_ANON_KEY
         com.superpartybyai.core.AppConfig.WEB_CLIENT_ID = BuildConfig.WEB_CLIENT_ID
         com.superpartybyai.core.AppConfig.BACKEND_URL = BuildConfig.BACKEND_URL
+        com.superpartybyai.core.AppConfig.API_KEY = BuildConfig.API_KEY
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

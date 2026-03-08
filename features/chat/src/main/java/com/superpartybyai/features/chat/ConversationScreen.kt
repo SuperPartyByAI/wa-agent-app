@@ -98,10 +98,11 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                         val conn = url.openConnection() as HttpURLConnection
                                         conn.requestMethod = "POST"
                                         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                                        conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
                                         conn.doOutput = true
                                         
                                         val jsonBody = JSONObject()
-                                        jsonBody.put("number", targetPhone)
+                                        jsonBody.put("to", targetPhone)
                                         jsonBody.put("text", textToSend)
                                         jsonBody.put("sessionId", "default")
                                         
@@ -113,7 +114,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                     }
                                     // Append locally optimistically
                                     messages = messages + MessageModel(
-                                       id = java.util.UUID.randomVideoId().toString(),
+                                       id = java.util.UUID.randomUUID().toString(),
                                        sender_type = "agent",
                                        content = textToSend,
                                        created_at = java.time.Instant.now().toString()

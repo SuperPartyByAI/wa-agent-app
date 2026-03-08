@@ -3,6 +3,144 @@ const wa = require("@open-wa/wa-automate");
 const express = require("express");
 const cors = require("cors");
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
+
+// Init Supabase CRM Engine
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://jrfhprnuxxfwkwjwdsez.supabase.co";
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "INSERT_YOUR_SECRET_ROLE_KEY_HERE";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function syncInboundMessageToSupabase(message, sessionId) {
+  try {
+    const phoneNumber = message.from.replace('@c.us', '');
+    const senderName = message.sender?.pushname || "WAC-" + phoneNumber;
+    
+    // 1. Client
+    let clientId;
+    const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', phoneNumber).single();
+    if (existingClient) {
+      clientId = existingClient.id;
+    } else {
+      const { data: newClient, error: clientErr } = await supabase.from('clients').insert({ full_name: senderName, phone: phoneNumber, source: 'whatsapp' }).select().single();
+      if (clientErr) throw clientErr;
+      clientId = newClient.id;
+    }
+    
+    // 2. Conversation
+    let convId;
+    const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').single();
+    if (existingConv) {
+      convId = existingConv.id;
+    } else {
+      const { data: newConv, error: convErr } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open' }).select().single();
+      if (convErr) throw convErr;
+      convId = newConv.id;
+    }
+    
+    // 3. Message
+    const { error: msgErr } = await supabase.from('messages').insert({
+      conversation_id: convId,
+      direction: 'inbound',
+      sender_type: 'client',
+      content: message.body || message.text || "",
+      external_message_id: message.id
+    });
+      
+    if (msgErr && msgErr.code !== '23505') throw msgErr; 
+
+    // 4. (Auto-Draft Event) Basic keyword detection for Event creation
+    const textLower = (message.body || message.text || "").toLowerCase();
+    const eventKeywords = ['petrecere', 'zi de nastere', 'botez', 'eveniment', 'aniversare', 'petreceri copii'];
+    
+    if (eventKeywords.some(kw => textLower.includes(kw))) {
+      const { data: existingEvent } = await supabase.from('events').select('id').eq('client_id', clientId).in('status', ['draft', 'pending_confirmation']).single();
+      
+      if (!existingEvent) {
+        let eventType = 'birthday';
+        if (textLower.includes('botez')) eventType = 'private_party';
+        else if (textLower.includes('scoala') || textLower.includes('gradinita')) eventType = 'school';
+        
+        await supabase.from('events').insert({
+          client_id: clientId,
+          conversation_id: convId,
+          title: `Nou Eveniment AI - Identificat din Mesaj`,
+          event_type: eventType,
+          status: 'draft',
+          theme: 'Auto-detectat',
+          special_requests: `Sursa auto-draft: "${textLower.substring(0, 80)}..."`
+        });
+        console.log(`[AI Agent] Auto-Drafted new Event for ${senderName}`);
+      }
+    }
+  } catch (err) {
+    console.error(`[Supabase Inbound Error] ${err.message}`);
+  }
+}
+
+async function syncOutboundMessageToSupabase(phoneNumber, text, externalId) {
+  try {
+    let clientId;
+    const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', phoneNumber).single();
+    if (existingClient) {
+      clientId = existingClient.id;
+    } else {
+      const { data: newClient } = await supabase.from('clients').insert({ full_name: 'WAC-' + phoneNumber, phone: phoneNumber, source: 'whatsapp' }).select().single();
+      clientId = newClient?.id;
+    }
+    if (!clientId) return;
+
+    let convId;
+    const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').single();
+    if (existingConv) {
+      convId = existingConv.id;
+    } else {
+      const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open' }).select().single();
+      convId = newConv?.id;
+    }
+    if (!convId) return;
+
+    await supabase.from('messages').insert({
+      conversation_id: convId,
+      direction: 'outbound',
+      sender_type: 'agent',
+      content: text,
+      external_message_id: externalId || null,
+      status: 'sent'
+    });
+  } catch(e) {
+    console.error(`[Supabase Outbound Error] ${e.message}`);
+  }
+}
+
+async function sync3cxCallEvent(event, number, extension) {
+  try {
+    const formattedNumber = number.replace('+', '');
+    
+    let clientId = null;
+    const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', formattedNumber).single();
+    if (existingClient) {
+      clientId = existingClient.id;
+    } else {
+      const { data: newClient } = await supabase.from('clients').insert({ full_name: 'Call-' + formattedNumber, phone: formattedNumber, source: 'call' }).select().single();
+      clientId = newClient?.id;
+    }
+    
+    let callStatus = 'completed';
+    if (event === 'call_incoming') callStatus = 'ringing';
+    else if (event === 'call_missed') callStatus = 'missed';
+
+    await supabase.from('call_events').insert({
+      client_id: clientId,
+      direction: 'inbound', 
+      status: callStatus,
+      from_number: number,
+      extension: extension,
+      started_at: new Date().toISOString()
+    });
+  } catch(e) {
+    console.error(`[Supabase 3CX Sync Error] ${e.message}`);
+  }
+}
 
 const app = express();
 app.use(cors());
@@ -89,6 +227,9 @@ async function startSession(sessionId) {
     // Bind incoming message routing (Webhook / 3CX placeholder)
     client.onMessage(async (message) => {
       logger(sessionId, "info", `Received message from ${message.from}`);
+      
+      // Upsert into Supabase CRM Database asynchronously
+      syncInboundMessageToSupabase(message, sessionId).catch(e => console.error(e));
       
       if (WEBHOOK_URL) {
         try {
@@ -210,6 +351,9 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
         throw lastError;
     }
     
+    // Upsert into Supabase CRM Database asynchronously
+    syncOutboundMessageToSupabase(formattedNumber, text, result).catch(e => console.error(e));
+    
     res.json({ success: true, result });
   } catch (err) {
     logger(sessionId, "error", `Sending failed after retries: ${err.message}`);
@@ -242,6 +386,9 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
   }
 
   try {
+    // Upsert into Supabase CRM Database asynchronously
+    sync3cxCallEvent(event, number, extension).catch(e => console.error(e));
+
     if (event === "call_incoming") {
       const message = `[Sistem] Apel de intrare pe extensia ${extension} de la ${number}.`;
       // trimitem notificare WhatsApp folosind numărul apelantului formatat (fără +)

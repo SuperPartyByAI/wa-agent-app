@@ -11,8 +11,10 @@
   "license": "ISC",
   "dependencies": {
     "@open-wa/wa-automate": "^4.76.0",
+    "@supabase/supabase-js": "^2.98.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^4.22.1"
+    "express": "^4.22.1",
+    "pg": "^8.20.0"
   }
 }

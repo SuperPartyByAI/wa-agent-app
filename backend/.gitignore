@@ -1,3 +1,9 @@
 node_modules/
 .env
 session/
+
+# managed by open-wa
+**.data.json
+**.node-persist**
+**_IGNORE_**
+# end managed by open-wa

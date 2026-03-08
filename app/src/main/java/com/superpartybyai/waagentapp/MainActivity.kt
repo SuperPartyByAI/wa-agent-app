@@ -12,6 +12,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.superpartybyai.features.auth.AuthScreen
 import com.superpartybyai.waagentapp.ui.MainShellScreen
+import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.GlobalScope
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +40,9 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate("conversation/$contactId")
                                 },
                                 onLogout = {
+                                    GlobalScope.launch {
+                                        com.superpartybyai.core.SupabaseClient.client.auth.signOut()
+                                    }
                                     navController.navigate("login") {
                                         popUpTo("main") { inclusive = true }
                                     }

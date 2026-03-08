@@ -11,11 +11,18 @@ import androidx.compose.ui.Modifier
 import com.superpartybyai.features.calls.CallsScreen
 import com.superpartybyai.features.chat.InboxScreen
 import com.superpartybyai.features.auth.ProfileScreen
+import com.superpartybyai.waagentapp.ui.events.EventsListScreen
+import androidx.compose.material.icons.filled.Event
 
 @Composable
 fun MainShellScreen(onNavigateToChat: (String) -> Unit, onLogout: () -> Unit) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Inbox" to Icons.Default.Email, "3CX Calls" to Icons.Default.Call, "Profile" to Icons.Default.Person)
+    val tabs = listOf(
+        "Inbox" to Icons.Default.Email, 
+        "Calls" to Icons.Default.Call, 
+        "Events" to Icons.Default.Event,
+        "Profile" to Icons.Default.Person
+    )
 
     Scaffold(
         bottomBar = {
@@ -35,7 +42,8 @@ fun MainShellScreen(onNavigateToChat: (String) -> Unit, onLogout: () -> Unit) {
         when (selectedTab) {
             0 -> InboxScreen(modifier = modifier, onChatClick = onNavigateToChat)
             1 -> CallsScreen(modifier = modifier)
-            2 -> ProfileScreen(modifier = modifier, onLogout = onLogout)
+            2 -> EventsListScreen(modifier = modifier, onEventClick = {}) 
+            3 -> ProfileScreen(modifier = modifier, onLogout = onLogout)
         }
     }
 }

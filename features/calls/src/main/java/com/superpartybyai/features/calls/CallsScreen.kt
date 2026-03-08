@@ -4,37 +4,91 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CallMissed
+import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import com.superpartybyai.core.SupabaseClient
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.Serializable
 
-data class MockCall(val contactName: String, val status: String, val time: String)
+@Serializable
+data class ClientRef(val full_name: String, val phone: String?)
+
+@Serializable
+data class CallEventModel(
+    val id: String,
+    val direction: String,
+    val status: String,
+    val started_at: String?,
+    val clients: ClientRef? = null
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CallsScreen(modifier: Modifier = Modifier) {
-    val calls = listOf(
-        MockCall("Client C (3CX: 0722..)", "Missed", "14:20"),
-        MockCall("Client A", "Completed (5m)", "Yesterday")
-    )
+    var calls by remember { mutableStateOf<List<CallEventModel>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            try {
+                val response = SupabaseClient.client.postgrest["call_events"]
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, direction, status, started_at, clients(full_name, phone)"))
+                    .decodeList<CallEventModel>()
+                calls = response.sortedByDescending { it.started_at }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoading = false
+            }
+        }
+    }
 
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text("3CX Live Switchboard") }) }
     ) { padding ->
-        LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
-            items(calls.size) { index ->
-                val call = calls[index]
-                ListItem(
-                    headlineContent = { Text(call.contactName) },
-                    supportingContent = { Text("Status: ${call.status}") },
-                    trailingContent = { Text(call.time) },
-                    leadingContent = {
-                        Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(40.dp))
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (calls.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No calls logged yet.")
+            }
+        } else {
+            LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
+                items(calls.size) { index ->
+                    val call = calls[index]
+                    val contactName = call.clients?.full_name ?: "Unknown Caller"
+                    val phone = call.clients?.phone ?: "No Number"
+                    val icon = when(call.status) {
+                        "missed" -> Icons.Default.CallMissed
+                        "ringing" -> Icons.Default.PhoneInTalk
+                        else -> Icons.Default.Call
                     }
-                )
-                Divider()
+
+                    ListItem(
+                        headlineContent = { Text(contactName) },
+                        supportingContent = { Text("Status: ${call.status.capitalize()} | $phone") },
+                        trailingContent = { 
+                            Text(
+                                text = call.started_at?.take(16)?.replace("T", " ") ?: "",
+                                style = MaterialTheme.typography.labelSmall
+                            ) 
+                        },
+                        leadingContent = {
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(40.dp))
+                        }
+                    )
+                    HorizontalDivider()
+                }
             }
         }
     }

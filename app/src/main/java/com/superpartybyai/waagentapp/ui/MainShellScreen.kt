@@ -11,8 +11,8 @@ import androidx.compose.ui.Modifier
 import com.superpartybyai.features.calls.CallsScreen
 import com.superpartybyai.features.chat.InboxScreen
 import com.superpartybyai.features.auth.ProfileScreen
-import com.superpartybyai.waagentapp.ui.events.EventsListScreen
-import androidx.compose.material.icons.filled.Event
+import com.superpartybyai.waagentapp.ui.events.EventModelsListScreen
+import androidx.compose.material.icons.filled.DateRange
 
 @Composable
 fun MainShellScreen(onNavigateToChat: (String) -> Unit, onNavigateToWaLink: () -> Unit, onLogout: () -> Unit) {
@@ -20,7 +20,7 @@ fun MainShellScreen(onNavigateToChat: (String) -> Unit, onNavigateToWaLink: () -
     val tabs = listOf(
         "Inbox" to Icons.Default.Email, 
         "Calls" to Icons.Default.Call, 
-        "Events" to Icons.Default.Event,
+        "Events" to Icons.Default.DateRange,
         "Profile" to Icons.Default.Person
     )
 
@@ -42,7 +42,7 @@ fun MainShellScreen(onNavigateToChat: (String) -> Unit, onNavigateToWaLink: () -
         when (selectedTab) {
             0 -> InboxScreen(modifier = modifier, onChatClick = onNavigateToChat, onWaLinkClick = onNavigateToWaLink)
             1 -> CallsScreen(modifier = modifier)
-            2 -> EventsListScreen(modifier = modifier, onEventClick = {}) 
+            2 -> EventModelsListScreen(modifier = modifier, onEventModelClick = {}) 
             3 -> ProfileScreen(modifier = modifier, onLogout = onLogout)
         }
     }

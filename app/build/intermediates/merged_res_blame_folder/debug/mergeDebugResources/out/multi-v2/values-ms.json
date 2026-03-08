@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.superpartybyai.waagentapp-mergeDebugResources-45:/values-ms/values-ms.xml",
+            "outputFile": "com.superpartybyai.waagentapp-mergeDebugResources-51:/values-ms/values-ms.xml",
             "map": [
                 {
                     "source": "/Users/universparty/.gradle/caches/transforms-3/d2f77cd5d216386f12f2c865c934056e/transformed/material3-1.1.1/res/values-ms/values-ms.xml",
@@ -55,7 +55,7 @@
                     }
                 },
                 {
-                    "source": "/Users/universparty/.gradle/caches/transforms-3/e51041daf2dbbab1d4c079f5ae6c7474/transformed/ui-release/res/values-ms/values-ms.xml",
+                    "source": "/Users/universparty/.gradle/caches/transforms-3/8c3a6d3cfd703cc14e7a7018d61d23bc/transformed/ui-release/res/values-ms/values-ms.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",

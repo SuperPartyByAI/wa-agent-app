@@ -42,6 +42,7 @@ fun WhatsAppSessionScreen(onBack: () -> Unit) {
                     val conn = url.openConnection() as HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                    conn.setRequestProperty("x-api-key", AppConfig.API_KEY)
                     conn.doOutput = true
                     
                     val jsonBody = JSONObject().apply {
@@ -76,6 +77,7 @@ fun WhatsAppSessionScreen(onBack: () -> Unit) {
                     val url = URL("${AppConfig.BACKEND_URL}/api/sessions/status/default")
                     val conn = url.openConnection() as HttpURLConnection
                     conn.requestMethod = "GET"
+                    conn.setRequestProperty("x-api-key", AppConfig.API_KEY)
                     
                     if (conn.responseCode == 200) {
                         val response = conn.inputStream.bufferedReader().use { it.readText() }
@@ -138,21 +140,22 @@ fun WhatsAppSessionScreen(onBack: () -> Unit) {
             } else if (qrCodeBase64 != null) {
                 val qrPrefix = "data:image/png;base64,"
                 val rawBase64 = if (qrCodeBase64!!.startsWith(qrPrefix)) qrCodeBase64!!.substring(qrPrefix.length) else qrCodeBase64!!
-                try {
+                val bitmapResult = runCatching {
                     val imageBytes = Base64.decode(rawBase64, Base64.DEFAULT)
-                    val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = "QR Code",
-                            modifier = Modifier.size(250.dp)
-                        )
-                        Text("Scanează acest cod QR din WhatsApp -> Linked Devices", modifier = Modifier.padding(top = 16.dp))
-                    } else {
-                        Text("Eroare conversie imagine QR")
-                    }
-                } catch (e: Exception) {
-                    Text("Invalid QR Data: ${e.message}")
+                    BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                }
+                val bitmap = bitmapResult.getOrNull()
+                
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "QR Code",
+                        modifier = Modifier.size(250.dp)
+                    )
+                    Text("Scanează acest cod QR din WhatsApp -> Linked Devices", modifier = Modifier.padding(top = 16.dp))
+                } else {
+                    val errMsg = bitmapResult.exceptionOrNull()?.message ?: "Eroare conversie imagine QR"
+                    Text("Invalid QR Data: $errMsg")
                 }
             } else {
                 Button(onClick = { startSession() }) {

@@ -88,7 +88,7 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                             Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp))
                         }
                     )
-                    HorizontalDivider()
+                    Divider()
                 }
             }
         }

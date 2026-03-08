@@ -4,7 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +19,7 @@ import kotlinx.serialization.Serializable
 data class ClientRef(val full_name: String, val phone: String?)
 
 @Serializable
-data class EventModel(
+data class EventModelModel(
     val id: String,
     val title: String,
     val status: String,
@@ -31,8 +31,8 @@ data class EventModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventsListScreen(modifier: Modifier = Modifier, onEventClick: (String) -> Unit) {
-    var events by remember { mutableStateOf<List<EventModel>>(emptyList()) }
+fun EventModelsListScreen(modifier: Modifier = Modifier, onEventModelClick: (String) -> Unit) {
+    var events by remember { mutableStateOf<List<EventModelModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -41,7 +41,7 @@ fun EventsListScreen(modifier: Modifier = Modifier, onEventClick: (String) -> Un
             try {
                 val response = SupabaseClient.client.postgrest["events"]
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, title, status, event_type, theme, created_at, clients(full_name, phone)"))
-                    .decodeList<EventModel>()
+                    .decodeList<EventModelModel>()
                 events = response.sortedByDescending { it.created_at }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -53,7 +53,7 @@ fun EventsListScreen(modifier: Modifier = Modifier, onEventClick: (String) -> Un
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("AI Events Pipeline") }) }
+        topBar = { TopAppBar(title = { Text("AI EventModels Pipeline") }) }
     ) { padding ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -70,15 +70,15 @@ fun EventsListScreen(modifier: Modifier = Modifier, onEventClick: (String) -> Un
                     val contactName = event.clients?.full_name ?: "Unknown Client"
                     
                     ListItem(
-                        modifier = Modifier.clickable { onEventClick(event.id) },
+                        modifier = Modifier.clickable { onEventModelClick(event.id) },
                         headlineContent = { Text(event.title) },
                         supportingContent = { Text("Client: $contactName | Status: ${event.status.uppercase()}") },
                         trailingContent = { Text(event.event_type.capitalize(), style = MaterialTheme.typography.labelSmall) },
                         leadingContent = {
-                            Icon(Icons.Default.Event, contentDescription = null, modifier = Modifier.size(40.dp))
+                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(40.dp))
                         }
                     )
-                    HorizontalDivider()
+                    Divider()
                 }
             }
         }

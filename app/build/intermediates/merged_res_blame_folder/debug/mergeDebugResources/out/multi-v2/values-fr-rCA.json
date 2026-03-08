@@ -1,25 +1,8 @@
 {
     "logs": [
         {
-            "outputFile": "com.superpartybyai.waagentapp-mergeDebugResources-45:/values-fr-rCA/values-fr-rCA.xml",
+            "outputFile": "com.superpartybyai.waagentapp-mergeDebugResources-51:/values-fr-rCA/values-fr-rCA.xml",
             "map": [
-                {
-                    "source": "/Users/universparty/.gradle/caches/transforms-3/e51041daf2dbbab1d4c079f5ae6c7474/transformed/ui-release/res/values-fr-rCA/values-fr-rCA.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "105,204,292,390,496,583,663,757,849,936,1007,1075,1156,1241,1317,1396,1465",
-                        "endColumns": "98,87,97,105,86,79,93,91,86,70,67,80,84,75,78,68,121",
-                        "endOffsets": "199,287,385,491,578,658,752,844,931,1002,1070,1151,1236,1312,1391,1460,1582"
-                    },
-                    "to": {
-                        "startLines": "15,16,68,69,71,76,77,78,79,80,81,82,83,85,89,90,91",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "1609,1708,8062,8160,8340,8830,8910,9004,9096,9183,9254,9322,9403,9574,9936,10015,10084",
-                        "endColumns": "98,87,97,105,86,79,93,91,86,70,67,80,84,75,78,68,121",
-                        "endOffsets": "1703,1791,8155,8261,8422,8905,8999,9091,9178,9249,9317,9398,9483,9645,10010,10079,10201"
-                    }
-                },
                 {
                     "source": "/Users/universparty/.gradle/caches/transforms-3/876da79c8fa56c57ab4d2bab38d4dbe2/transformed/play-services-base-18.0.1/res/values-fr-rCA/values.xml",
                     "from": {
@@ -52,6 +35,23 @@
                         "startOffsets": "886,984,1086,1185,1287,1391,1495,9732",
                         "endColumns": "97,101,98,101,103,103,113,100",
                         "endOffsets": "979,1081,1180,1282,1386,1490,1604,9828"
+                    }
+                },
+                {
+                    "source": "/Users/universparty/.gradle/caches/transforms-3/8c3a6d3cfd703cc14e7a7018d61d23bc/transformed/ui-release/res/values-fr-rCA/values-fr-rCA.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "105,204,292,390,496,583,663,757,849,936,1007,1075,1156,1241,1317,1396,1465",
+                        "endColumns": "98,87,97,105,86,79,93,91,86,70,67,80,84,75,78,68,121",
+                        "endOffsets": "199,287,385,491,578,658,752,844,931,1002,1070,1151,1236,1312,1391,1460,1582"
+                    },
+                    "to": {
+                        "startLines": "15,16,68,69,71,76,77,78,79,80,81,82,83,85,89,90,91",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "1609,1708,8062,8160,8340,8830,8910,9004,9096,9183,9254,9322,9403,9574,9936,10015,10084",
+                        "endColumns": "98,87,97,105,86,79,93,91,86,70,67,80,84,75,78,68,121",
+                        "endOffsets": "1703,1791,8155,8261,8422,8905,8999,9091,9178,9249,9317,9398,9483,9645,10010,10079,10201"
                     }
                 },
                 {

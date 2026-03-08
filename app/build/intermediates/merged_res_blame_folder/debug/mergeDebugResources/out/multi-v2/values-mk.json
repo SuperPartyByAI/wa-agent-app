@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.superpartybyai.waagentapp-mergeDebugResources-45:/values-mk/values-mk.xml",
+            "outputFile": "com.superpartybyai.waagentapp-mergeDebugResources-51:/values-mk/values-mk.xml",
             "map": [
                 {
                     "source": "/Users/universparty/.gradle/caches/transforms-3/255c57bdd21a9dcc6ed4e07143f2e06d/transformed/browser-1.8.0/res/values-mk/values-mk.xml",
@@ -18,6 +18,23 @@
                         "startOffsets": "4028,8166,8271,8386",
                         "endColumns": "112,104,114,100",
                         "endOffsets": "4136,8266,8381,8482"
+                    }
+                },
+                {
+                    "source": "/Users/universparty/.gradle/caches/transforms-3/8c3a6d3cfd703cc14e7a7018d61d23bc/transformed/ui-release/res/values-mk/values-mk.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "105,209,299,395,498,583,660,750,842,926,997,1067,1151,1240,1312,1393,1464",
+                        "endColumns": "103,89,95,102,84,76,89,91,83,70,69,83,88,71,80,70,120",
+                        "endOffsets": "204,294,390,493,578,655,745,837,921,992,1062,1146,1235,1307,1388,1459,1580"
+                    },
+                    "to": {
+                        "startLines": "15,16,68,69,71,76,77,78,79,80,81,82,83,85,89,90,91",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "1515,1619,7732,7828,8004,8487,8564,8654,8746,8830,8901,8971,9055,9232,9597,9678,9749",
+                        "endColumns": "103,89,95,102,84,76,89,91,83,70,69,83,88,71,80,70,120",
+                        "endOffsets": "1614,1704,7823,7926,8084,8559,8649,8741,8825,8896,8966,9050,9139,9299,9673,9744,9865"
                     }
                 },
                 {
@@ -69,23 +86,6 @@
                         "startOffsets": "105,216",
                         "endColumns": "110,124",
                         "endOffsets": "211,336"
-                    }
-                },
-                {
-                    "source": "/Users/universparty/.gradle/caches/transforms-3/e51041daf2dbbab1d4c079f5ae6c7474/transformed/ui-release/res/values-mk/values-mk.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "105,209,299,395,498,583,660,750,842,926,997,1067,1151,1240,1312,1393,1464",
-                        "endColumns": "103,89,95,102,84,76,89,91,83,70,69,83,88,71,80,70,120",
-                        "endOffsets": "204,294,390,493,578,655,745,837,921,992,1062,1146,1235,1307,1388,1459,1580"
-                    },
-                    "to": {
-                        "startLines": "15,16,68,69,71,76,77,78,79,80,81,82,83,85,89,90,91",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "1515,1619,7732,7828,8004,8487,8564,8654,8746,8830,8901,8971,9055,9232,9597,9678,9749",
-                        "endColumns": "103,89,95,102,84,76,89,91,83,70,69,83,88,71,80,70,120",
-                        "endOffsets": "1614,1704,7823,7926,8084,8559,8649,8741,8825,8896,8966,9050,9139,9299,9673,9744,9865"
                     }
                 },
                 {

@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CallMissed
-import androidx.compose.material.icons.filled.PhoneInTalk
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,8 +69,8 @@ fun CallsScreen(modifier: Modifier = Modifier) {
                     val contactName = call.clients?.full_name ?: "Unknown Caller"
                     val phone = call.clients?.phone ?: "No Number"
                     val icon = when(call.status) {
-                        "missed" -> Icons.Default.CallMissed
-                        "ringing" -> Icons.Default.PhoneInTalk
+                        "missed" -> Icons.Default.Close
+                        "ringing" -> Icons.Default.Call
                         else -> Icons.Default.Call
                     }
 
@@ -87,7 +87,7 @@ fun CallsScreen(modifier: Modifier = Modifier) {
                             Icon(icon, contentDescription = null, modifier = Modifier.size(40.dp))
                         }
                     )
-                    HorizontalDivider()
+                    Divider()
                 }
             }
         }

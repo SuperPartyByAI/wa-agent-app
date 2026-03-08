@@ -15,8 +15,12 @@ android {
     }
 }
 dependencies {
-    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.2.3")
-    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.2.3")
-    implementation("io.github.jan-tennert.supabase:realtime-kt:2.2.3")
-    implementation("io.ktor:ktor-client-android:2.3.9")
+    api("io.github.jan-tennert.supabase:postgrest-kt:2.2.3")
+    api("io.github.jan-tennert.supabase:gotrue-kt:2.2.3")
+    api("io.github.jan-tennert.supabase:realtime-kt:2.2.3")
+    api("io.ktor:ktor-client-android:2.3.9")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    api("androidx.credentials:credentials:1.2.1")
+    api("androidx.credentials:credentials-play-services-auth:1.2.1")
+    api("com.google.android.libraries.identity.googleid:googleid:1.1.0")
 }

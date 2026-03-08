@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavHostController
 import com.superpartybyai.features.auth.AuthScreen
 import com.superpartybyai.waagentapp.ui.MainShellScreen
 import io.github.jan.supabase.gotrue.auth

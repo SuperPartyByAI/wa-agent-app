@@ -6,32 +6,53 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.superpartybyai.features.auth.AuthScreen
+import com.superpartybyai.waagentapp.ui.MainShellScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Here we will eventually swap between LoginScreen (features:auth)
-        // or DashboardScreen once authenticated.
         setContent {
             MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Greeting("Agent! Welcome to WhatsApp/3CX Connector")
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    val navController = rememberNavController()
+
+                    NavHost(navController = navController, startDestination = "login") {
+                        composable("login") {
+                            AuthScreen(
+                                onLoginSuccess = {
+                                    navController.navigate("main") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+                        composable("main") {
+                            MainShellScreen(
+                                onNavigateToChat = { contactId ->
+                                    navController.navigate("conversation/$contactId")
+                                },
+                                onLogout = {
+                                    navController.navigate("login") {
+                                        popUpTo("main") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+                        composable("conversation/{contactId}") { backStackEntry ->
+                            val contactId = backStackEntry.arguments?.getString("contactId") ?: ""
+                            com.superpartybyai.features.chat.ConversationScreen(
+                                contactId = contactId,
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                    }
                 }
             }
         }
     }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
 }

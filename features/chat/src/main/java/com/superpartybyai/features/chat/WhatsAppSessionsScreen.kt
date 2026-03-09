@@ -49,7 +49,7 @@ fun WhatsAppSessionsScreen(
             try {
                 if (sessionsList.isEmpty()) isLoading = true
                 val response = SupabaseClient.client.postgrest["whatsapp_sessions"]
-                    .select()
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("session_key, phone_number, status, last_seen_at"))
                     .decodeList<WhatsAppSessionModel>()
                 sessionsList = response.sortedByDescending { it.last_seen_at ?: "" }
             } catch (e: Exception) {

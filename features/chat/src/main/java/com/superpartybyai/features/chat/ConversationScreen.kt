@@ -54,7 +54,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val response = SupabaseClient.client.postgrest["messages"]
-                    .select {
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, sender_type, content, created_at")) {
                         filter {
                             eq("conversation_id", contactId)
                         }

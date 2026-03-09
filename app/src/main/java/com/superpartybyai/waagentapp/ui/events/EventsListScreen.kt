@@ -79,11 +79,11 @@ fun EventModelsListScreen(modifier: Modifier = Modifier, onEventModelClick: (Str
                     .decodeList<EventModelModel>().sortedByDescending { it.created_at }
                 
                 tasks = SupabaseClient.client.postgrest["tasks"]
-                    .select()
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, title, description, status, created_at"))
                     .decodeList<TaskModel>().sortedByDescending { it.created_at }
 
                 aiActions = SupabaseClient.client.postgrest["ai_actions"]
-                    .select()
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, action_type, status, payload, created_at"))
                     .decodeList<AiActionModel>().sortedByDescending { it.created_at }
             } catch (e: Exception) {
                 e.printStackTrace()

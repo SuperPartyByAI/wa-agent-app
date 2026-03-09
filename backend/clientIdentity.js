@@ -37,37 +37,22 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId) {
 
     // Creation Attempt via Atomic RPG Logic
     try {
-        const { data: aliasData, error: rpcErr } = await supabase.rpc('reserve_brand_alias', { p_brand_key: brandParams.brandKey, p_alias_prefix: brandParams.aliasPrefix });
-        if (rpcErr) throw rpcErr;
-
-        // AliasData contains explicit OUT variables => { idx, alias, internal_code }
-        const insertPayload = {
-            full_name: aliasData.alias, // Keep legacy UI mapped
-            source: 'whatsapp',
-            brand_key: brandParams.brandKey,
-            public_alias: aliasData.alias,
-            internal_client_code: aliasData.internal_code,
-            alias_index: aliasData.idx
+        const rpcPayload = {
+            p_brand_key: brandParams.brandKey,
+            p_alias_prefix: brandParams.aliasPrefix,
+            p_phone: phone,
+            p_wa_identifier: waIdentifier,
+            p_source: 'whatsapp'
         };
+
+        // This RPC executes the entire lookup -> alias reserve -> internal_code generation -> insert sequence atomically natively in Postgres
+        // It catches standard unique_violations (code 23505) and loops internally until physical uniquely-bounded completion.
+        const { data: clientData, error: rpcErr } = await supabase.rpc('create_client_identity_safe', rpcPayload);
         
-        if (isLid) insertPayload.wa_identifier = waIdentifier;
-        if (phone) insertPayload.phone = phone;
-
-        const { data: newClient, error: insertErr } = await supabase.from('clients').insert(insertPayload).select('id, avatar_url, public_alias').maybeSingle();
-        if (insertErr) {
-            // Expected Unique Constraint hit if 2 messages from same user land concurrently
-            if (insertErr.code === '23505') {
-                let recoveryQuery = supabase.from('clients').select('id, avatar_url, public_alias').eq('brand_key', brandParams.brandKey);
-                if (isLid) recoveryQuery = recoveryQuery.eq('wa_identifier', waIdentifier);
-                else recoveryQuery = recoveryQuery.eq('phone', phone);
-                
-                const { data: recoveredClient } = await recoveryQuery.order('created_at', { ascending: false }).limit(1).maybeSingle();
-                if (recoveredClient) return recoveredClient;
-            }
-            throw insertErr;
-        }
-
-        return newClient;
+        if (rpcErr) throw rpcErr;
+        
+        // Supabase RPCs returning TABLE resolve as an array of rows
+        return Array.isArray(clientData) ? clientData[0] : clientData;
 
     } catch (allocError) {
         console.error(`[resolveClientIdentity] Atomic Router failed for ${phoneOrWaIdentifier}:`, allocError);

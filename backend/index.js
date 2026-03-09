@@ -87,7 +87,7 @@ app.post("/api/sessions/logout", requireApiKey, async (req, res) => {
   const session = sessions.get(sessionId);
   if (session && session.client) {
     try { await session.client.logout(); } catch(e) {}
-    try { await session.client.kill(); } catch(e) {}
+    try { session.client.end(undefined); } catch(e) {}
   }
   sessions.delete(sessionId);
   await upsertSessionStatus(sessionId, 'DISCONNECTED');
@@ -105,7 +105,7 @@ app.delete("/api/sessions/:sessionId", requireApiKey, async (req, res) => {
   const { sessionId } = req.params;
   const session = sessions.get(sessionId);
   if (session && session.client) {
-    try { await session.client.kill(); } catch(e) {}
+    try { session.client.end(undefined); } catch(e) {}
   }
   sessions.delete(sessionId);
   await upsertSessionStatus(sessionId, 'DISCONNECTED');
@@ -138,7 +138,8 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
 
     for (let i = 0; i < 3; i++) {
         try {
-            result = await session.client.sendText(`${formattedNumber}@c.us`, text);
+            // Baileys structure
+            result = await session.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: text });
             success = true;
             break;
         } catch (err) {
@@ -152,7 +153,9 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
         throw lastError;
     }
     
-    syncOutboundMessageToSupabase(formattedNumber, text, result, sessionId).catch(e => console.error(e));
+    // Explicit format mapping for external message ID resolution in Baileys
+    const externalId = result?.key?.id || null;
+    syncOutboundMessageToSupabase(formattedNumber, text, externalId, sessionId).catch(e => console.error(e));
     
     res.json({ success: true, result });
   } catch (err) {
@@ -192,7 +195,8 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
     if (event === "call_incoming") {
       const message = `[Sistem] Apel de intrare pe extensia ${extension} de la ${number}.`;
       const formattedNumber = number.replace('+', '');
-      await targetSession.client.sendText(`${formattedNumber}@c.us`, message);
+      // Baileys structure
+      await targetSession.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: message });
       console.log(`[3CX Action] Sent WA message to ${formattedNumber}`);
     }
     res.json({ success: true, message: "Event processed and WA message triggered." });
@@ -211,7 +215,7 @@ app.get("/health", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Open-WA Multi-Session Manager running securely on port ${PORT}`);
+  console.log(`Baileys Node Engine running securely on port ${PORT}`);
   console.log(
     `Protecting APIs with Key: ${API_KEY === "SECRET_TOKEN_CHANGE_ME" ? "WARNING: DEFAULT KEY IN USE" : "Custom Key Configured"}`,
   );
@@ -219,9 +223,9 @@ app.listen(PORT, () => {
   try {
     const files = fs.readdirSync(__dirname, { withFileTypes: true });
     for (const file of files) {
-      if (file.isDirectory() && file.name.startsWith('_IGNORE_') && file.name !== '_IGNORE_WA_SESSION') {
-        const extractedSessionId = file.name.replace('_IGNORE_', '');
-        console.log(`[Auto-Bootstrap] Detected persisted session: ${extractedSessionId}. Auto-starting...`);
+      if (file.isDirectory() && file.name.startsWith('_baileys_auth_')) {
+        const extractedSessionId = file.name.replace('_baileys_auth_', '');
+        console.log(`[Auto-Bootstrap] Detected persisted Baileys session: ${extractedSessionId}. Auto-starting...`);
         startSession(extractedSessionId);
       }
     }

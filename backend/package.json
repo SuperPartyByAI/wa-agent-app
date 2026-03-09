@@ -11,12 +11,13 @@
   "license": "ISC",
   "dependencies": {
     "@google/genai": "^1.44.0",
-    "@open-wa/wa-automate": "^4.76.0",
     "@supabase/supabase-js": "^2.98.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^4.22.1",
     "pg": "^8.20.0",
+    "pino": "^10.3.1",
     "qrcode": "^1.5.4",
     "ssh2": "^1.17.0",
     "zod": "^4.3.6"

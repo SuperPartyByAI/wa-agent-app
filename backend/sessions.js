@@ -1,7 +1,10 @@
-const wa = require("@open-wa/wa-automate");
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
+const pino = require("pino");
 const QRCode = require("qrcode");
+const fs = require('fs');
+const path = require('path');
 const supabase = require("./supabase");
-const { syncInboundMessageToSupabase, syncHistoricalMessageToSupabase } = require("./messages");
+const { syncHistoricalMessageToSupabase } = require("./messages");
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL || null;
 const sessions = new Map();
@@ -22,181 +25,128 @@ async function upsertSessionStatus(sessionId, status, phoneNumber = null) {
     if (phoneNumber) payload.phone_number = phoneNumber;
 
     const { error } = await supabase.from("whatsapp_sessions").upsert(payload, { onConflict: "session_key" });
-    if (error) {
-      console.error(`[Supabase Session Status UPSERT ERROR]`, error);
-    }
+    if (error) console.error(`[Supabase Session Status UPSERT ERROR]`, error);
   } catch (err) {
     console.error(`[Supabase Session Status Error] ${err.message}`);
   }
 }
 
 async function startSession(sessionId) {
-  if (sessions.has(sessionId)) {
+  if (sessions.has(sessionId) && sessions.get(sessionId).status !== "DISCONNECTED") {
     return { error: "Session already exists or is starting." };
   }
 
   sessions.set(sessionId, { status: "STARTING", client: null, qrCode: null });
   await upsertSessionStatus(sessionId, "STARTING");
-  logger(sessionId, "info", "Initializing new WA session...");
+  logger(sessionId, "info", "Initializing new Baileys WA session...");
 
   try {
-    const client = await wa.create({
-      sessionId,
-      multiDevice: true,
-      authTimeout: 60,
-      blockCrashLogs: true,
-      disableSpins: true,
-      headless: true,
-      logConsole: false,
-      popup: false,
-      qrTimeout: 0,
-      executablePath: "/usr/bin/google-chrome",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu"
-      ]
+    const authFolder = path.join(__dirname, `_baileys_auth_${sessionId}`);
+    const { state, saveCreds } = await useMultiFileAuthState(authFolder);
+    const { version } = await fetchLatestBaileysVersion();
+
+    const sock = makeWASocket({
+      version,
+      auth: state,
+      printQRInTerminal: false,
+      logger: pino({ level: 'silent' }),
+      browser: ['SuperpartyCRM', 'Chrome', '145.0.0']
     });
 
-    sessions.set(sessionId, {
-      status: "CONNECTED",
-      client,
-      qrCode: null
-    });
+    sessions.set(sessionId, { status: "STARTING", client: sock, qrCode: null });
 
-    let botNumber = null;
-    try {
-      const me = await client.getMe();
-      if (me && me.wid) {
-        botNumber = me.wid.replace("@c.us", "").split(":")[0];
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        try {
+          const qrImageDataUrl = await QRCode.toDataURL(qr, { errorCorrectionLevel: "L", margin: 1, width: 512 });
+          const sess = sessions.get(sessionId);
+          if (sess) {
+            sess.status = "AWAITING_QR";
+            sess.qrCode = qrImageDataUrl;
+          }
+          await upsertSessionStatus(sessionId, "AWAITING_QR");
+          logger(sessionId, "info", "QR Code generated natively. Awaiting mobile scan...");
+        } catch (err) {
+          logger(sessionId, "error", `QR conversion failed: ${err.message}`);
+        }
       }
-    } catch (_) {}
 
-    await upsertSessionStatus(sessionId, "CONNECTED", botNumber);
-    logger(sessionId, "info", "Successfully connected and paired!");
+      if (connection === 'close') {
+        const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+        logger(sessionId, "warn", `Connection closed. Reason: ${lastDisconnect?.error?.message}. Should reconnect: ${shouldReconnect}`);
+        
+        if (shouldReconnect) {
+          sessions.get(sessionId).status = "STARTING";
+          startSession(sessionId); // Native retry
+        } else {
+          logger(sessionId, "error", "Device brutally logged out. Purging Auth Directory.");
+          sessions.get(sessionId).status = "DISCONNECTED";
+          sessions.get(sessionId).client = null;
+          await upsertSessionStatus(sessionId, "DISCONNECTED");
+          fs.rmSync(authFolder, { recursive: true, force: true });
+        }
+      }
 
-    (async () => {
-      try {
-        logger(sessionId, "info", "Starting initial history seed for last 10 chats...");
-        const chats = await client.getAllChats();
-        const recentChats = chats.filter((c) => c.id.server === "c.us").slice(0, 10);
+      if (connection === 'open') {
+        let botNumber = sock.user?.id?.split(':')[0];
+        const sess = sessions.get(sessionId);
+        if (sess) {
+          sess.status = "CONNECTED";
+          sess.qrCode = null;
+        }
+        await upsertSessionStatus(sessionId, "CONNECTED", botNumber);
+        logger(sessionId, "info", "Successfully linked with Baileys WebSocket!");
+        
+        // Emulate Open-WA History Seed by actively reading standard native chat histories from Baileys if populated.
+        // In Baileys, history sync happens async via "messaging-history.set" events.
+      }
+    });
 
-        for (const chat of recentChats) {
-          try {
-            const chatId = chat.id._serialized || chat.id;
-            const msgs = await client.getAllMessagesInChat(chatId, true, true);
-            const last20 = msgs.slice(-20);
+    sock.ev.on('messaging-history.set', async ({ chats, messages, isLatest }) => {
+        logger(sessionId, "info", `[History Sync] Seed triggered. Processing ${messages.length} legacy buffers...`);
+        for (const msg of messages) {
+           await syncHistoricalMessageToSupabase(msg, sessionId).catch(e => {});
+        }
+    });
 
-            for (const msg of last20) {
-              await syncHistoricalMessageToSupabase(msg, sessionId);
-            }
-          } catch (chatErr) {
-            console.error(`Failed to sync chat ${chat.id}: ${chatErr.message}`);
+    sock.ev.on('messages.upsert', async (m) => {
+      // m.type === 'notify' means real new message physically sent
+      if (m.type === 'notify') {
+        for (const msg of m.messages) {
+          logger(sessionId, "info", `[messages.upsert Hook] Remote: ${msg.key.remoteJid} | FromMe: ${msg.key.fromMe}`);
+          await syncHistoricalMessageToSupabase(msg, sessionId).catch(e => console.error(e));
+          
+          if (!msg.key.fromMe && WEBHOOK_URL) {
+            try {
+              await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  event: "whatsapp_message_received",
+                  sessionId,
+                  from: msg.key.remoteJid,
+                  text: msg.message?.conversation || msg.message?.extendedTextMessage?.text || "",
+                  timestamp: Date.now()
+                })
+              });
+            } catch (err) {}
           }
         }
-
-        logger(sessionId, "info", "Initial history seed completed.");
-      } catch (seedErr) {
-        logger(sessionId, "error", `Failed history seed: ${seedErr.message}`);
       }
-    })();
-
-    client.onStateChanged((state) => {
-      logger(sessionId, "warn", `State changed to: ${state}`);
-
-      if (state === "CONFLICT" || state === "UNLAUNCHED") {
-        client.forceRefocus();
-      }
-
-      if (state === "UNPAIRED") {
-        logger(sessionId, "error", "Session disconnected. Manual re-scan required.");
-        const existing = sessions.get(sessionId);
-        if (existing) existing.status = "DISCONNECTED";
-        upsertSessionStatus(sessionId, "DISCONNECTED");
-      } else if (state === "CONFLICT") {
-        upsertSessionStatus(sessionId, "CONFLICT");
-      } else {
-        upsertSessionStatus(sessionId, state);
-      }
-    });
-
-    client.onAnyMessage(async (message) => {
-      logger(sessionId, "info", `[onAnyMessage Hook] From: ${message.from} | To: ${message.to} | FromMe: ${message.fromMe} | ID: ${message.id} | Body: ${message.body?.substring(0, 15)}`);
-      syncHistoricalMessageToSupabase(message, sessionId).catch((e) => console.error(e));
-    });
-
-    client.onMessage(async (message) => {
-      logger(sessionId, "info", `[onMessage Hook] INBOUND From: ${message.from} | ID: ${message.id}`);
-      syncHistoricalMessageToSupabase(message, sessionId).catch((e) => console.error(e));
-
-      // 3CX Webhook pass-through (Only propagating pure inbound queries, ignoring self-sent)
-      if (WEBHOOK_URL && !message.fromMe) {
-        try {
-          await fetch(WEBHOOK_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              event: "whatsapp_message_received",
-              sessionId,
-              from: message.from,
-              text: message.body || message.text || "",
-              timestamp: Date.now()
-            })
-          });
-          logger(sessionId, "info", "Successfully routed INBOUND message to 3CX webhook.");
-        } catch (err) {
-          logger(sessionId, "error", `Failed to route inbound message to webhook: ${err.message}`);
-        }
-      }
-    });
-
-    client.onAck(async (ack) => {
-       logger(sessionId, "info", `[onAck Hook] Message ${ack.id._serialized || ack.id} changed state to ${ack.ack}`);
     });
 
     return { success: true, sessionId };
   } catch (error) {
-    logger(sessionId, "error", `Failed to start: ${error.message}`);
+    logger(sessionId, "error", `Fatal Error binding socket: ${error.message}`);
     sessions.delete(sessionId);
     await upsertSessionStatus(sessionId, "DISCONNECTED");
-    return { error: "Failed to start session", details: error.message };
+    return { error: "Failed to allocate Baileys engine", details: error.message };
   }
 }
-
-wa.ev.on("qr.**", async (qrcode, sessionId) => {
-  logger(sessionId, "info", "QR Code generated! Awaiting scan...");
-
-  if (!sessions.has(sessionId)) return;
-
-  try {
-    let qrImageDataUrl;
-    if (typeof qrcode === 'string' && qrcode.startsWith('data:image/')) {
-        qrImageDataUrl = qrcode;
-    } else {
-        qrImageDataUrl = await QRCode.toDataURL(qrcode, {
-          errorCorrectionLevel: "L",
-          margin: 1,
-          width: 512
-        });
-    }
-
-    const session = sessions.get(sessionId);
-    session.status = "AWAITING_QR";
-    session.qrCode = qrImageDataUrl;
-
-    await upsertSessionStatus(sessionId, "AWAITING_QR");
-    logger(sessionId, "info", "QR converted to PNG data URL successfully.");
-  } catch (err) {
-    logger(sessionId, "error", `QR image conversion failed: ${err.message}`);
-
-    const session = sessions.get(sessionId);
-    session.status = "AWAITING_QR";
-    session.qrCode = null;
-
-    await upsertSessionStatus(sessionId, "AWAITING_QR");
-  }
-});
 
 module.exports = {
   sessions,

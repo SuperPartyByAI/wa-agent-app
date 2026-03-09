@@ -16,7 +16,6 @@ async function syncInboundMessageToSupabase(message, sessionId) {
       clientId = newClient.id;
     }
     
-    // 2. Conversation
     let convId;
     const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').single();
     if (existingConv) {
@@ -27,12 +26,16 @@ async function syncInboundMessageToSupabase(message, sessionId) {
       convId = newConv.id;
     }
     
+    // 3. Prevent Inbox hijacking by checking for duplicate webhooks FIRST
+    const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', message.id).single();
+    if (existingMsg) return; 
+    
     await supabase.from('conversations').update({ 
       session_id: sessionId, 
       updated_at: new Date(message.timestamp * 1000).toISOString() 
     }).eq('id', convId);
     
-    // 3. Message
+    // 4. Insert Message
     const { error: msgErr } = await supabase.from('messages').insert({
       conversation_id: convId,
       session_id: sessionId,
@@ -131,25 +134,30 @@ async function syncHistoricalMessageToSupabase(message, sessionId) {
       clientId = newClient.id;
     }
     
-    // 2. Conversation
     let convId;
-    const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').single();
+    let currentUpdatedAt = null;
+    const { data: existingConv } = await supabase.from('conversations').select('id, updated_at').eq('client_id', clientId).eq('channel', 'whatsapp').single();
     if (existingConv) {
       convId = existingConv.id;
+      currentUpdatedAt = existingConv.updated_at ? new Date(existingConv.updated_at).getTime() : 0;
     } else {
       const { data: newConv, error: convErr } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open', updated_at: new Date(message.timestamp * 1000).toISOString() }).select().single();
       if (convErr) throw convErr;
       convId = newConv.id;
+      currentUpdatedAt = new Date(message.timestamp * 1000).getTime();
     }
     
-    await supabase.from('conversations').update({ 
-      session_id: sessionId,
-      updated_at: new Date(message.timestamp * 1000).toISOString()
-    }).eq('id', convId);
-    
-    // 3. Message check for duplicates
+    // 3. Message check for duplicates FIRST to prevent stale `updated_at` pollution
     const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', message.id).single();
     if (existingMsg) return; // Skip duplicate
+
+    // 4. Conditional Update of Conversation Timestamp (Only if newer!)
+    const msgTime = message.timestamp * 1000;
+    const updatePayload = { session_id: sessionId };
+    if (msgTime > currentUpdatedAt) {
+        updatePayload.updated_at = new Date(msgTime).toISOString();
+    }
+    await supabase.from('conversations').update(updatePayload).eq('id', convId);
 
     // 4. Insert Message
     await supabase.from('messages').insert({

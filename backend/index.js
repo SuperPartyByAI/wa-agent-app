@@ -120,12 +120,15 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     return res.status(400).json({ error: "Missing sessionId, to, or text" });
   }
 
-  // Sanitize formatting from legacy Android contacts (e.g. spaces, hyphens)
-  to = String(to).replace(/[^0-9+]/g, '');
+  let isLid = String(to).includes('@lid') || String(to).includes('@g.us');
+  if (!isLid) {
+    // Sanitize formatting from legacy Android contacts (e.g. spaces, hyphens)
+    to = String(to).replace(/[^0-9+]/g, '');
 
-  const phoneRegex = /^\+?\d+$/;
-  if (!phoneRegex.test(to)) {
-    return res.status(400).json({ error: "Invalid phone number format. Must contain only digits." });
+    const phoneRegex = /^\+?\d+$/;
+    if (!phoneRegex.test(to)) {
+      return res.status(400).json({ error: "Invalid phone number format. Must contain only digits." });
+    }
   }
 
   let activeSessionId = requestedSessionId;
@@ -166,7 +169,8 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     }
   }
 
-  const formattedNumber = to.replace('+', '');
+  const formattedRoute = isLid ? to : to.replace('+', '');
+  const targetJid = isLid ? to : `${formattedRoute}@s.whatsapp.net`;
   
   try {
     let success = false;
@@ -176,7 +180,7 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     for (let i = 0; i < 3; i++) {
         try {
             // Baileys structure
-            result = await activeSession.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: text });
+            result = await activeSession.client.sendMessage(targetJid, { text: text });
             success = true;
             break;
         } catch (err) {
@@ -186,13 +190,13 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     }
 
     if (!success) {
-      logger(activeSessionId, "error", `Sending failed after retries to ${formattedNumber}. Error: ${lastError?.message || lastError}`);
+      logger(activeSessionId, "error", `Sending failed after retries to ${formattedRoute}. Error: ${lastError?.message || lastError}`);
       return res.status(500).json({ error: "Failed to send message after retries.", details: lastError?.message || String(lastError) });
     }
 
     // Explicit format mapping for external message ID resolution in Baileys
     const externalId = result?.key?.id || null;
-    syncOutboundMessageToSupabase(formattedNumber, text, externalId, activeSessionId).catch(e => {
+    syncOutboundMessageToSupabase(formattedRoute, text, externalId, activeSessionId).catch(e => {
         logger(activeSessionId, "error", `Failed to sync outbound message to Supabase: ${e.message}`);
     });
 
@@ -203,7 +207,7 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
         fallbackUsed: fallbackUsed
     });
   } catch (err) {
-    logger(activeSessionId, "error", `General error sending message to ${formattedNumber}: ${err.message}`);
+    logger(activeSessionId, "error", `General error sending message to ${formattedRoute}: ${err.message}`);
     res.status(500).json({ error: "Failed to send message.", details: err.message });
   }
 });

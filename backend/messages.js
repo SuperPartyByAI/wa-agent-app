@@ -1,13 +1,27 @@
 const supabase = require('./supabase');
 
-async function syncOutboundMessageToSupabase(phoneNumber, text, externalId, sessionId) {
+async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, externalId, sessionId) {
   try {
     let clientId;
-    const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', phoneNumber).single();
+    let isLid = phoneNumberOrIdentifier.includes('@lid') || phoneNumberOrIdentifier.includes('@g.us');
+    
+    let existingClient;
+    if (isLid) {
+       const resp = await supabase.from('clients').select('id').eq('wa_identifier', phoneNumberOrIdentifier).maybeSingle();
+       existingClient = resp.data;
+    } else {
+       const resp = await supabase.from('clients').select('id').eq('phone', phoneNumberOrIdentifier).maybeSingle();
+       existingClient = resp.data;
+    }
+
     if (existingClient) {
       clientId = existingClient.id;
     } else {
-      const { data: newClient } = await supabase.from('clients').insert({ full_name: 'WAC-' + phoneNumber, phone: phoneNumber, source: 'whatsapp' }).select().single();
+      const insertPayload = { full_name: 'WAC-' + phoneNumberOrIdentifier, source: 'whatsapp' };
+      if (isLid) insertPayload.wa_identifier = phoneNumberOrIdentifier;
+      else insertPayload.phone = phoneNumberOrIdentifier;
+      
+      const { data: newClient } = await supabase.from('clients').insert(insertPayload).select().single();
       clientId = newClient?.id;
     }
     if (!clientId) return;
@@ -48,23 +62,44 @@ async function syncHistoricalMessageToSupabase(msg, sessionId) {
 
     const msgId = msg.key.id;
     const isOutbound = msg.key.fromMe;
-    const numericPhone = msg.key.remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+    const isLid = msg.key.remoteJid.includes('@lid');
     
-    // Only parse exact personal numeric numbers
-    if (numericPhone.includes('@g.us') || numericPhone.includes('-')) return; // Ignore groups for now (simplicity)
+    let numericPhone = null;
+    let waIdentifier = null;
+    
+    if (isLid) {
+       waIdentifier = msg.key.remoteJid;
+    } else {
+       numericPhone = msg.key.remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+    }
+    
+    // Only parse exact personal numeric numbers or LIDs
+    if (!isLid && (numericPhone.includes('@g.us') || numericPhone.includes('-'))) return; // Ignore groups for now (simplicity)
 
-    const senderName = isOutbound ? "Me" : (msg.pushName || "WAC-" + numericPhone);
+    const senderName = isOutbound ? "Me" : (msg.pushName || "WAC-" + (numericPhone || "LID"));
     const content = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
     if (!content) return; // Skip media/empty payloads for the baseline audit
     
     // 1. Client
     let clientId;
-    const { data: existingClient, error: getClientErr } = await supabase.from('clients').select('id').eq('phone', numericPhone).maybeSingle();
+    let existingClient;
+    
+    if (isLid) {
+      const resp = await supabase.from('clients').select('id').eq('wa_identifier', waIdentifier).maybeSingle();
+      existingClient = resp.data;
+    } else {
+      const resp = await supabase.from('clients').select('id').eq('phone', numericPhone).maybeSingle();
+      existingClient = resp.data;
+    }
     
     if (existingClient) {
       clientId = existingClient.id;
     } else {
-      const { data: newClient, error: clientErr } = await supabase.from('clients').insert({ full_name: senderName, phone: numericPhone, source: 'whatsapp' }).select().maybeSingle();
+      const insertPayload = { full_name: senderName, source: 'whatsapp' };
+      if (isLid) insertPayload.wa_identifier = waIdentifier;
+      if (numericPhone) insertPayload.phone = numericPhone;
+      
+      const { data: newClient, error: clientErr } = await supabase.from('clients').insert(insertPayload).select().maybeSingle();
       if (clientErr) throw clientErr;
       clientId = newClient.id;
     }

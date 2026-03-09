@@ -35,7 +35,7 @@ data class MessageModel(
 )
 
 @Serializable
-data class ClientPhone(val phone: String)
+data class ClientPhone(val phone: String?, val wa_identifier: String? = null)
 
 @Serializable
 data class ConvClientPhone(val clients: ClientPhone?, val session_id: String? = null)
@@ -76,10 +76,10 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val convInfo = SupabaseClient.client.postgrest["conversations"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone), session_id")) {
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone, wa_identifier), session_id")) {
                         filter { eq("id", contactId) }
                     }.decodeSingleOrNull<ConvClientPhone>()
-                targetPhone = convInfo?.clients?.phone
+                targetPhone = convInfo?.clients?.wa_identifier ?: convInfo?.clients?.phone
                 if (convInfo?.session_id != null) {
                     currentSessionId = convInfo.session_id
                 }

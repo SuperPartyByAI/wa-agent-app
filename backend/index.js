@@ -12,11 +12,11 @@ async function sync3cxCallEvent(event, number, extension) {
     const formattedNumber = number.replace('+', '');
     
     let clientId = null;
-    const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', formattedNumber).single();
+    const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', formattedNumber).order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (existingClient) {
       clientId = existingClient.id;
     } else {
-      const { data: newClient } = await supabase.from('clients').insert({ full_name: 'Call-' + formattedNumber, phone: formattedNumber, source: 'call' }).select().single();
+      const { data: newClient } = await supabase.from('clients').insert({ full_name: 'Call-' + formattedNumber, phone: formattedNumber, source: 'call', brand_key: 'system' }).select().limit(1).maybeSingle();
       clientId = newClient?.id;
     }
     
@@ -113,15 +113,20 @@ app.delete("/api/sessions/:sessionId", requireApiKey, async (req, res) => {
 });
 
 app.post("/api/messages/send", requireApiKey, async (req, res) => {
-  const { sessionId: requestedSessionId, text, conversationId } = req.body;
+  let { sessionId: requestedSessionId, text, conversationId } = req.body;
 
   if (!requestedSessionId || !conversationId || !text) {
     return res.status(400).json({ error: "Missing sessionId, conversationId, or text" });
   }
 
   // Organic identity derived securely avoiding UI leaks
-  const { data: convData } = await supabase.from('conversations').select('client_id').eq('id', conversationId).single();
+  const { data: convData } = await supabase.from('conversations').select('client_id, session_id').eq('id', conversationId).single();
   if (!convData) return res.status(404).json({ error: "Conversation not found" });
+
+  // Strictly bind the message transmission to the brand session that owns the conversation
+  if (convData.session_id) {
+      requestedSessionId = convData.session_id;
+  }
 
   const { data: clientData } = await supabase.from('clients').select('phone, wa_identifier').eq('id', convData.client_id).single();
   if (!clientData) return res.status(404).json({ error: "Client identity missing from conversation link" });
@@ -228,9 +233,9 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
   
   if (!targetSessionId) {
     const formattedNumber = number.replace('+', '');
-    const { data: client } = await supabase.from('clients').select('id').eq('phone', formattedNumber).single();
+    const { data: client } = await supabase.from('clients').select('id').eq('phone', formattedNumber).order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (client) {
-      const { data: conv } = await supabase.from('conversations').select('session_id').eq('client_id', client.id).eq('channel', 'whatsapp').single();
+      const { data: conv } = await supabase.from('conversations').select('session_id').eq('client_id', client.id).eq('channel', 'whatsapp').order('updated_at', { ascending: false }).limit(1).maybeSingle();
       if (conv && conv.session_id) targetSessionId = conv.session_id;
     }
   }

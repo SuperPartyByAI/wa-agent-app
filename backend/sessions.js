@@ -80,7 +80,7 @@ async function startSession(sessionId) {
         logger(sessionId, "warn", `Connection closed. Reason: ${lastDisconnect?.error?.message}. Should reconnect: ${shouldReconnect}`);
         
         if (shouldReconnect) {
-          sessions.get(sessionId).status = "STARTING";
+          sessions.delete(sessionId);
           startSession(sessionId); // Native retry
         } else {
           logger(sessionId, "error", "Device brutally logged out. Purging Auth Directory.");

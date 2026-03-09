@@ -113,9 +113,9 @@ app.delete("/api/sessions/:sessionId", requireApiKey, async (req, res) => {
 });
 
 app.post("/api/messages/send", requireApiKey, async (req, res) => {
-  const { sessionId, to, text } = req.body;
+  const { sessionId: requestedSessionId, to, text } = req.body;
 
-  if (!sessionId || !to || !text) {
+  if (!requestedSessionId || !to || !text) {
     return res.status(400).json({ error: "Missing sessionId, to, or text" });
   }
 
@@ -124,9 +124,20 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     return res.status(400).json({ error: "Invalid phone number format. Must contain only digits." });
   }
 
-  const session = sessions.get(sessionId);
-  if (!session || session.status !== "CONNECTED" || !session.client) {
-    return res.status(400).json({ error: "Session is not connected or invalid." });
+  let activeSessionId = requestedSessionId;
+  let activeSession = sessions.get(activeSessionId);
+  let fallbackUsed = false;
+
+  if (!activeSession || activeSession.status !== "CONNECTED" || !activeSession.client) {
+    const connectedEntries = Array.from(sessions.entries()).filter(([id, s]) => s.status === "CONNECTED" && s.client);
+    if (connectedEntries.length > 0) {
+      activeSessionId = connectedEntries[0][0];
+      activeSession = connectedEntries[0][1];
+      fallbackUsed = true;
+      logger(activeSessionId, "warn", `Rerouted stale outbound payload from Android (Requested: ${requestedSessionId}) to active socket: ${activeSessionId}`);
+    } else {
+      return res.status(400).json({ error: "Session is not connected or invalid, and no fallback session is available." });
+    }
   }
 
   const formattedNumber = to.replace('+', '');
@@ -139,28 +150,35 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     for (let i = 0; i < 3; i++) {
         try {
             // Baileys structure
-            result = await session.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: text });
+            result = await activeSession.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: text });
             success = true;
             break;
         } catch (err) {
             lastError = err;
-            logger(sessionId, "warn", `Send attempt ${i + 1} failed for ${formattedNumber}, retrying...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
 
     if (!success) {
-        throw lastError;
+      logger(activeSessionId, "error", `Sending failed after retries to ${formattedNumber}. Error: ${lastError?.message || lastError}`);
+      return res.status(500).json({ error: "Failed to send message after retries.", details: lastError?.message || String(lastError) });
     }
-    
+
     // Explicit format mapping for external message ID resolution in Baileys
     const externalId = result?.key?.id || null;
-    syncOutboundMessageToSupabase(formattedNumber, text, externalId, sessionId).catch(e => console.error(e));
-    
-    res.json({ success: true, result });
+    syncOutboundMessageToSupabase(formattedNumber, text, externalId, activeSessionId).catch(e => {
+        logger(activeSessionId, "error", `Failed to sync outbound message to Supabase: ${e.message}`);
+    });
+
+    res.json({
+        success: true,
+        message: "Message sent successfully.",
+        resolvedSessionId: activeSessionId,
+        fallbackUsed: fallbackUsed
+    });
   } catch (err) {
-    logger(sessionId, "error", `Sending failed after retries: ${err.message}`);
-    res.status(500).json({ error: "Failed to send message" });
+    logger(activeSessionId, "error", `General error sending message to ${formattedNumber}: ${err.message}`);
+    res.status(500).json({ error: "Failed to send message.", details: err.message });
   }
 });
 

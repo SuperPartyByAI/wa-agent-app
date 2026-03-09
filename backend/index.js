@@ -113,11 +113,15 @@ app.delete("/api/sessions/:sessionId", requireApiKey, async (req, res) => {
 });
 
 app.post("/api/messages/send", requireApiKey, async (req, res) => {
-  const { sessionId: requestedSessionId, to, text } = req.body;
+  const { sessionId: requestedSessionId, text } = req.body;
+  let { to } = req.body;
 
   if (!requestedSessionId || !to || !text) {
     return res.status(400).json({ error: "Missing sessionId, to, or text" });
   }
+
+  // Sanitize formatting from legacy Android contacts (e.g. spaces, hyphens)
+  to = String(to).replace(/[^0-9+]/g, '');
 
   const phoneRegex = /^\+?\d+$/;
   if (!phoneRegex.test(to)) {

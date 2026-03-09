@@ -46,3 +46,35 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_brand_public_alias ON clients (bra
 CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_brand_phone ON clients (brand_key, phone) WHERE brand_key IS NOT NULL AND phone IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_brand_wa_identifier ON clients (brand_key, wa_identifier) WHERE brand_key IS NOT NULL AND wa_identifier IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_internal_code ON clients (internal_client_code) WHERE internal_client_code IS NOT NULL;
+
+-- 6. Retroactive Native Backfill
+-- Triggers alias generation for all legacy rows mapped to active brands, guaranteeing absolute uniformity across UI renders.
+DO $$
+DECLARE
+    rec RECORD;
+    v_idx INTEGER;
+    v_alias TEXT;
+    v_internal_code TEXT;
+BEGIN
+    FOR rec IN 
+        SELECT DISTINCT c.id, c.wa_identifier, c.phone, w.brand_key, w.alias_prefix 
+        FROM clients c
+        JOIN conversations cv ON cv.client_id = c.id
+        JOIN whatsapp_sessions w ON w.session_key = cv.session_id
+        WHERE c.public_alias IS NULL
+          AND w.brand_key IS NOT NULL
+    LOOP
+        -- Process each missing client via the function atomically
+        SELECT * INTO v_idx, v_alias, v_internal_code 
+        FROM reserve_brand_alias(rec.brand_key, rec.alias_prefix);
+
+        UPDATE clients 
+        SET public_alias = v_alias,
+            internal_client_code = v_internal_code,
+            alias_index = v_idx,
+            full_name = v_alias,
+            brand_key = rec.brand_key
+        WHERE id = rec.id;
+    END LOOP;
+END;
+$$;

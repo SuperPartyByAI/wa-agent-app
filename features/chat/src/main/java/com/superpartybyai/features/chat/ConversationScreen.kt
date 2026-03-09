@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,7 +51,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var messages by remember { mutableStateOf<List<MessageModel>>(emptyList()) }
     var inputMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
-    var targetPhone by remember { mutableStateOf<String?>(null) }
+    var targetAlias by remember { mutableStateOf<String?>(null) }
     var currentSessionId by remember { mutableStateOf<String?>(null) }
     var targetAvatarUrl by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -84,7 +85,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone, wa_identifier, avatar_url, public_alias, internal_client_code), session_id")) {
                         filter { eq("id", contactId) }
                     }.decodeSingleOrNull<ConvClientPhone>()
-                targetPhone = convInfo?.clients?.public_alias ?: convInfo?.clients?.internal_client_code ?: "Anonymous Identity"
+                targetAlias = convInfo?.clients?.public_alias ?: convInfo?.clients?.internal_client_code ?: "Anonymous Identity"
                 targetAvatarUrl = convInfo?.clients?.avatar_url
                 if (convInfo?.session_id != null) {
                     currentSessionId = convInfo.session_id
@@ -135,7 +136,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                             Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(32.dp).padding(end = 8.dp))
                         }
                         Column {
-                            Text(targetPhone ?: "Chat Details", style = MaterialTheme.typography.bodyLarge)
+                            Text(targetAlias ?: "Chat Details", style = MaterialTheme.typography.bodyLarge)
                             Text("Secure Channel", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }

@@ -27,7 +27,7 @@ import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.PostgresAction
 
 @Serializable
-data class ClientRef(val full_name: String, val phone: String?, val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
+data class ClientRef(val full_name: String, val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
 
 @Serializable
 data class ConversationModel(
@@ -50,7 +50,7 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
             try {
                 if (conversations.isEmpty()) isLoading = true
                 val response = SupabaseClient.client.postgrest["conversations"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, status, updated_at, clients(full_name, phone, avatar_url, public_alias, internal_client_code)"))
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, status, updated_at, clients(full_name, avatar_url, public_alias, internal_client_code)"))
                     .decodeList<ConversationModel>()
                 conversations = response.sortedByDescending { it.updated_at }
             } catch (e: Exception) {

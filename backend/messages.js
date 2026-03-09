@@ -7,10 +7,10 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
     
     let existingClient;
     if (isLid) {
-       const resp = await supabase.from('clients').select('id').eq('wa_identifier', phoneNumberOrIdentifier).maybeSingle();
+       const resp = await supabase.from('clients').select('id').eq('wa_identifier', phoneNumberOrIdentifier).order('created_at', { ascending: false }).limit(1).maybeSingle();
        existingClient = resp.data;
     } else {
-       const resp = await supabase.from('clients').select('id').eq('phone', phoneNumberOrIdentifier).maybeSingle();
+       const resp = await supabase.from('clients').select('id').eq('phone', phoneNumberOrIdentifier).order('created_at', { ascending: false }).limit(1).maybeSingle();
        existingClient = resp.data;
     }
 
@@ -27,7 +27,7 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
     if (!clientId) return;
 
     let convId;
-    const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').single();
+    const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').order('updated_at', { ascending: false }).limit(1).maybeSingle();
     if (existingConv) {
       convId = existingConv.id;
     } else {
@@ -85,10 +85,10 @@ async function syncHistoricalMessageToSupabase(msg, sessionId) {
     let existingClient;
     
     if (isLid) {
-      const resp = await supabase.from('clients').select('id').eq('wa_identifier', waIdentifier).maybeSingle();
+      const resp = await supabase.from('clients').select('id').eq('wa_identifier', waIdentifier).order('created_at', { ascending: false }).limit(1).maybeSingle();
       existingClient = resp.data;
     } else {
-      const resp = await supabase.from('clients').select('id').eq('phone', numericPhone).maybeSingle();
+      const resp = await supabase.from('clients').select('id').eq('phone', numericPhone).order('created_at', { ascending: false }).limit(1).maybeSingle();
       existingClient = resp.data;
     }
     
@@ -106,7 +106,7 @@ async function syncHistoricalMessageToSupabase(msg, sessionId) {
     
     let convId;
     let currentUpdatedAt = 0;
-    const { data: existingConv } = await supabase.from('conversations').select('id, updated_at').eq('client_id', clientId).eq('channel', 'whatsapp').maybeSingle();
+    const { data: existingConv } = await supabase.from('conversations').select('id, updated_at').eq('client_id', clientId).eq('channel', 'whatsapp').order('updated_at', { ascending: false }).limit(1).maybeSingle();
     
     if (existingConv) {
       convId = existingConv.id;

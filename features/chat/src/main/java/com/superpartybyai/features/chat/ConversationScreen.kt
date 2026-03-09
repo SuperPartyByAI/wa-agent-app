@@ -35,10 +35,10 @@ data class MessageModel(
 )
 
 @Serializable
-data class ClientPhone(val phone: String?, val wa_identifier: String? = null)
+data class ClientPhone(val phone: String? = null, val wa_identifier: String? = null)
 
 @Serializable
-data class ConvClientPhone(val clients: ClientPhone?, val session_id: String? = null)
+data class ConvClientPhone(val clients: ClientPhone? = null, val session_id: String? = null)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +84,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                     currentSessionId = convInfo.session_id
                 }
             } catch (e: Exception) {
+                android.util.Log.e("Antigravity", "Error fetching ConvClientPhone for '$contactId': ${e.message}", e)
                 e.printStackTrace()
             }
         }

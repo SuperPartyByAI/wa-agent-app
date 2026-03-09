@@ -107,7 +107,7 @@ BEGIN
 
             -- Materialize Client structure
             INSERT INTO clients (full_name, source, brand_key, public_alias, internal_client_code, alias_index)
-            VALUES (v_alias, p_source, p_brand_key, v_alias, v_internal_code, v_idx)
+            VALUES (v_alias, p_source::client_source, p_brand_key, v_alias, v_internal_code, v_idx)
             RETURNING clients.id, clients.avatar_url, clients.public_alias, clients.internal_client_code
             INTO v_client_id, v_avatar_url, v_alias, v_internal_code;
 

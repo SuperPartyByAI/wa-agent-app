@@ -45,32 +45,6 @@ async function syncInboundMessageToSupabase(message, sessionId) {
       external_message_id: message.id
     });
       
-    if (msgErr && msgErr.code !== '23505') throw msgErr; 
-
-    // 4. (Auto-Draft Event) Basic keyword detection for Event creation
-    const textLower = (message.body || message.text || "").toLowerCase();
-    const eventKeywords = ['petrecere', 'zi de nastere', 'botez', 'eveniment', 'aniversare', 'petreceri copii'];
-    
-    if (eventKeywords.some(kw => textLower.includes(kw))) {
-      const { data: existingEvent } = await supabase.from('events').select('id').eq('client_id', clientId).in('status', ['draft', 'pending_confirmation']).single();
-      
-      if (!existingEvent) {
-        let eventType = 'birthday';
-        if (textLower.includes('botez')) eventType = 'private_party';
-        else if (textLower.includes('scoala') || textLower.includes('gradinita')) eventType = 'school';
-        
-        await supabase.from('events').insert({
-          client_id: clientId,
-          conversation_id: convId,
-          title: `Nou Eveniment AI - Identificat din Mesaj`,
-          event_type: eventType,
-          status: 'draft',
-          theme: 'Auto-detectat',
-          special_requests: `Sursa auto-draft: "${textLower.substring(0, 80)}..."`
-        });
-        console.log(`[AI Agent] Auto-Drafted new Event for ${senderName}`);
-      }
-    }
   } catch (err) {
     console.error(`[Supabase Inbound Error] ${err.message}`);
   }

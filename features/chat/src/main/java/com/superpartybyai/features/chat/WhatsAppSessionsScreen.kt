@@ -127,12 +127,7 @@ fun WhatsAppSessionsScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("WA Sessions Admin") },
-                actions = {
-                    IconButton(onClick = loadSessions) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                }
+                title = { Text("WA Sessions Admin") }
             )
         },
         floatingActionButton = {

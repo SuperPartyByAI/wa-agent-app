@@ -42,6 +42,7 @@ async function syncInboundMessageToSupabase(message, sessionId) {
     // 3. Message
     const { error: msgErr } = await supabase.from('messages').insert({
       conversation_id: convId,
+      session_id: sessionId,
       direction: 'inbound',
       sender_type: 'client',
       content: message.body || message.text || "",
@@ -79,7 +80,7 @@ async function syncInboundMessageToSupabase(message, sessionId) {
   }
 }
 
-async function syncOutboundMessageToSupabase(phoneNumber, text, externalId) {
+async function syncOutboundMessageToSupabase(phoneNumber, text, externalId, sessionId) {
   try {
     let clientId;
     const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', phoneNumber).single();
@@ -103,6 +104,7 @@ async function syncOutboundMessageToSupabase(phoneNumber, text, externalId) {
 
     await supabase.from('messages').insert({
       conversation_id: convId,
+      session_id: sessionId,
       direction: 'outbound',
       sender_type: 'agent',
       content: text,
@@ -114,7 +116,7 @@ async function syncOutboundMessageToSupabase(phoneNumber, text, externalId) {
   }
 }
 
-async function syncHistoricalMessageToSupabase(message) {
+async function syncHistoricalMessageToSupabase(message, sessionId) {
   try {
     const isOutbound = message.fromMe;
     const phoneNumber = isOutbound ? message.to.replace('@c.us', '') : message.from.replace('@c.us', '');
@@ -142,6 +144,8 @@ async function syncHistoricalMessageToSupabase(message) {
       convId = newConv.id;
     }
     
+    await supabase.from('conversations').update({ session_id: sessionId }).eq('id', convId);
+    
     // 3. Message check for duplicates
     const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', message.id).single();
     if (existingMsg) return; // Skip duplicate
@@ -149,6 +153,7 @@ async function syncHistoricalMessageToSupabase(message) {
     // 4. Insert Message
     await supabase.from('messages').insert({
       conversation_id: convId,
+      session_id: sessionId,
       direction: isOutbound ? 'outbound' : 'inbound',
       sender_type: isOutbound ? 'agent' : 'client',
       content: message.body || message.text || "",
@@ -293,7 +298,7 @@ async function startSession(sessionId) {
             const msgs = await client.getAllMessagesInChat(chat.id._serialized || chat.id, true, true);
             const last20 = msgs.slice(-20);
             for (const msg of last20) {
-              await syncHistoricalMessageToSupabase(msg);
+              await syncHistoricalMessageToSupabase(msg, sessionId);
             }
           } catch (chatErr) {
             console.error(`Failed to sync chat ${chat.id}: ${chatErr.message}`);
@@ -486,7 +491,7 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     }
     
     // Upsert into Supabase CRM Database asynchronously
-    syncOutboundMessageToSupabase(formattedNumber, text, result).catch(e => console.error(e));
+    syncOutboundMessageToSupabase(formattedNumber, text, result, sessionId).catch(e => console.error(e));
     
     res.json({ success: true, result });
   } catch (err) {

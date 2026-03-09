@@ -46,7 +46,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var inputMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var targetPhone by remember { mutableStateOf<String?>(null) }
-    var currentSessionId by remember { mutableStateOf("default") }
+    var currentSessionId by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     
@@ -122,6 +122,10 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 )
                 Button(
                     onClick = { 
+                        if (currentSessionId == null) {
+                            Toast.makeText(context, "Sesiunea sursă lipsește. Rutele de reply sunt blocate.", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
                         if (inputMessage.isNotBlank() && targetPhone != null) {
                             val textToSend = inputMessage
                             inputMessage = ""

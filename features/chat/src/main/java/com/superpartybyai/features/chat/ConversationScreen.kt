@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import com.superpartybyai.core.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import android.widget.Toast
@@ -99,6 +100,14 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+        
+        // Polling Fallback (Every 5 seconds) to ensure eventual consistency if WebSockets drop
+        launch {
+            while (true) {
+                delay(5000L)
+                loadMessages()
             }
         }
     }

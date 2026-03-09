@@ -158,7 +158,7 @@ fun WhatsAppSessionsScreen(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Session: \${s.session_key}", style = MaterialTheme.typography.titleMedium)
+                            Text("Session: ${s.session_key}", style = MaterialTheme.typography.titleMedium)
                             
                             val phoneDisplay = s.phone_number ?: "Unknown / Pending"
                             Text("Phone: " + phoneDisplay)

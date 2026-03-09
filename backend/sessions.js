@@ -21,7 +21,10 @@ async function upsertSessionStatus(sessionId, status, phoneNumber = null) {
 
     if (phoneNumber) payload.phone_number = phoneNumber;
 
-    await supabase.from("whatsapp_sessions").upsert(payload, { onConflict: "session_key" });
+    const { error } = await supabase.from("whatsapp_sessions").upsert(payload, { onConflict: "session_key" });
+    if (error) {
+      console.error(`[Supabase Session Status UPSERT ERROR]`, error);
+    }
   } catch (err) {
     console.error(`[Supabase Session Status Error] ${err.message}`);
   }

@@ -17,7 +17,7 @@ import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ClientRef(val full_name: String, val phone: String?)
+data class ClientRef(val full_name: String, val phone: String?, val public_alias: String? = null, val internal_client_code: String? = null)
 
 @Serializable
 data class CallEventModel(
@@ -39,7 +39,7 @@ fun CallsScreen(modifier: Modifier = Modifier) {
         coroutineScope.launch {
             try {
                 val response = SupabaseClient.client.postgrest["call_events"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, direction, status, started_at, clients(full_name, phone)"))
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, direction, status, started_at, clients(full_name, phone, public_alias, internal_client_code)"))
                     .decodeList<CallEventModel>()
                 calls = response.sortedByDescending { it.started_at }
             } catch (e: Exception) {
@@ -66,8 +66,8 @@ fun CallsScreen(modifier: Modifier = Modifier) {
             LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
                 items(calls.size) { index ->
                     val call = calls[index]
-                    val contactName = call.clients?.full_name ?: "Unknown Caller"
-                    val phone = call.clients?.phone ?: "No Number"
+                    val contactName = call.clients?.public_alias ?: call.clients?.full_name ?: "Unknown Caller"
+                    val secondaryId = call.clients?.internal_client_code ?: "Identity Obfuscated"
                     val icon = when(call.status) {
                         "missed" -> Icons.Default.Close
                         "ringing" -> Icons.Default.Call
@@ -76,7 +76,7 @@ fun CallsScreen(modifier: Modifier = Modifier) {
 
                     ListItem(
                         headlineContent = { Text(contactName) },
-                        supportingContent = { Text("Status: ${call.status.capitalize()} | $phone") },
+                        supportingContent = { Text("Status: ${call.status.replaceFirstChar { it.uppercase() }} | $secondaryId") },
                         trailingContent = { 
                             Text(
                                 text = call.started_at?.take(16)?.replace("T", " ") ?: "",

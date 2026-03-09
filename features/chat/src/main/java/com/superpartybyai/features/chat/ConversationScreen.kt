@@ -159,7 +159,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                             Toast.makeText(context, "Sesiunea sursă lipsește. Rutele de reply sunt blocate.", Toast.LENGTH_LONG).show()
                             return@Button
                         }
-                        if (inputMessage.isNotBlank() && targetPhone != null) {
+                        if (inputMessage.isNotBlank() && contactId != null) {
                             val textToSend = inputMessage
                             inputMessage = ""
                             coroutineScope.launch {
@@ -173,7 +173,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                         conn.doOutput = true
                                         
                                         val jsonBody = JSONObject()
-                                        jsonBody.put("to", targetPhone)
+                                        jsonBody.put("conversationId", contactId)
                                         jsonBody.put("text", textToSend)
                                         jsonBody.put("sessionId", currentSessionId)
                                         

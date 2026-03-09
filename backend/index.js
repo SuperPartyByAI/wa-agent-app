@@ -113,21 +113,28 @@ app.delete("/api/sessions/:sessionId", requireApiKey, async (req, res) => {
 });
 
 app.post("/api/messages/send", requireApiKey, async (req, res) => {
-  const { sessionId: requestedSessionId, text } = req.body;
-  let { to } = req.body;
+  const { sessionId: requestedSessionId, text, conversationId } = req.body;
 
-  if (!requestedSessionId || !to || !text) {
-    return res.status(400).json({ error: "Missing sessionId, to, or text" });
+  if (!requestedSessionId || !conversationId || !text) {
+    return res.status(400).json({ error: "Missing sessionId, conversationId, or text" });
   }
 
-  let isLid = String(to).includes('@lid') || String(to).includes('@g.us');
-  if (!isLid) {
-    // Sanitize formatting from legacy Android contacts (e.g. spaces, hyphens)
-    to = String(to).replace(/[^0-9+]/g, '');
+  // Organic identity derived securely avoiding UI leaks
+  const { data: convData } = await supabase.from('conversations').select('client_id').eq('id', conversationId).single();
+  if (!convData) return res.status(404).json({ error: "Conversation not found" });
 
+  const { data: clientData } = await supabase.from('clients').select('phone, wa_identifier').eq('id', convData.client_id).single();
+  if (!clientData) return res.status(404).json({ error: "Client identity missing from conversation link" });
+
+  // Resolve logical physical routes
+  let to = clientData.wa_identifier || clientData.phone;
+  let isLid = String(to).includes('@lid') || String(to).includes('@g.us');
+
+  if (!isLid) {
+    to = String(to).replace(/[^0-9+]/g, '');
     const phoneRegex = /^\+?\d+$/;
     if (!phoneRegex.test(to)) {
-      return res.status(400).json({ error: "Invalid phone number format. Must contain only digits." });
+      return res.status(400).json({ error: "Native client routing format corrupted." });
     }
   }
 

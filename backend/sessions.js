@@ -121,11 +121,17 @@ async function startSession(sessionId) {
       }
     });
 
-    client.onMessage(async (message) => {
-      logger(sessionId, "info", `Received message from ${message.from}`);
-      syncInboundMessageToSupabase(message, sessionId).catch((e) => console.error(e));
+    client.onAnyMessage(async (message) => {
+      logger(sessionId, "info", `[onAnyMessage Hook] From: ${message.from} | To: ${message.to} | FromMe: ${message.fromMe} | ID: ${message.id} | Body: ${message.body?.substring(0, 15)}`);
+      syncHistoricalMessageToSupabase(message, sessionId).catch((e) => console.error(e));
+    });
 
-      if (WEBHOOK_URL) {
+    client.onMessage(async (message) => {
+      logger(sessionId, "info", `[onMessage Hook] INBOUND From: ${message.from} | ID: ${message.id}`);
+      syncHistoricalMessageToSupabase(message, sessionId).catch((e) => console.error(e));
+
+      // 3CX Webhook pass-through (Only propagating pure inbound queries, ignoring self-sent)
+      if (WEBHOOK_URL && !message.fromMe) {
         try {
           await fetch(WEBHOOK_URL, {
             method: "POST",
@@ -138,11 +144,15 @@ async function startSession(sessionId) {
               timestamp: Date.now()
             })
           });
-          logger(sessionId, "info", "Successfully routed message to 3CX webhook.");
+          logger(sessionId, "info", "Successfully routed INBOUND message to 3CX webhook.");
         } catch (err) {
-          logger(sessionId, "error", `Failed to route message to webhook: ${err.message}`);
+          logger(sessionId, "error", `Failed to route inbound message to webhook: ${err.message}`);
         }
       }
+    });
+
+    client.onAck(async (ack) => {
+       logger(sessionId, "info", `[onAck Hook] Message ${ack.id._serialized || ack.id} changed state to ${ack.ack}`);
     });
 
     return { success: true, sessionId };

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,7 @@ import android.widget.Toast
 @Serializable
 data class WhatsAppSessionModel(
     val session_key: String,
+    val label: String? = null,
     val phone_number: String? = null,
     val status: String,
     val last_seen_at: String? = null
@@ -41,6 +43,11 @@ fun WhatsAppSessionsScreen(
 ) {
     var sessionsList by remember { mutableStateOf<List<WhatsAppSessionModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    
+    // Rename Modal State
+    var sessionToRename by remember { mutableStateOf<WhatsAppSessionModel?>(null) }
+    var renameText by remember { mutableStateOf("") }
+    
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -49,7 +56,7 @@ fun WhatsAppSessionsScreen(
             try {
                 if (sessionsList.isEmpty()) isLoading = true
                 val response = SupabaseClient.client.postgrest["whatsapp_sessions"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("session_key, phone_number, status, last_seen_at"))
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("session_key, label, phone_number, status, last_seen_at"))
                     .decodeList<WhatsAppSessionModel>()
                 sessionsList = response.sortedByDescending { it.last_seen_at ?: "" }
             } catch (e: Exception) {
@@ -133,6 +140,48 @@ fun WhatsAppSessionsScreen(
         }
     }
 
+    if (sessionToRename != null) {
+        AlertDialog(
+            onDismissRequest = { sessionToRename = null },
+            title = { Text("Redenumește Sesiunea") },
+            text = {
+                OutlinedTextField(
+                    value = renameText,
+                    onValueChange = { renameText = it },
+                    label = { Text("Nume Sesiune (ex. Telefon Office)") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val targetSession = sessionToRename!!
+                    val newLabel = renameText
+                    sessionToRename = null
+                    coroutineScope.launch {
+                        try {
+                            SupabaseClient.client.postgrest["whatsapp_sessions"].update({
+                                set("label", newLabel)
+                            }) {
+                                filter { eq("session_key", targetSession.session_key) }
+                            }
+                            Toast.makeText(context, "Sesiune redenumită!", Toast.LENGTH_SHORT).show()
+                            loadSessions()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Eroare: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) {
+                    Text("Salvează")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { sessionToRename = null }) {
+                    Text("Anulează")
+                }
+            }
+        )
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -168,10 +217,21 @@ fun WhatsAppSessionsScreen(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Session: ${s.session_key}", style = MaterialTheme.typography.titleMedium)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val displayName = s.label?.takeIf { it.isNotBlank() } ?: "Sesiune ${s.session_key.takeLast(4)}"
+                                Text(displayName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                                IconButton(onClick = { 
+                                    sessionToRename = s
+                                    renameText = s.label ?: "" 
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit Label")
+                                }
+                            }
+                            Text("Session ID: ${s.session_key}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
                             
-                            val phoneDisplay = s.phone_number ?: "Unknown / Pending"
-                            Text("Phone: " + phoneDisplay)
+                            val phoneDisplay = s.phone_number ?: "Necunoscut / În așteptare"
+                            Text("Telefon: " + phoneDisplay)
                             
                             Text("Status: " + s.status, color = if (s.status == "CONNECTED") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                             

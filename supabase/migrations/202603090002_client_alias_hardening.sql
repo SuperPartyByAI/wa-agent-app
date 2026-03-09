@@ -2,8 +2,27 @@
 -- Addresses Birthday Paradox collision risk resulting from extreme bounds mapping of 6-character internal codes.
 -- Also fortifies unique constraints natively against incomplete rollback scenarios.
 
--- 1. Redefining PostgreSQL Atomic Allocator securely using UUID-derived hexadecimal sequences
--- Upgrades internal_client_code from 16-million combinations (6 chars) to over 281-trillion permutations (12 chars).
+-- 1. Helper function for absolutely unique identity codes ensuring zero Birthday Paradox collisions
+CREATE OR REPLACE FUNCTION generate_unique_internal_code() RETURNS TEXT AS $$
+DECLARE
+    v_code TEXT;
+    v_exists BOOLEAN;
+BEGIN
+    LOOP
+        -- Secure collision-free generation using md5 length expansion (over 281-trillion permutations)
+        v_code := 'CL-' || substr(md5(random()::text || clock_timestamp()::text), 1, 12);
+        
+        -- Explicitly verify the code does not already exist natively (eliminating collision Unique Constraint errors)
+        SELECT EXISTS(SELECT 1 FROM clients WHERE internal_client_code = v_code) INTO v_exists;
+        
+        IF NOT v_exists THEN
+            RETURN v_code;
+        END IF;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Redefining PostgreSQL Atomic Allocator securely using the new retry-safe sequence
 CREATE OR REPLACE FUNCTION reserve_brand_alias(p_brand_key TEXT, p_alias_prefix TEXT, OUT idx INTEGER, OUT alias TEXT, OUT internal_code TEXT)
 AS $$
 BEGIN
@@ -18,8 +37,8 @@ BEGIN
     -- Format alias explicitly 
     alias := p_alias_prefix || '-' || LPAD(idx::TEXT, 2, '0');
     
-    -- Secure collision-free generation using md5 length expansion
-    internal_code := 'CL-' || substr(md5(random()::text || clock_timestamp()::text), 1, 12);
+    -- Assign guaranteed unique ID
+    internal_code := generate_unique_internal_code();
 END;
 $$ LANGUAGE plpgsql;
 
@@ -37,7 +56,7 @@ BEGIN
         SELECT id, brand_key, wa_identifier, phone FROM clients 
         WHERE internal_client_code IS NULL AND brand_key IS NOT NULL
     LOOP
-        v_internal_code := 'CL-' || substr(md5(random()::text || clock_timestamp()::text), 1, 12);
+        v_internal_code := generate_unique_internal_code();
         UPDATE clients SET internal_client_code = v_internal_code WHERE id = rec.id;
     END LOOP;
 END;

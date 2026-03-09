@@ -27,7 +27,7 @@ async function syncInboundMessageToSupabase(message, sessionId) {
     }
     
     // 3. Prevent Inbox hijacking by checking for duplicate webhooks FIRST
-    const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', message.id).single();
+    const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', message.id).maybeSingle();
     if (existingMsg) return; 
     
     await supabase.from('conversations').update({ 
@@ -122,7 +122,7 @@ async function syncHistoricalMessageToSupabase(message, sessionId) {
     }
     
     // 3. Message check for duplicates FIRST to prevent stale `updated_at` pollution
-    const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', message.id).single();
+    const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', message.id).maybeSingle();
     if (existingMsg) return; // Skip duplicate
 
     // 4. Conditional Update of Conversation Timestamp (Only if newer!)

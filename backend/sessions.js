@@ -157,11 +157,16 @@ wa.ev.on("qr.**", async (qrcode, sessionId) => {
   if (!sessions.has(sessionId)) return;
 
   try {
-    const qrImageDataUrl = await QRCode.toDataURL(qrcode, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: 512
-    });
+    let qrImageDataUrl;
+    if (typeof qrcode === 'string' && qrcode.startsWith('data:image/')) {
+        qrImageDataUrl = qrcode;
+    } else {
+        qrImageDataUrl = await QRCode.toDataURL(qrcode, {
+          errorCorrectionLevel: "L",
+          margin: 1,
+          width: 512
+        });
+    }
 
     const session = sessions.get(sessionId);
     session.status = "AWAITING_QR";

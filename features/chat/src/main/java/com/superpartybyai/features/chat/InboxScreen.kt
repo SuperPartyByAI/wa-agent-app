@@ -80,9 +80,6 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
             TopAppBar(
                 title = { Text("WhatsApp Inbox") },
                 actions = {
-                    IconButton(onClick = { loadConversations() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
                     IconButton(onClick = onWaLinkClick) {
                         Icon(Icons.Default.AddCircle, contentDescription = "Link WA")
                     }

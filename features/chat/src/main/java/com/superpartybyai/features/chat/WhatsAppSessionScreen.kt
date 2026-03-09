@@ -26,7 +26,7 @@ import com.superpartybyai.core.AppConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WhatsAppSessionScreen(onBack: () -> Unit) {
+fun WhatsAppSessionScreen(sessionId: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     
@@ -46,7 +46,7 @@ fun WhatsAppSessionScreen(onBack: () -> Unit) {
                     conn.doOutput = true
                     
                     val jsonBody = JSONObject().apply {
-                        put("sessionId", "default")
+                        put("sessionId", sessionId)
                     }
                     
                     conn.outputStream.use { os ->
@@ -74,7 +74,7 @@ fun WhatsAppSessionScreen(onBack: () -> Unit) {
         while (isPolling) {
             try {
                 val statusResult = withContext(Dispatchers.IO) {
-                    val url = URL("${AppConfig.BACKEND_URL}/api/sessions/status/default")
+                    val url = URL("${AppConfig.BACKEND_URL}/api/sessions/status/$sessionId")
                     val conn = url.openConnection() as HttpURLConnection
                     conn.requestMethod = "GET"
                     conn.setRequestProperty("x-api-key", AppConfig.API_KEY)

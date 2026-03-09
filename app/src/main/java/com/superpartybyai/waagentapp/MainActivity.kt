@@ -69,12 +69,14 @@ class MainActivity : ComponentActivity() {
                         composable("wa_link") {
                             com.superpartybyai.features.chat.WhatsAppSessionsScreen(
                                 onViewQrClick = { sessionId ->
-                                    navController.navigate("wa_session")
+                                    navController.navigate("wa_session/$sessionId")
                                 }
                             )
                         }
-                        composable("wa_session") {
+                        composable("wa_session/{sessionId}") { backStackEntry ->
+                            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: "default"
                             com.superpartybyai.features.chat.WhatsAppSessionScreen(
+                                sessionId = sessionId,
                                 onBack = { navController.popBackStack() }
                             )
                         }

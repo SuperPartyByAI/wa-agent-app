@@ -136,7 +136,10 @@ fun WhatsAppSessionsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { onViewQrClick("default") }) {
+            FloatingActionButton(onClick = { 
+                val newSessionId = "wa_" + java.util.UUID.randomUUID().toString().substring(0, 8)
+                onViewQrClick(newSessionId) 
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "New Link")
             }
         }

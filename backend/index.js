@@ -262,7 +262,8 @@ async function startSession(sessionId) {
       logConsole: false,
       popup: false,
       qrTimeout: 0, // 0 = wait forever for QR
-      // persistence is automatically handled by open-wa storing in local session folder per sessionId
+      executablePath: '/usr/bin/google-chrome',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
     });
 
     // Update struct

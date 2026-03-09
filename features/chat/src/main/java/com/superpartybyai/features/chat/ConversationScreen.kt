@@ -40,10 +40,10 @@ data class MessageModel(
 )
 
 @Serializable
-data class ClientPhone(val phone: String? = null, val wa_identifier: String? = null, val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
+data class ClientIdentity(val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
 
 @Serializable
-data class ConvClientPhone(val clients: ClientPhone? = null, val session_id: String? = null)
+data class ConvClientIdentity(val clients: ClientIdentity? = null, val session_id: String? = null)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,16 +82,16 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val convInfo = SupabaseClient.client.postgrest["conversations"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone, wa_identifier, avatar_url, public_alias, internal_client_code), session_id")) {
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(avatar_url, public_alias, internal_client_code), session_id")) {
                         filter { eq("id", contactId) }
-                    }.decodeSingleOrNull<ConvClientPhone>()
+                    }.decodeSingleOrNull<ConvClientIdentity>()
                 targetAlias = convInfo?.clients?.public_alias ?: convInfo?.clients?.internal_client_code ?: "Anonymous Identity"
                 targetAvatarUrl = convInfo?.clients?.avatar_url
                 if (convInfo?.session_id != null) {
                     currentSessionId = convInfo.session_id
                 }
             } catch (e: Exception) {
-                android.util.Log.e("Antigravity", "Error fetching ConvClientPhone for '$contactId': ${e.message}", e)
+                android.util.Log.e("Antigravity", "Error fetching ConvClientIdentity for '$contactId': ${e.message}", e)
                 e.printStackTrace()
             }
         }

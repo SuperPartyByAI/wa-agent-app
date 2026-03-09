@@ -17,7 +17,7 @@ import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ClientRef(val full_name: String, val phone: String?, val public_alias: String? = null, val internal_client_code: String? = null)
+data class ClientRef(val full_name: String, val public_alias: String? = null, val internal_client_code: String? = null)
 
 @Serializable
 data class CallEventModel(
@@ -39,7 +39,7 @@ fun CallsScreen(modifier: Modifier = Modifier) {
         coroutineScope.launch {
             try {
                 val response = SupabaseClient.client.postgrest["call_events"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, direction, status, started_at, clients(full_name, phone, public_alias, internal_client_code)"))
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, direction, status, started_at, clients(full_name, public_alias, internal_client_code)"))
                     .decodeList<CallEventModel>()
                 calls = response.sortedByDescending { it.started_at }
             } catch (e: Exception) {

@@ -56,7 +56,7 @@ fun WhatsAppSessionsScreen(
             try {
                 if (sessionsList.isEmpty()) isLoading = true
                 val response = SupabaseClient.client.postgrest["whatsapp_sessions"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("session_key, label, phone_number, status, last_seen_at"))
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("session_key, label, status, last_seen_at"))
                     .decodeList<WhatsAppSessionModel>()
                 sessionsList = response.sortedByDescending { it.last_seen_at ?: "" }
             } catch (e: Exception) {
@@ -230,8 +230,7 @@ fun WhatsAppSessionsScreen(
                             Text("Session ID: ${s.session_key}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.height(8.dp))
                             
-                            val phoneDisplay = s.phone_number ?: "Necunoscut / În așteptare"
-                            Text("Telefon: " + phoneDisplay)
+                            Text("Session Active", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             
                             Text("Status: " + s.status, color = if (s.status == "CONNECTED") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                             

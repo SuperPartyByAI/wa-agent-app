@@ -105,7 +105,7 @@ async function syncHistoricalMessageToSupabase(msg, sessionId) {
       sender_type: isOutbound ? 'agent' : 'client',
       content: content,
       external_message_id: msgId,
-      status: isOutbound ? 'sent' : 'received',
+      status: isOutbound ? 'sent' : 'delivered',
       created_at: new Date(msgTime).toISOString()
     });
     

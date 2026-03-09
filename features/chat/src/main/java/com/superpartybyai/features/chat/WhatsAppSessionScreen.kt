@@ -133,10 +133,20 @@ fun WhatsAppSessionScreen(sessionId: String, onBack: () -> Unit) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Connected",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(100.dp).padding(16.dp)
+                    tint = androidx.compose.ui.graphics.Color(0xFF4CAF50),
+                    modifier = Modifier.size(150.dp).padding(16.dp)
                 )
-                Text("Device Linked.")
+                Text(
+                    text = "SESIUNE BAILLEYS CONECTATĂ!",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = androidx.compose.ui.graphics.Color(0xFF4CAF50),
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+                Text(
+                    text = "Ai legat aparatul cu succes. Mesajele rulează nativ pe ambele sensuri.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
             } else if (qrCodeBase64 != null) {
                 val qrPrefix = "data:image/png;base64,"
                 val rawBase64 = if (qrCodeBase64!!.startsWith(qrPrefix)) qrCodeBase64!!.substring(qrPrefix.length) else qrCodeBase64!!

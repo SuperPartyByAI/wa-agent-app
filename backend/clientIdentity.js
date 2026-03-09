@@ -23,41 +23,45 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId) {
     const isLid = phoneOrWaIdentifier.includes('@lid');
     const isGroup = phoneOrWaIdentifier.includes('@g.us');
     
-    let waIdentifier = null;
-    let phone = null;
+    let identifiers = [];
 
-    if (isLid || isGroup) {
-        waIdentifier = phoneOrWaIdentifier;
+    if (isLid) {
+        identifiers.push({ type: 'lid', value: phoneOrWaIdentifier });
+    } else if (isGroup) {
+        identifiers.push({ type: 'group_jid', value: phoneOrWaIdentifier });
     } else {
         // Extract raw deterministic numeric MSISDN string
-        phone = phoneOrWaIdentifier.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('+', '');
+        const phone = phoneOrWaIdentifier.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('+', '');
+        identifiers.push({ type: 'msisdn', value: phone });
         // Extrapolate official WhatsApp JID to guarantee symmetrical SQL Database Locking across fragmented endpoints
-        waIdentifier = `${phone}@s.whatsapp.net`;
+        identifiers.push({ type: 'jid', value: `${phone}@s.whatsapp.net` });
     }
 
     const brandParams = await getSessionBrandParams(sessionId);
 
-    // Initial Lookup
-    let query = supabase.from('clients').select('id, avatar_url, public_alias').eq('brand_key', brandParams.brandKey);
-    if (isLid) query = query.eq('wa_identifier', waIdentifier);
-    else query = query.eq('phone', phone);
-    
-    let { data: existingClient } = await query.order('created_at', { ascending: false }).limit(1).maybeSingle();
+    // Initial Lookup via Normalized Identity Links
+    const { data: linkData } = await supabase
+        .from('client_identity_links')
+        .select('client_id, clients!inner(id, avatar_url, public_alias)')
+        .eq('brand_key', brandParams.brandKey)
+        .in('identifier_value', identifiers.map(i => i.value))
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-    if (existingClient) return existingClient;
+    if (linkData && linkData.clients) return linkData.clients;
 
-    // Creation Attempt via Atomic RPG Logic
+    // Creation or Split-Brain Auto-Merge Attempt via Atomic SQL Engine
     try {
         const rpcPayload = {
             p_brand_key: brandParams.brandKey,
             p_alias_prefix: brandParams.aliasPrefix,
-            p_phone: phone,
-            p_wa_identifier: waIdentifier,
+            p_identifiers: identifiers,
             p_source: 'whatsapp'
         };
 
-        // This RPC executes the entire lookup -> alias reserve -> internal_code generation -> insert sequence atomically natively in Postgres
-        // It catches standard unique_violations (code 23505) and loops internally until physical uniquely-bounded completion.
+        // This RPC executes the entire lookup -> merge check -> insert sequence atomically natively in Postgres
+        // It catches standard unique_violations (code 23505) and loops internally until physical legitimately-bounded completion.
         const { data: clientData, error: rpcErr } = await supabase.rpc('create_client_identity_safe', rpcPayload);
         
         if (rpcErr) throw rpcErr;

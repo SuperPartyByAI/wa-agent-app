@@ -9,15 +9,26 @@ const { sessions, startSession, upsertSessionStatus, logger } = require('./sessi
 
 async function sync3cxCallEvent(event, number, extension) {
   try {
-    const formattedNumber = number.replace('+', '');
+    const formattedNumber = number.startsWith('+') ? number : '+' + number;
     
+    // Leverage the new Atomic RPC to gracefully handle Zero-Trust Identity creation / linking
+    const rpcPayload = {
+      p_brand_key: 'system',
+      p_identifiers: [{ type: 'msisdn', value: formattedNumber }],
+      p_source: 'call',
+      p_alias_prefix: 'CALL'
+    };
+    
+    const { data: clientData, error } = await supabase.rpc('create_client_identity_safe', rpcPayload);
+    if (error) {
+      throw new Error(`Supabase RPC Error: ${error.message}`);
+    }
+
     let clientId = null;
-    const { data: existingClient } = await supabase.from('clients').select('id').eq('phone', formattedNumber).order('created_at', { ascending: false }).limit(1).maybeSingle();
-    if (existingClient) {
-      clientId = existingClient.id;
+    if (clientData) {
+      clientId = Array.isArray(clientData) ? clientData[0].id : clientData.id;
     } else {
-      const { data: newClient } = await supabase.from('clients').insert({ full_name: 'Call-' + formattedNumber, phone: formattedNumber, source: 'call', brand_key: 'system' }).select().limit(1).maybeSingle();
-      clientId = newClient?.id;
+      throw new Error("No client data returned from create_client_identity_safe");
     }
     
     let callStatus = 'completed';
@@ -123,16 +134,16 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
   const { data: convData } = await supabase.from('conversations').select('client_id, session_id').eq('id', conversationId).single();
   if (!convData) return res.status(404).json({ error: "Conversation not found" });
 
-  // Strictly bind the message transmission to the brand session that owns the conversation
-  if (convData.session_id) {
-      requestedSessionId = convData.session_id;
-  }
+  const { data: links } = await supabase.from('client_identity_links')
+    .select('identifier_type, identifier_value')
+    .eq('client_id', convData.client_id);
+    
+  if (!links || links.length === 0) return res.status(400).json({ error: "No physical identifiers bound to this client" });
 
-  const { data: clientData } = await supabase.from('clients').select('phone, wa_identifier').eq('id', convData.client_id).single();
-  if (!clientData) return res.status(404).json({ error: "Client identity missing from conversation link" });
-
-  // Resolve logical physical routes
-  let to = clientData.wa_identifier || clientData.phone;
+  // Prioritize native JID or LID formats for WhatsApp delivery before falling back to MSISDN interpolation
+  const jid = links.find(l => ['jid', 'lid', 'group_jid'].includes(l.identifier_type));
+  const msisdn = links.find(l => l.identifier_type === 'msisdn');
+  let to = jid ? jid.identifier_value : msisdn?.identifier_value;
   let isLid = String(to).includes('@lid') || String(to).includes('@g.us');
 
   if (!isLid) {
@@ -233,11 +244,26 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
   
   if (!targetSessionId) {
     const formattedNumber = number.replace('+', '');
-    const { data: client } = await supabase.from('clients').select('id').eq('phone', formattedNumber).order('created_at', { ascending: false }).limit(1).maybeSingle();
-    if (client) {
-      const { data: conv } = await supabase.from('conversations').select('session_id').eq('client_id', client.id).eq('channel', 'whatsapp').order('updated_at', { ascending: false }).limit(1).maybeSingle();
-      if (conv && conv.session_id) targetSessionId = conv.session_id;
+    let convId = null;
+    let sourceSession = null;
+
+    // Fallback: If absolutely no context is found, try to locate any historic Conversation by Phone
+    if (!convId) {
+      const { data: linkData } = await supabase.from('client_identity_links')
+          .select('client_id')
+          .eq('identifier_value', formattedNumber)
+          .limit(1)
+          .maybeSingle();
+          
+      if (linkData) {
+        const { data: convMatch } = await supabase.from('conversations').select('id, session_id').eq('client_id', linkData.client_id).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+        if (convMatch) {
+          convId = convMatch.id;
+          sourceSession = convMatch.session_id;
+        }
+      }
     }
+    if (sourceSession) targetSessionId = sourceSession;
   }
 
   let targetSession = null;

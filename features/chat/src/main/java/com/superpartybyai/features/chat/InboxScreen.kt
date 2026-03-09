@@ -18,12 +18,16 @@ import kotlinx.serialization.Serializable
 
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Refresh
+import coil.compose.AsyncImage
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.PostgresAction
 
 @Serializable
-data class ClientRef(val full_name: String, val phone: String?)
+data class ClientRef(val full_name: String, val phone: String?, val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
 
 @Serializable
 data class ConversationModel(
@@ -46,7 +50,7 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
             try {
                 if (conversations.isEmpty()) isLoading = true
                 val response = SupabaseClient.client.postgrest["conversations"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, status, updated_at, clients(full_name, phone)"))
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, status, updated_at, clients(full_name, phone, avatar_url, public_alias, internal_client_code)"))
                     .decodeList<ConversationModel>()
                 conversations = response.sortedByDescending { it.updated_at }
             } catch (e: Exception) {
@@ -109,16 +113,25 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
             LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
                 items(conversations.size) { index ->
                     val conv = conversations[index]
-                    val contactName = conv.clients?.full_name ?: "Unknown Client"
-                    val phone = conv.clients?.phone ?: "No Number"
+                    val contactName = conv.clients?.public_alias ?: conv.clients?.full_name ?: "Unknown Client"
+                    val secondaryLabel = conv.clients?.internal_client_code ?: "Identity Obfuscated"
                     
                     ListItem(
                         modifier = Modifier.clickable { onChatClick(conv.id) },
                         headlineContent = { Text(contactName) },
-                        supportingContent = { Text(phone) },
+                        supportingContent = { Text(secondaryLabel) },
                         trailingContent = { Text(conv.status, style = MaterialTheme.typography.labelSmall) },
                         leadingContent = {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp))
+                            if (!conv.clients?.avatar_url.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = conv.clients?.avatar_url,
+                                    contentDescription = "Profile Picture",
+                                    modifier = Modifier.size(40.dp).clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp))
+                            }
                         }
                     )
                     Divider()

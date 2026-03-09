@@ -196,7 +196,7 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
 
     // Explicit format mapping for external message ID resolution in Baileys
     const externalId = result?.key?.id || null;
-    syncOutboundMessageToSupabase(formattedRoute, text, externalId, activeSessionId).catch(e => {
+    syncOutboundMessageToSupabase(formattedRoute, text, externalId, activeSessionId, activeSession.client).catch(e => {
         logger(activeSessionId, "error", `Failed to sync outbound message to Supabase: ${e.message}`);
     });
 

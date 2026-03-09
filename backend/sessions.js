@@ -109,7 +109,7 @@ async function startSession(sessionId) {
     sock.ev.on('messaging-history.set', async ({ chats, messages, isLatest }) => {
         logger(sessionId, "info", `[History Sync] Seed triggered. Processing ${messages.length} legacy buffers...`);
         for (const msg of messages) {
-           await syncHistoricalMessageToSupabase(msg, sessionId).catch(e => {});
+           await syncHistoricalMessageToSupabase(msg, sessionId, sock).catch(e => {});
         }
     });
 
@@ -118,7 +118,7 @@ async function startSession(sessionId) {
       if (m.type === 'notify') {
         for (const msg of m.messages) {
           logger(sessionId, "info", `[messages.upsert Hook] Remote: ${msg.key.remoteJid} | FromMe: ${msg.key.fromMe}`);
-          await syncHistoricalMessageToSupabase(msg, sessionId).catch(e => console.error(e));
+          await syncHistoricalMessageToSupabase(msg, sessionId, sock).catch(e => console.error(e));
           
           if (!msg.key.fromMe && WEBHOOK_URL) {
             try {

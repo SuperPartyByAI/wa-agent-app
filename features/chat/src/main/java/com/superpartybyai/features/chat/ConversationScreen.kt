@@ -22,6 +22,10 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
+import coil.compose.AsyncImage
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.PostgresAction
@@ -35,7 +39,7 @@ data class MessageModel(
 )
 
 @Serializable
-data class ClientPhone(val phone: String? = null, val wa_identifier: String? = null)
+data class ClientPhone(val phone: String? = null, val wa_identifier: String? = null, val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
 
 @Serializable
 data class ConvClientPhone(val clients: ClientPhone? = null, val session_id: String? = null)
@@ -48,6 +52,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var isLoading by remember { mutableStateOf(true) }
     var targetPhone by remember { mutableStateOf<String?>(null) }
     var currentSessionId by remember { mutableStateOf<String?>(null) }
+    var targetAvatarUrl by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     
@@ -76,10 +81,11 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val convInfo = SupabaseClient.client.postgrest["conversations"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone, wa_identifier), session_id")) {
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone, wa_identifier, avatar_url, public_alias, internal_client_code), session_id")) {
                         filter { eq("id", contactId) }
                     }.decodeSingleOrNull<ConvClientPhone>()
-                targetPhone = convInfo?.clients?.wa_identifier ?: convInfo?.clients?.phone
+                targetPhone = convInfo?.clients?.public_alias ?: convInfo?.clients?.internal_client_code ?: "Anonymous Identity"
+                targetAvatarUrl = convInfo?.clients?.avatar_url
                 if (convInfo?.session_id != null) {
                     currentSessionId = convInfo.session_id
                 }
@@ -116,7 +122,24 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat Details") },
+                title = { 
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!targetAvatarUrl.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = targetAvatarUrl,
+                                contentDescription = "Avatar",
+                                modifier = Modifier.size(32.dp).clip(CircleShape).padding(end = 8.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(32.dp).padding(end = 8.dp))
+                        }
+                        Column {
+                            Text(targetPhone ?: "Chat Details", style = MaterialTheme.typography.bodyLarge)
+                            Text("Secure Channel", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
                 }

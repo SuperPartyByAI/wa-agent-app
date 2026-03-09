@@ -63,6 +63,7 @@ fun WhatsAppSessionsScreen(
     LaunchedEffect(Unit) {
         loadSessions()
 
+        // 1. Supabase Postgres Realtime (Primary)
         launch {
             try {
                 val channel = SupabaseClient.client.channel("public-whatsapp_sessions")
@@ -75,6 +76,15 @@ fun WhatsAppSessionsScreen(
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+
+        // 2. Hard REST Polling Fallback (10 seconds)
+        // Defensively guarantees State Updates even if the WebSocket pipe severs instantly.
+        launch {
+            while (true) {
+                kotlinx.coroutines.delay(10000)
+                loadSessions()
             }
         }
     }

@@ -89,7 +89,7 @@ fun WhatsAppSessionScreen(sessionId: String, onBack: () -> Unit) {
                 
                 if (statusResult != null) {
                     val status = statusResult.optString("status")
-                    sessionStatus = "Status Backend: $status"
+                    sessionStatus = "Status: $status"
                     
                     if (status == "CONNECTED") {
                         qrCodeBase64 = null
@@ -112,7 +112,7 @@ fun WhatsAppSessionScreen(sessionId: String, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Conectare WhatsApp") },
+                title = { Text("Baileys Device Pairing") },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
                 }
@@ -152,14 +152,14 @@ fun WhatsAppSessionScreen(sessionId: String, onBack: () -> Unit) {
                         contentDescription = "QR Code",
                         modifier = Modifier.size(250.dp)
                     )
-                    Text("Scanează acest cod QR din WhatsApp -> Linked Devices", modifier = Modifier.padding(top = 16.dp))
+                    Text("Scan Baileys QR in WhatsApp -> Linked Devices", modifier = Modifier.padding(top = 16.dp))
                 } else {
                     val errMsg = bitmapResult.exceptionOrNull()?.message ?: "Eroare conversie imagine QR"
                     Text("Invalid QR Data: $errMsg")
                 }
             } else {
                 Button(onClick = { startSession() }) {
-                    Text("Pornește Sesiune WA Backend")
+                    Text("Start Baileys Session")
                 }
             }
         }

@@ -100,17 +100,17 @@ fun WhatsAppSessionsScreen(
         coroutineScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/sessions/\$endpoint")
+                    val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/sessions/$endpoint")
                     val conn = url.openConnection() as HttpURLConnection
                     val method = if (endpoint == "logout" || endpoint == "reconnect" || endpoint == "start") "POST" else "DELETE"
                     
                     if (endpoint.contains("/")) {
                         // For DELETE /api/sessions/:sessionId
-                        val delUrl = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/sessions/\$sessionId")
+                        val delUrl = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/sessions/$sessionId")
                         val delConn = delUrl.openConnection() as HttpURLConnection
                         delConn.requestMethod = "DELETE"
                         delConn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
-                        if (delConn.responseCode !in 200..299) throw Exception("HTTP \${delConn.responseCode}")
+                        if (delConn.responseCode !in 200..299) throw Exception("HTTP ${delConn.responseCode}")
                         return@withContext
                     }
                     
@@ -128,14 +128,14 @@ fun WhatsAppSessionsScreen(
                     }
                     
                     if (conn.responseCode !in 200..299) {
-                        throw Exception("HTTP \${conn.responseCode}")
+                        throw Exception("HTTP ${conn.responseCode}")
                     }
                 }
-                Toast.makeText(context, "Comanda trimisa catre \$endpoint!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Comanda trimisa catre $endpoint!", Toast.LENGTH_SHORT).show()
                 loadSessions()
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "Eroare: \${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Eroare: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

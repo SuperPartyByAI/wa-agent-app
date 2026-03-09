@@ -37,7 +37,7 @@ data class MessageModel(
 data class ClientPhone(val phone: String)
 
 @Serializable
-data class ConvClientPhone(val clients: ClientPhone?)
+data class ConvClientPhone(val clients: ClientPhone?, val session_id: String? = null)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +46,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var inputMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var targetPhone by remember { mutableStateOf<String?>(null) }
+    var currentSessionId by remember { mutableStateOf("default") }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     
@@ -74,10 +75,13 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val convInfo = SupabaseClient.client.postgrest["conversations"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone)")) {
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(phone), session_id")) {
                         filter { eq("id", contactId) }
                     }.decodeSingleOrNull<ConvClientPhone>()
                 targetPhone = convInfo?.clients?.phone
+                if (convInfo?.session_id != null) {
+                    currentSessionId = convInfo.session_id
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -134,7 +138,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                         val jsonBody = JSONObject()
                                         jsonBody.put("to", targetPhone)
                                         jsonBody.put("text", textToSend)
-                                        jsonBody.put("sessionId", "default")
+                                        jsonBody.put("sessionId", currentSessionId)
                                         
                                         conn.outputStream.use { os ->
                                             val input = jsonBody.toString().toByteArray(Charsets.UTF_8)

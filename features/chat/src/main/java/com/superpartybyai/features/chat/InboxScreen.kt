@@ -28,6 +28,7 @@ data class ClientRef(val full_name: String, val phone: String?)
 data class ConversationModel(
     val id: String,
     val status: String,
+    val session_id: String? = null,
     val updated_at: String,
     val clients: ClientRef? = null
 )

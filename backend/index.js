@@ -37,6 +37,8 @@ async function syncInboundMessageToSupabase(message, sessionId) {
       convId = newConv.id;
     }
     
+    await supabase.from('conversations').update({ session_id: sessionId }).eq('id', convId);
+    
     // 3. Message
     const { error: msgErr } = await supabase.from('messages').insert({
       conversation_id: convId,

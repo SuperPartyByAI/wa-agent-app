@@ -75,7 +75,7 @@ fun EventModelsListScreen(modifier: Modifier = Modifier, onEventModelClick: (Str
         coroutineScope.launch(Dispatchers.IO) {
             try {
                 events = SupabaseClient.client.postgrest["events"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, title, status, event_type, theme, city, date_string, created_at, clients(full_name, phone)"))
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, title, status, event_type, theme, city, date_string, created_at, clients(full_name, public_alias)"))
                     .decodeList<EventModelModel>().sortedByDescending { it.created_at }
                 
                 tasks = SupabaseClient.client.postgrest["tasks"]

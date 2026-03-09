@@ -20,9 +20,20 @@ async function getSessionBrandParams(sessionId) {
  * Avoids any unique constraint violations organically via recursive loops and PostgREST Native OUT maps.
  */
 async function resolveClientIdentity(phoneOrWaIdentifier, sessionId) {
-    const isLid = phoneOrWaIdentifier.includes('@lid') || phoneOrWaIdentifier.includes('@g.us');
-    const waIdentifier = isLid ? phoneOrWaIdentifier : null;
-    const phone = !isLid ? phoneOrWaIdentifier : null;
+    const isLid = phoneOrWaIdentifier.includes('@lid');
+    const isGroup = phoneOrWaIdentifier.includes('@g.us');
+    
+    let waIdentifier = null;
+    let phone = null;
+
+    if (isLid || isGroup) {
+        waIdentifier = phoneOrWaIdentifier;
+    } else {
+        // Extract raw deterministic numeric MSISDN string
+        phone = phoneOrWaIdentifier.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('+', '');
+        // Extrapolate official WhatsApp JID to guarantee symmetrical SQL Database Locking across fragmented endpoints
+        waIdentifier = `${phone}@s.whatsapp.net`;
+    }
 
     const brandParams = await getSessionBrandParams(sessionId);
 

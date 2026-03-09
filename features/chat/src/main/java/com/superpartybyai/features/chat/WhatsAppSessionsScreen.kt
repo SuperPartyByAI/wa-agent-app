@@ -30,7 +30,6 @@ import android.widget.Toast
 data class WhatsAppSessionModel(
     val session_key: String,
     val label: String? = null,
-    val phone_number: String? = null,
     val status: String,
     val last_seen_at: String? = null
 )

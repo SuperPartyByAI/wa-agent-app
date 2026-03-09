@@ -23,8 +23,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 2. Cleanly dropping broken partial clients resulting from previous collisions
-DELETE FROM clients WHERE internal_client_code IS NULL;
+-- 2. Removed destructive cleanup. We only run idempotent backfills.
 
 -- 3. Run explicit backfill over missing internal codes safely
 DO $$

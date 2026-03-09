@@ -129,14 +129,36 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
   let fallbackUsed = false;
 
   if (!activeSession || activeSession.status !== "CONNECTED" || !activeSession.client) {
-    const connectedEntries = Array.from(sessions.entries()).filter(([id, s]) => s.status === "CONNECTED" && s.client);
-    if (connectedEntries.length > 0) {
-      activeSessionId = connectedEntries[0][0];
-      activeSession = connectedEntries[0][1];
-      fallbackUsed = true;
-      logger(activeSessionId, "warn", `Rerouted stale outbound payload from Android (Requested: ${requestedSessionId}) to active socket: ${activeSessionId}`);
-    } else {
-      return res.status(400).json({ error: "Session is not connected or invalid, and no fallback session is available." });
+    logger(requestedSessionId, "warn", `Requested session is disconnected or missing. Initiating smart-routing via Supabase CRM...`);
+    try {
+      const { data: staleData } = await supabase.from('whatsapp_sessions').select('phone_number').eq('session_key', requestedSessionId).single();
+      
+      if (staleData && staleData.phone_number) {
+        const { data: replacementData } = await supabase.from('whatsapp_sessions')
+          .select('session_key')
+          .eq('phone_number', staleData.phone_number)
+          .eq('status', 'CONNECTED')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (replacementData && replacementData.session_key) {
+          const replacementId = replacementData.session_key;
+          const runtimeTarget = sessions.get(replacementId);
+          if (runtimeTarget && runtimeTarget.status === "CONNECTED" && runtimeTarget.client) {
+            activeSessionId = replacementId;
+            activeSession = runtimeTarget;
+            fallbackUsed = true;
+            logger(activeSessionId, "warn", `Smart-Routed: Mapped stale session ${requestedSessionId} to active socket ${activeSessionId} via matching phone ${staleData.phone_number}`);
+          }
+        }
+      }
+    } catch (routeErr) {
+      logger(requestedSessionId, "error", `Smart-routing Supabase lookup failed: ${routeErr.message}`);
+    }
+
+    if (!activeSession || activeSession.status !== "CONNECTED" || !activeSession.client) {
+      return res.status(400).json({ error: "Session is not connected, and no matching CRM active session was found." });
     }
   }
 

@@ -547,16 +547,31 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                     if (targetClientId != null) {
                                         coroutineScope.launch {
                                             try {
-                                                @Serializable data class PiiResult(val identifier_value: String? = null)
-                                                val links = SupabaseClient.client.postgrest["client_identity_links"]
-                                                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("identifier_value")) {
-                                                        filter { eq("client_id", targetClientId!!) }
-                                                    }.decodeList<PiiResult>()
-                                                val bestLink = links.firstOrNull { it.identifier_value?.endsWith("@s.whatsapp.net") == true } ?: links.firstOrNull()
-                                                realPhoneNumber = bestLink?.identifier_value ?: "Niciun număr fizic legat găsit în DB"
+                                                val token = SupabaseClient.client.auth.currentAccessTokenOrNull()
+                                                if (token != null) {
+                                                    withContext(Dispatchers.IO) {
+                                                        val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/clients/$targetClientId/real-number")
+                                                        val conn = url.openConnection() as HttpURLConnection
+                                                        conn.requestMethod = "GET"
+                                                        conn.setRequestProperty("Authorization", "Bearer $token")
+                                                        conn.setRequestProperty("Accept", "application/json")
+                                                        
+                                                        val responseCode = conn.responseCode
+                                                        if (responseCode == 200) {
+                                                            val responseDetails = conn.inputStream.bufferedReader().use { it.readText() }
+                                                            val json = JSONObject(responseDetails)
+                                                            realPhoneNumber = json.optString("realNumber", "Număr real indisponibil")
+                                                        } else {
+                                                            realPhoneNumber = "Număr real indisponibil"
+                                                        }
+                                                        conn.disconnect()
+                                                    }
+                                                } else {
+                                                    realPhoneNumber = "Număr real indisponibil"
+                                                }
                                                 showRealNumberDialog = true
                                             } catch (e: Exception) {
-                                                withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare extragere ID: ${e.message}", Toast.LENGTH_SHORT).show() }
+                                                withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare API extragere ID: ${e.message}", Toast.LENGTH_SHORT).show() }
                                             }
                                         }
                                     } else {

@@ -418,6 +418,90 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
   });
 });
 
+app.get("/api/clients/:clientId/real-number", async (req, res) => {
+  const { clientId } = req.params;
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "Unauthorized. Missing Bearer JWT." });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  // 1. Authenticate user explicitly via Supabase Auth
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+  if (authErr || !user) {
+    return res.status(401).json({ error: "Unauthorized. Invalid JWT Token." });
+  }
+
+  // 2. Gate admin specifically
+  if (user.email !== 'ursache.andrei1995@gmail.com') {
+    return res.status(403).json({ error: "Access Denied. Nu ai drepturi de administrator pentru a prelua PII (Număr fizic real)." });
+  }
+
+  try {
+    // 3. Graph Traversal to resolve linked device ID to physical owner MSISDN
+    // First, find all identifiers linked directly to this target clientId
+    const { data: directLinks, error: linkErr } = await supabase
+      .from('client_identity_links')
+      .select('identifier_value, identifier_type')
+      .eq('client_id', clientId);
+
+    if (linkErr) throw linkErr;
+    if (!directLinks || directLinks.length === 0) {
+      return res.status(404).json({ error: 'Număr real indisponibil', reason: 'No identifiers found' });
+    }
+
+    // Is there a direct MSISDN or JID right here?
+    let directPhone = directLinks.find(l => l.identifier_type === 'msisdn' || l.identifier_value.endsWith('@s.whatsapp.net'));
+    if (directPhone) {
+      let cleanVal = directPhone.identifier_value.replace('@s.whatsapp.net', '');
+      return res.json({ realNumber: cleanVal });
+    }
+
+    // No direct hit. It's likely an isolated @lid. We must traverse sibling graph logic:
+    // Extract linked values to find siblings
+    const identifierValues = directLinks.map(l => l.identifier_value);
+
+    // Find all other clients sharing these same identifiers
+    const { data: crossLinks } = await supabase
+      .from('client_identity_links')
+      .select('client_id')
+      .in('identifier_value', identifierValues);
+
+    const siblingClientIds = Array.from(new Set((crossLinks || []).map(l => l.client_id)));
+
+    // Now pull ALL identifiers belonging to all sibling clients (the physical person's total identity footprint)
+    const { data: entireFootprint } = await supabase
+      .from('client_identity_links')
+      .select('identifier_value, identifier_type')
+      .in('client_id', siblingClientIds);
+
+    const fullLinks = entireFootprint || [];
+
+    // Prioritize MSISDN
+    let explicitMsisdn = fullLinks.find(l => l.identifier_type === 'msisdn');
+    if (explicitMsisdn) {
+      let finalNum = explicitMsisdn.identifier_value.replace('@s.whatsapp.net', '');
+      return res.json({ realNumber: finalNum });
+    }
+
+    // Fallback to JID (s.whatsapp.net)
+    let explicitJid = fullLinks.find(l => l.identifier_value.endsWith('@s.whatsapp.net'));
+    if (explicitJid) {
+       let finalNum = explicitJid.identifier_value.replace('@s.whatsapp.net', '');
+       return res.json({ realNumber: finalNum });
+    }
+
+    // If we traversed the entire graph and only found @lid or unknown
+    return res.status(404).json({ error: 'Număr real indisponibil' });
+
+  } catch(e) {
+    console.error(`[PII Resolver] Error: ${e.message}`);
+    return res.status(500).json({ error: 'Internal Server Error fetching PII' });
+  }
+});
+
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",

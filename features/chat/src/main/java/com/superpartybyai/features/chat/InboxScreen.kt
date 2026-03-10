@@ -11,6 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 import kotlinx.coroutines.delay
 import com.superpartybyai.core.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
@@ -195,16 +200,31 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                                         if (conv.client_id != null) {
                                             coroutineScope.launch {
                                                 try {
-                                                    @Serializable data class PiiResult(val identifier_value: String? = null)
-                                                    val links = SupabaseClient.client.postgrest["client_identity_links"]
-                                                        .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("identifier_value")) {
-                                                            filter { eq("client_id", conv.client_id) }
-                                                        }.decodeList<PiiResult>()
-                                                    val bestLink = links.firstOrNull { it.identifier_value?.endsWith("@s.whatsapp.net") == true } ?: links.firstOrNull()
-                                                    realPhoneNumber = bestLink?.identifier_value ?: "Niciun număr legat găsit în DB"
+                                                    val token = SupabaseClient.client.auth.currentAccessTokenOrNull()
+                                                    if (token != null) {
+                                                        withContext(Dispatchers.IO) {
+                                                            val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/clients/${conv.client_id}/real-number")
+                                                            val conn = url.openConnection() as HttpURLConnection
+                                                            conn.requestMethod = "GET"
+                                                            conn.setRequestProperty("Authorization", "Bearer $token")
+                                                            conn.setRequestProperty("Accept", "application/json")
+                                                            
+                                                            val responseCode = conn.responseCode
+                                                            if (responseCode == 200) {
+                                                                val responseDetails = conn.inputStream.bufferedReader().use { it.readText() }
+                                                                val json = JSONObject(responseDetails)
+                                                                realPhoneNumber = json.optString("realNumber", "Număr real indisponibil")
+                                                            } else {
+                                                                realPhoneNumber = "Număr real indisponibil"
+                                                            }
+                                                            conn.disconnect()
+                                                        }
+                                                    } else {
+                                                        realPhoneNumber = "Număr real indisponibil"
+                                                    }
                                                     showRealNumberDialog = true
                                                 } catch (e: Exception) {
-                                                    withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare DB: ${e.message}", Toast.LENGTH_SHORT).show() }
+                                                    withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare API PII: ${e.message}", Toast.LENGTH_SHORT).show() }
                                                 }
                                             }
                                         } else {

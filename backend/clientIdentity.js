@@ -61,8 +61,7 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId, altWaIdenti
             client_id: clientId,
             brand_key: brandParams.brandKey,
             identifier_type: i.type,
-            identifier_value: i.value,
-            is_primary: i.type === 'msisdn'
+            identifier_value: i.value
         }));
         
         // Asynchronously bind any missing aliases (like MSISDN if it just appeared from remoteJidAlt)

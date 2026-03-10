@@ -21,11 +21,11 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
     if (bypassConvId) {
       convId = bypassConvId;
     } else {
-      const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').order('updated_at', { ascending: false }).limit(1).maybeSingle();
+      const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').eq('session_id', sessionId).order('updated_at', { ascending: false }).limit(1).maybeSingle();
       if (existingConv) {
         convId = existingConv.id;
       } else {
-        const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open' }).select().single();
+        const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open', session_id: sessionId }).select().single();
         convId = newConv?.id;
       }
     }
@@ -94,13 +94,13 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
     
     let convId;
     let currentUpdatedAt = 0;
-    const { data: existingConv } = await supabase.from('conversations').select('id, updated_at').eq('client_id', clientId).eq('channel', 'whatsapp').order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    const { data: existingConv } = await supabase.from('conversations').select('id, updated_at').eq('client_id', clientId).eq('channel', 'whatsapp').eq('session_id', sessionId).order('updated_at', { ascending: false }).limit(1).maybeSingle();
     
     if (existingConv) {
       convId = existingConv.id;
       currentUpdatedAt = existingConv.updated_at ? new Date(existingConv.updated_at).getTime() : 0;
     } else {
-      const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open' }).select().single();
+      const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open', session_id: sessionId }).select().single();
       convId = newConv?.id;
     }
     if (!convId) {

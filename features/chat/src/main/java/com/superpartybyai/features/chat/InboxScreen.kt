@@ -15,6 +15,10 @@ import kotlinx.coroutines.delay
 import com.superpartybyai.core.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.Serializable
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Refresh
@@ -30,18 +34,26 @@ import io.github.jan.supabase.realtime.PostgresAction
 data class ClientRef(val full_name: String, val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
 
 @Serializable
-data class ConversationModel(
-    val id: String,
-    val status: String,
+data class InboxSummaryModel(
+    val conversation_id: String,
+    val conversation_status: String,
+    val conversation_updated_at: String,
+    val client_id: String? = null,
     val session_id: String? = null,
-    val updated_at: String,
-    val clients: ClientRef? = null
+    val session_label: String? = null,
+    val full_name: String? = null,
+    val avatar_url: String? = null,
+    val public_alias: String? = null,
+    val internal_client_code: String? = null,
+    val last_message_content: String? = null,
+    val last_message_at: String? = null,
+    val last_message_from_me: Boolean? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, onWaLinkClick: () -> Unit = {}) {
-    var conversations by remember { mutableStateOf<List<ConversationModel>>(emptyList()) }
+    var conversations by remember { mutableStateOf<List<InboxSummaryModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -49,10 +61,10 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
         coroutineScope.launch {
             try {
                 if (conversations.isEmpty()) isLoading = true
-                val response = SupabaseClient.client.postgrest["conversations"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, status, updated_at, clients(full_name, avatar_url, public_alias, internal_client_code)"))
-                    .decodeList<ConversationModel>()
-                conversations = response.sortedByDescending { it.updated_at }
+                val response = SupabaseClient.client.postgrest["v_inbox_summaries"]
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("conversation_id, conversation_status, conversation_updated_at, client_id, session_id, session_label, full_name, avatar_url, public_alias, internal_client_code, last_message_content, last_message_at, last_message_from_me"))
+                    .decodeList<InboxSummaryModel>()
+                conversations = response.sortedByDescending { it.last_message_at ?: it.conversation_updated_at }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -113,18 +125,50 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
             LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
                 items(conversations.size) { index ->
                     val conv = conversations[index]
-                    val contactName = conv.clients?.public_alias ?: conv.clients?.full_name ?: "Unknown Client"
-                    val secondaryLabel = conv.clients?.internal_client_code ?: "Identity Obfuscated"
+                    val contactName = conv.public_alias ?: conv.full_name ?: "Unknown Client"
+                    
+                    val prefix = if (conv.last_message_from_me == true) "Tu: " else ""
+                    val messagePreview = conv.last_message_content?.let { previewText -> 
+                        prefix + (if (previewText.length > 50) previewText.take(50) + "..." else previewText)
+                    } ?: (conv.internal_client_code ?: "Începeți o conversație")
+                    
+                    val timeString = try {
+                        val isoString = conv.last_message_at ?: conv.conversation_updated_at
+                        val instant = Instant.parse(if (isoString.endsWith("Z") || isoString.contains("+")) isoString else "${isoString}Z")
+                        val zoneId = ZoneId.systemDefault()
+                        val messageDate = instant.atZone(zoneId).toLocalDate()
+                        val today = LocalDate.now(zoneId)
+                        
+                        if (messageDate.isEqual(today)) {
+                            val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(zoneId)
+                            formatter.format(instant)
+                        } else {
+                            val formatter = DateTimeFormatter.ofPattern("dd/MM/yy").withZone(zoneId)
+                            formatter.format(instant)
+                        }
+                    } catch (e: Exception) {
+                        ""
+                    }
                     
                     ListItem(
-                        modifier = Modifier.clickable { onChatClick(conv.id) },
+                        modifier = Modifier.clickable { onChatClick(conv.conversation_id) },
                         headlineContent = { Text(contactName) },
-                        supportingContent = { Text(secondaryLabel) },
-                        trailingContent = { Text(conv.status, style = MaterialTheme.typography.labelSmall) },
+                        supportingContent = { 
+                            Column {
+                                Text(
+                                    text = "Via: ${conv.session_label ?: conv.session_id?.take(8) ?: "Necunoscut"}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
+                                Text(messagePreview, maxLines = 1)
+                            }
+                        },
+                        trailingContent = { Text(timeString, style = MaterialTheme.typography.labelSmall) },
                         leadingContent = {
-                            if (!conv.clients?.avatar_url.isNullOrEmpty()) {
+                            if (!conv.avatar_url.isNullOrEmpty()) {
                                 AsyncImage(
-                                    model = conv.clients?.avatar_url,
+                                    model = conv.avatar_url,
                                     contentDescription = "Profile Picture",
                                     modifier = Modifier.size(40.dp).clip(CircleShape),
                                     contentScale = ContentScale.Crop

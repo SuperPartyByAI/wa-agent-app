@@ -277,7 +277,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                         if (sendSuccessful) {
                             val totalMs = System.currentTimeMillis() - startTotalMs
                             if (isImage) {
-                                android.util.Log.i("Superparty", "[ImageCompression] originalBytes=$originalBytesSize compressedBytes=$compressedBytesSize originalWxH=${originalW}x${originalH} finalWxH=${finalW}x${finalH} quality=75 compressMs=$compressMs uploadMs=$uploadMs totalMs=$totalMs")
+                                android.util.Log.e("Superparty", "[ImageCompression] originalBytes=$originalBytesSize compressedBytes=$compressedBytesSize originalWxH=${originalW}x${originalH} finalWxH=${finalW}x${finalH} quality=75 compressMs=$compressMs uploadMs=$uploadMs totalMs=$totalMs")
                             }
                             messages = messages + MessageModel(
                                id = java.util.UUID.randomUUID().toString(),

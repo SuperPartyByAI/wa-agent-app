@@ -159,13 +159,26 @@ async function startSession(sessionId) {
         
         logger(sessionId, "info", `[History Sync] Processing ${uniqueMessages.length} unique deduplicated legacy buffers...`);
         let imported = 0;
-        for (const msg of uniqueMessages) {
+        let errors = 0;
+        
+        for (let i = 0; i < uniqueMessages.length; i++) {
+           const msg = uniqueMessages[i];
            try {
                await syncHistoricalMessageToSupabase(msg, sessionId, sock);
                imported++;
-           } catch(e) {}
+           } catch(e) {
+               errors++;
+           }
+           
+           // Pace the imports to prevent Supabase connection pool exhaustion (57014 Statement Timeout)
+           // The atomic RPC create_client_identity_safe is heavy; give Postgres 50ms breathing room per row.
+           await new Promise(r => setTimeout(r, 50));
+           
+           if ((i + 1) % 50 === 0) {
+               logger(sessionId, "info", `[History Sync] Progress: ${i + 1}/${uniqueMessages.length} processed. (Imported: ${imported}, Errors: ${errors})`);
+           }
         }
-        logger(sessionId, "info", `[History Sync] Successfully imported ${imported} historical messages.`);
+        logger(sessionId, "info", `[History Sync] Completed. Successfully imported ${imported} historical messages. (${errors} failed/skipped)`);
     });
 
     sock.ev.on('messages.upsert', async (m) => {

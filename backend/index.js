@@ -281,6 +281,20 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
   
   console.log(`[3CX] Received event: ${event} for number: ${number}`);
   
+  // 1. ALWAYS LOG TO CRM FIRST (Decoupled from WhatsApp state)
+  let crmLogged = false;
+  let crmError = null;
+  try {
+    // Await this fully so we don't return 200 OK if the DB fails
+    await sync3cxCallEvent(event, number, extension);
+    crmLogged = true;
+    console.log(`[3CX] CRM Call Journaling successful for ${number}`);
+  } catch (err) {
+    console.error(`[3CX CRM Logging Fatal Error] ${err.message}`);
+    crmError = err.message;
+  }
+
+  // 2. ATTEMPT WHATSAPP SIDE-EFFECT
   let targetSessionId = sessionId;
   
   if (!targetSessionId) {
@@ -312,30 +326,46 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
     targetSession = sessions.get(targetSessionId);
   }
 
-  if (!targetSession) {
-    return res.status(400).json({ error: "Strict Routing Failed: No explicit connected WhatsApp session found in CRM for this caller." });
-  }
+  let waSideEffectStatus = "skipped";
+  let waError = null;
 
-  try {
-    sync3cxCallEvent(event, number, extension).catch(e => console.error(e));
-
-    if (event === "call_incoming") {
-      const message = `[Sistem] Apel de intrare pe extensia ${extension} de la ${number}.`;
-      const formattedNumber = number.replace('+', '');
-      // Baileys structure
-      const result = await targetSession.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: message });
-      console.log(`[3CX Action] Sent WA message to ${formattedNumber}`);
-      
-      const externalId = result?.key?.id || null;
-      syncOutboundMessageToSupabase(formattedNumber, message, externalId, targetSessionId, targetSession.client).catch(e => {
-        console.error(`[3CX Sync Error] Failed to sync outbound message to Supabase: ${e.message}`);
-      });
+  if (!targetSession || targetSession.status !== "CONNECTED" || !targetSession.client) {
+    waSideEffectStatus = "skipped_offline";
+    waError = "Strict Routing: No explicit connected WhatsApp session found running in memory.";
+    console.warn(`[3CX WA Hook] Skipped WhatsApp outbound side-effect for ${number}: ${waError}`);
+  } else {
+    try {
+      if (event === "call_incoming") {
+        const message = `[Sistem] Apel de intrare pe extensia ${extension} de la ${number}.`;
+        const formattedNumber = number.replace('+', '');
+        // Baileys structure
+        const result = await targetSession.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: message });
+        console.log(`[3CX Action] Sent WA side-effect message to ${formattedNumber}`);
+        
+        const externalId = result?.key?.id || null;
+        await syncOutboundMessageToSupabase(formattedNumber, message, externalId, targetSessionId, targetSession.client).catch(e => {
+          console.error(`[3CX Sync Error] Failed to sync outbound message to Supabase: ${e.message}`);
+        });
+        waSideEffectStatus = "sent";
+      }
+    } catch (err) {
+      console.error(`[3CX WA Runtime Error] ${err.message}`);
+      waSideEffectStatus = "failed";
+      waError = err.message;
     }
-    res.json({ success: true, message: "Event processed and WA message triggered." });
-  } catch (err) {
-    console.error(`[3CX Error] ${err.message}`);
-    res.status(500).json({ error: "Failed to process 3CX event" });
   }
+
+  const statusCode = crmLogged ? 200 : 500;
+  return res.status(statusCode).json({
+    success: crmLogged,
+    message: crmLogged ? "Event processed successfully." : "Fatal Error logging call event to CRM.",
+    details: {
+      crm_logged: crmLogged,
+      crm_error: crmError,
+      wa_side_effect: waSideEffectStatus,
+      wa_error: waError
+    }
+  });
 });
 
 app.get("/health", (req, res) => {

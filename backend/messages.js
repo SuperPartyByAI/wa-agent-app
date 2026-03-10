@@ -40,6 +40,7 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
           .maybeSingle();
 
         if (stickyConv) {
+          console.log(`[Diagnostic] [Route-Sticky Guard] Unified outbound alias ${phoneNumberOrIdentifier} -> canonical conv ${stickyConv.id} (Client ${stickyConv.client_id}).`);
           convId = stickyConv.id;
           clientId = stickyConv.client_id;
         }
@@ -135,6 +136,7 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
         .maybeSingle();
 
       if (stickyConv) {
+        console.log(`[Diagnostic] [Route-Sticky Guard] Unified inbound drifted alias ${phoneOrWaIdentifier} -> canonical conv ${stickyConv.id} (Client ${stickyConv.client_id}).`);
         convId = stickyConv.id;
         clientId = stickyConv.client_id;
         currentUpdatedAt = stickyConv.updated_at ? new Date(stickyConv.updated_at).getTime() : 0;

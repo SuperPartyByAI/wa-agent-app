@@ -8,6 +8,7 @@ const { syncHistoricalMessageToSupabase } = require("./messages");
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL || null;
 const sessions = new Map();
+const reconnectAttempts = new Map();
 
 function logger(sessionId, level, message) {
   const timestamp = new Date().toISOString();
@@ -80,8 +81,16 @@ async function startSession(sessionId) {
         logger(sessionId, "warn", `Connection closed. Reason: ${lastDisconnect?.error?.message}. Should reconnect: ${shouldReconnect}`);
         
         if (shouldReconnect) {
-          sessions.delete(sessionId);
-          startSession(sessionId); // Native retry
+          const attempts = reconnectAttempts.get(sessionId) || 0;
+          const delay = Math.min(1000 * Math.pow(2, attempts), 60000); // Backoff: 1s, 2s, 4s... max 60s
+          reconnectAttempts.set(sessionId, attempts + 1);
+          
+          logger(sessionId, "warn", `Scheduling reconnect for ${sessionId} in ${delay}ms (Attempt ${attempts + 1})...`);
+          
+          setTimeout(() => {
+            sessions.delete(sessionId);
+            startSession(sessionId); // Native retry with backoff throttle
+          }, delay);
         } else {
           logger(sessionId, "error", "Device brutally logged out. Purging Auth Directory.");
           sessions.get(sessionId).status = "DISCONNECTED";
@@ -92,6 +101,7 @@ async function startSession(sessionId) {
       }
 
       if (connection === 'open') {
+        reconnectAttempts.delete(sessionId);
         let botNumber = sock.user?.id?.split(':')[0];
         const sess = sessions.get(sessionId);
         if (sess) {

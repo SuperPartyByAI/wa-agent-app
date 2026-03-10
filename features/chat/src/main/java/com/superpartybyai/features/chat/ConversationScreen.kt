@@ -23,6 +23,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
 import android.provider.OpenableColumns
 import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.storage.upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,8 +37,8 @@ import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import kotlinx.serialization.Serializable
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject

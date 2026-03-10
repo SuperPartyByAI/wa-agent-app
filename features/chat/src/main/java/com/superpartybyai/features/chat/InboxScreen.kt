@@ -35,8 +35,6 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.gotrue.auth
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 

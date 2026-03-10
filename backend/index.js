@@ -295,17 +295,24 @@ app.post("/api/sessions/rename", requireApiKey, async (req, res) => {
   const { sessionId, newLabel } = req.body;
   if (!sessionId) return res.status(400).json({ error: "sessionId is required" });
   try {
+    const label = newLabel ? newLabel.trim() : sessionId;
+    const brandKey = label.toUpperCase().replace(/\s+/g, '_');
+    const aliasPrefix = label.split(' ')[0];
+
     const { error } = await supabase.from("whatsapp_sessions")
-      .update({ label: newLabel, updated_at: new Date().toISOString() })
+      .update({ label: label, brand_key: brandKey, alias_prefix: aliasPrefix, updated_at: new Date().toISOString() })
       .eq("session_key", sessionId);
     if (error) throw error;
     
     // Invalidate the RAM mapping so the new Label (e.g., "Divertix") applies to all future inbound generated clients
     try {
-      const { sessionBrandCache } = require('./clientIdentity');
-      sessionBrandCache.delete(sessionId);
+      const clientIdentity = require('./clientIdentity');
+      clientIdentity.sessionBrandCache.delete(sessionId);
+      
+      // structurally rebase historical QR-* endpoints to the newly specified human prefixes
+      await clientIdentity.rebaseRouteAliases(sessionId, label, brandKey, aliasPrefix);
     } catch(e) {
-      console.error("[SessionRename] Failed to bust session memory cache:", e);
+      console.error("[SessionRename] Failed to bust session memory cache or rebase aliases:", e);
     }
 
     res.json({ success: true, message: "Session renamed successfully." });

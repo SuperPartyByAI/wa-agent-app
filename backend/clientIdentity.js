@@ -118,8 +118,59 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId, altWaIdenti
     }
 }
 
+/**
+ * Rebases technical aliases (QR-* or Unknown-*) for all clients belonging to a specific session
+ * when that session receives a human-readable label or brand key.
+ */
+async function rebaseRouteAliases(sessionId, newLabel, newBrandKey, newAliasPrefix) {
+    console.log(`[RebaseRoute] Started rebase for ${sessionId} -> Prefix: ${newAliasPrefix}, Brand: ${newBrandKey}`);
+    
+    // 1. Fetch conversations mapped to this route
+    const { data: convs, error: convErr } = await supabase
+        .from('conversations')
+        .select('client_id')
+        .eq('session_id', sessionId)
+        .limit(10000);
+        
+    if (convErr || !convs) return;
+    
+    const clientIds = [...new Set(convs.map(c => c.client_id))].filter(Boolean);
+    if (clientIds.length === 0) return;
+
+    // 2. Scan clients in batches
+    for (let i = 0; i < clientIds.length; i += 100) {
+        const batchIds = clientIds.slice(i, i + 100);
+        const { data: clients, error: cErr } = await supabase
+            .from('clients')
+            .select('id, public_alias, brand_key')
+            .in('id', batchIds);
+            
+        if (cErr || !clients) continue;
+        
+        for (const client of clients) {
+            if (!client.public_alias) continue;
+
+            // Only rebase if it's currently a technical fallback alias
+            if (client.public_alias.startsWith('QR-') || client.public_alias.startsWith('Unknown')) {
+                const newAlias = `${newAliasPrefix}-${client.id.substring(0, 6)}`;
+                console.log(`[RebaseRoute] Rebasing client: ${client.id} | ${client.public_alias} -> ${newAlias} | Brand: ${newBrandKey}`);
+                
+                await supabase.from('clients').update({
+                    public_alias: newAlias,
+                    brand_key: newBrandKey
+                }).eq('id', client.id);
+                
+                await supabase.from('client_identity_links').update({
+                    brand_key: newBrandKey
+                }).eq('client_id', client.id);
+            }
+        }
+    }
+}
+
 module.exports = {
     resolveClientIdentity,
     getSessionBrandParams,
+    rebaseRouteAliases,
     sessionBrandCache
 };

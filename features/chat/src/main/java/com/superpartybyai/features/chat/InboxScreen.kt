@@ -80,7 +80,7 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                 val response = SupabaseClient.client.postgrest["v_inbox_summaries"]
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("conversation_id, conversation_status, conversation_updated_at, client_id, session_id, session_label, full_name, avatar_url, public_alias, internal_client_code, last_message_content, last_message_at, last_message_from_me"))
                     .decodeList<InboxSummaryModel>()
-                conversations = response.sortedByDescending { it.last_message_at ?: it.conversation_updated_at }
+                conversations = response.sortedByDescending { it.last_message_at ?: "" }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -254,18 +254,22 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                     } ?: (conv.internal_client_code ?: "Începeți o conversație")
                     
                     val timeString = try {
-                        val isoString = conv.last_message_at ?: conv.conversation_updated_at
-                        val instant = Instant.parse(if (isoString.endsWith("Z") || isoString.contains("+")) isoString else "${isoString}Z")
-                        val zoneId = ZoneId.systemDefault()
-                        val messageDate = instant.atZone(zoneId).toLocalDate()
-                        val today = LocalDate.now(zoneId)
-                        
-                        if (messageDate.isEqual(today)) {
-                            val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(zoneId)
-                            formatter.format(instant)
+                        val isoString = conv.last_message_at
+                        if (isoString != null) {
+                            val instant = Instant.parse(if (isoString.endsWith("Z") || isoString.contains("+")) isoString else "${isoString}Z")
+                            val zoneId = ZoneId.systemDefault()
+                            val messageDate = instant.atZone(zoneId).toLocalDate()
+                            val today = LocalDate.now(zoneId)
+                            
+                            if (messageDate.isEqual(today)) {
+                                val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(zoneId)
+                                formatter.format(instant)
+                            } else {
+                                val formatter = DateTimeFormatter.ofPattern("dd/MM/yy").withZone(zoneId)
+                                formatter.format(instant)
+                            }
                         } else {
-                            val formatter = DateTimeFormatter.ofPattern("dd/MM/yy").withZone(zoneId)
-                            formatter.format(instant)
+                            ""
                         }
                     } catch (e: Exception) {
                         ""

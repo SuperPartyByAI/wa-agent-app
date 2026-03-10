@@ -191,6 +191,9 @@ supabase.channel('messages-coordinator')
 supabase.channel('calls-coordinator')
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_events' }, async (payload) => {
       const call = payload.new;
+      if (call.client_id) {
+          require('./pii').updateClientRealPhoneGraph(call.client_id).catch(e => console.error('[Auto-PII 3CX Error]', e.message));
+      }
       if (call.status === 'missed') {
           console.log(`[AI Worker] Analyzing Missed Call ${call.id}`);
           const act = { action_type: 'suggest_reply', status: 'pending', payload: { suggested_text: `Buna ziua! Ati sunat la Superparty dar linia era ocupata. Aveti nevoie de detalii pentru organizarea unui eveniment?` } };

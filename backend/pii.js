@@ -34,15 +34,39 @@ async function getClientGraphPhone(clientId) {
     let explicitMsisdn = fullLinks.find(l => l.identifier_type === 'msisdn');
     if (explicitMsisdn) {
       let finalNum = explicitMsisdn.identifier_value.replace('@s.whatsapp.net', '');
-      return { e164: finalNum, source: 'msisdn', confidence: 90 };
+      if (!finalNum.startsWith('+')) finalNum = '+' + finalNum;
+      return { e164: finalNum, source: 'msisdn', confidence: 90, siblingClientIds };
     }
 
     // Fallback JID -> 80
     let explicitJid = fullLinks.find(l => l.identifier_value.endsWith('@s.whatsapp.net'));
     if (explicitJid) {
        let finalNum = explicitJid.identifier_value.replace('@s.whatsapp.net', '');
-       bestMatch = { e164: finalNum, source: 'jid', confidence: 80 };
+       if (!finalNum.startsWith('+')) finalNum = '+' + finalNum;
+       bestMatch = { e164: finalNum, source: 'jid', confidence: 80, siblingClientIds };
        return bestMatch;
+    }
+
+    // New Auto-Capture Rule: VCard / Contact Message -> 85
+    if (!bestMatch) {
+      const { data: contactMsgs } = await supabase
+        .from('messages')
+        .select('contact_vcard')
+        .in('sender_id', (crossLinks || []).map(l => l.client_id).concat([clientId]))
+        .eq('message_type', 'contact')
+        .not('contact_vcard', 'is', null)
+        .limit(5);
+
+      if (contactMsgs && contactMsgs.length > 0) {
+        for (let msg of contactMsgs) {
+          const match = msg.contact_vcard.match(/waid=([0-9]+)/);
+          if (match && match[1]) {
+             let finalNum = match[1];
+             if (!finalNum.startsWith('+')) finalNum = '+' + finalNum;
+             return { e164: finalNum, source: 'contact_vcard', confidence: 85, siblingClientIds };
+          }
+        }
+      }
     }
 
     // Fallback 3CX Call Events -> 70
@@ -59,7 +83,8 @@ async function getClientGraphPhone(clientId) {
           let num = call.direction === 'inbound' ? call.from_number : call.to_number;
           if (num && num.length >= 10 && !num.startsWith('Queue')) {
             // Found a valid external number linked to this client
-             return { e164: num, source: '3cx_call_event', confidence: 70 };
+             if (!num.startsWith('+')) num = '+' + num;
+             return { e164: num, source: '3cx_call_event', confidence: 70, siblingClientIds };
           }
         }
       }
@@ -89,8 +114,12 @@ async function updateClientRealPhoneGraph(clientId) {
     const bestMatch = await getClientGraphPhone(clientId);
     if (!bestMatch) return;
 
-    // 3. Update if new confidence is better or equal
+    // 3. Update if new confidence is better or equal, applying to the ALL siblings in the graph!
     if (bestMatch.confidence >= (currentClient.real_phone_confidence || 0)) {
+      const targetIds = bestMatch.siblingClientIds && bestMatch.siblingClientIds.length > 0 
+        ? bestMatch.siblingClientIds 
+        : [clientId];
+        
       await supabase
         .from('clients')
         .update({
@@ -99,9 +128,9 @@ async function updateClientRealPhoneGraph(clientId) {
           real_phone_confidence: bestMatch.confidence,
           real_phone_updated_at: new Date().toISOString()
         })
-        .eq('id', clientId);
+        .in('id', targetIds);
         
-      console.log(`[PII Sync] Updated client ${clientId} to ${bestMatch.e164} (Source: ${bestMatch.source})`);
+      console.log(`[PII Auto-Capture] Graph Synchronized! Updated clones [${targetIds.join(',')}] to canonical ${bestMatch.e164} (Source Deducer: ${bestMatch.source})`);
     }
   } catch(e) {
     console.error(`[PII Sync Error] ${e.message}`);

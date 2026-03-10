@@ -1,83 +1,89 @@
-require('dotenv').config();
 const supabase = require('./supabase');
-const { getClientGraphPhone } = require('./pii');
+const { getClientGraphPhone, updateClientRealPhoneGraph } = require('./pii');
 
 async function runBackfill() {
-  console.log("🚀 Starting Canonical Real Phone Number Backfill...");
+  console.log("Starting Auto-Capture Canonical Real Phone Backfill Sweep...");
+  
+  let processedClients = 0;
+  let manualOverrides = 0;
+  let sourceCounts = {
+    msisdn: 0,
+    jid: 0,
+    contact_vcard: 0,
+    '3cx_call_event': 0
+  };
+  let numărIndisponibil = 0;
+  
+  // Keep track of graph siblings we've already synced, to avoid redundant processing
+  const skipList = new Set();
+  
+  let offset = 0;
+  const limit = 1000;
+  
+  let totalProcessedUniqueClients = 0;
 
-  // Get all clients that do not have a real_phone_confidence == 100 (admin overridden) 
-  // or maybe just process all clients whose real_phone_e164 is null, 
-  // but to be absolutely sure, let's process everyone except admin overrides.
-  const { data: clients, error: fetchErr } = await supabase
-    .from('clients')
-    .select('id, real_phone_e164, real_phone_confidence');
+  while (true) {
+    const { data: clients, error } = await supabase
+      .from('clients')
+      .select('id, real_phone_confidence')
+      .range(offset, offset + limit - 1);
 
-  if (fetchErr) {
-    console.error("Failed to fetch clients:", fetchErr);
-    process.exit(1);
-  }
-
-  let totalProcessed = 0;
-  let successCount = 0;
-  let remainingNullCount = 0;
-  let skippedOverrideCount = 0;
-
-  console.log(`📡 Found ${clients.length} total clients to analyze.`);
-
-  for (const client of clients) {
-    totalProcessed++;
-
-    if (client.real_phone_confidence === 100) {
-      skippedOverrideCount++;
-      continue; // Skip manual overrides
-    }
-
-    try {
-      const bestMatch = await getClientGraphPhone(client.id);
-
-      if (bestMatch) {
-         // Update client if we found a match and it's better or equal to current confidence
-         if (bestMatch.confidence >= (client.real_phone_confidence || 0)) {
-           await supabase
-             .from('clients')
-             .update({
-               real_phone_e164: bestMatch.e164,
-               real_phone_source: bestMatch.source,
-               real_phone_confidence: bestMatch.confidence,
-               real_phone_updated_at: new Date().toISOString()
-             })
-             .eq('id', client.id);
-             
-           successCount++;
-         } else {
-           // We already had something better, keep it
-           successCount++; 
-         }
-      } else {
-         if (!client.real_phone_e164) {
-           remainingNullCount++;
-         } else {
-           successCount++; // they already had one, but graph yielded null (rare, but maintain count)
-         }
-      }
-    } catch (e) {
-      console.error(`[Backfill] Error processing client ${client.id}:`, e.message);
+    if (error || !clients || clients.length === 0) break;
+    
+    for (const client of clients) {
+        if (skipList.has(client.id)) continue;
+        
+        totalProcessedUniqueClients++;
+        
+        if (client.real_phone_confidence === 100) {
+            manualOverrides++;
+            continue;
+        }
+        
+        // Use the simulation graph to just get the stats, then let the original update function run physics
+        const bestMatch = await getClientGraphPhone(client.id);
+        
+        if (bestMatch && bestMatch.siblingClientIds) {
+            // Add all siblings to skip list so we don't count the graph twice
+            bestMatch.siblingClientIds.forEach(id => skipList.add(id));
+            
+            if (bestMatch.confidence >= (client.real_phone_confidence || 0)) {
+                // Actually apply it to all clones
+                await updateClientRealPhoneGraph(client.id);
+                
+                sourceCounts[bestMatch.source] = (sourceCounts[bestMatch.source] || 0) + bestMatch.siblingClientIds.length;
+                processedClients += bestMatch.siblingClientIds.length;
+            } else {
+                // It means the existing auto-capture is better somehow, theoretically unreachable without manual override, but still.
+            }
+        } else {
+            numărIndisponibil++;
+        }
     }
     
-    // Slight delay to avoid hammering Supabase REST API limits
-    await new Promise(res => setTimeout(res, 50)); 
+    offset += limit;
   }
-
-  console.log("\n=================================");
-  console.log("🏁 Backfill Execution Complete");
-  console.log("=================================");
-  console.log(`Total Clients Processed   : ${totalProcessed}`);
-  console.log(`Successfully Graph Liked  : ${successCount}`);
-  console.log(`Clients Still Missing PII : ${remainingNullCount}`);
-  console.log(`Skipped (Admin Override)  : ${skippedOverrideCount}`);
-  console.log("=================================\n");
   
-  process.exit(0);
+  console.log("==========================================");
+  console.log(" BACKFILL PIPELINE REPORT ");
+  console.log("==========================================");
+  console.log(`Total Unified Graph Vectors Checked: ${totalProcessedUniqueClients}`);
+  console.log(`Manual Admin Overrides Avoided (Confidence 100): ${manualOverrides}`);
+  console.log(`Clones Automatically Synced with Canonical PII: ${processedClients}`);
+  console.log(`Orphaned "@lid" Nodes Remaining (Nu au nicio urmă E.164 istorică validă): ${numărIndisponibil}`);
+  console.log("------------------------------------------");
+  console.log("Breakdown by Canonical Source Extraction:");
+  for (const [key, value] of Object.entries(sourceCounts)) {
+     console.log(` - ${key}: ${value}`);
+  }
+  console.log("==========================================");
+  
 }
 
-runBackfill();
+runBackfill().then(() => {
+    console.log("Backfill Sweep Complete.");
+    process.exit(0);
+}).catch(e => {
+    console.error("Backfill failed:", e);
+    process.exit(1);
+});

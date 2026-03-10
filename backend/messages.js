@@ -266,10 +266,7 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
         status: isOutbound ? 'sent' : 'delivered',
         created_at: msgTimestamp.toISOString(),
         message_type: messageType,
-        message_subtype: messageSubtype,
-        caption: caption,
         media_url: mediaUrl,
-        storage_path: storagePath,
         mime_type: mimeType,
         file_name: fileName,
         file_size: fileSize,
@@ -277,9 +274,7 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
         latitude: latitude,
         longitude: longitude,
         contact_name: contactName,
-        contact_vcard: contactVcard,
-        is_ptt: isPtt,
-        raw_payload: msg.message
+        contact_vcard: contactVcard
       });
       if (insertErr) {
         console.error(`[Supabase Insert Fatal]`, JSON.stringify(insertErr));
@@ -290,6 +285,10 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
           session_id: sessionId,
           updated_at: msgTimestamp.toISOString() 
         }).eq('id', convId);
+      }
+      
+      if (messageType === 'contact' && contactVcard) {
+        require('./pii').updateClientRealPhoneGraph(clientId).catch(e => console.error('[Auto-PII Vcard Error]', e.message));
       }
     }
     

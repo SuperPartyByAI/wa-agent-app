@@ -6,6 +6,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,7 +41,11 @@ data class MessageModel(
     val id: String,
     val sender_type: String,
     val content: String,
-    val created_at: String
+    val created_at: String,
+    val message_type: String? = "text",
+    val media_url: String? = null,
+    val file_name: String? = null,
+    val duration_seconds: Int? = null
 )
 
 @Serializable
@@ -67,7 +75,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val response = SupabaseClient.client.postgrest["messages"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, sender_type, content, created_at")) {
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, sender_type, content, created_at, message_type, media_url, file_name, duration_seconds")) {
                         filter {
                             eq("conversation_id", contactId)
                         }
@@ -286,6 +294,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                     CircularProgressIndicator()
                 }
             } else {
+                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
                 LazyColumn(modifier = Modifier.weight(1f).padding(16.dp)) {
                     items(messages.size) { index ->
                         val msg = messages[index]
@@ -300,11 +309,48 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                     containerColor = if (isAgent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                                 )
                             ) {
-                                Text(
-                                    text = msg.content,
-                                    modifier = Modifier.padding(12.dp),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    if (msg.message_type == "image" && !msg.media_url.isNullOrEmpty()) {
+                                        AsyncImage(
+                                            model = msg.media_url,
+                                            contentDescription = "Imagine atașată",
+                                            modifier = Modifier.fillMaxWidth(0.7f).heightIn(max = 300.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                                .clickable { uriHandler.openUri(msg.media_url) },
+                                            contentScale = ContentScale.Crop
+                                        )
+                                        if (msg.content.isNotBlank() && msg.content != "📷 Imagine") {
+                                            Text(text = msg.content, modifier = Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    } else if (msg.message_type == "document" || msg.message_type == "audio" || msg.message_type == "video") {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.clickable { msg.media_url?.let { uriHandler.openUri(it) } }.padding(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (msg.message_type == "audio") androidx.compose.material.icons.Icons.Default.PlayArrow else androidx.compose.material.icons.Icons.Default.Info,
+                                                contentDescription = msg.message_type,
+                                                modifier = Modifier.size(24.dp).padding(end = 8.dp)
+                                            )
+                                            Column {
+                                                Text(text = msg.file_name ?: msg.content, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                                if (msg.message_type == "audio" && msg.duration_seconds != null) {
+                                                    Text(text = "${msg.duration_seconds} sec", style = MaterialTheme.typography.labelSmall)
+                                                }
+                                            }
+                                        }
+                                    } else if (msg.message_type == "location") {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(androidx.compose.material.icons.Icons.Default.LocationOn, contentDescription = "Locație", modifier = Modifier.padding(end=4.dp))
+                                            Text(text = msg.content, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                    } else {
+                                        Text(
+                                            text = msg.content,
+                                            modifier = Modifier.padding(4.dp),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

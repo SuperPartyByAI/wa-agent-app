@@ -197,7 +197,10 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
     }
     
     // Resolve Identity natively through atomic locks (avoiding concurrent key collision limits)
+    console.log(`[PII DEBUG] Incoming Msg Key Dump for ${msgId}:`, JSON.stringify(msg.key, null, 2));
     const altIdentifier = msg.key.remoteJidAlt || null;
+    console.log(`[PII DEBUG] Decoded remoteJid: ${phoneOrWaIdentifier} | remoteJidAlt: ${altIdentifier}`);
+
     const client = await resolveClientIdentity(phoneOrWaIdentifier, sessionId, altIdentifier);
     if (!client) {
       console.log(`[Diagnostic] Skipping message ${msgId} due to missing client identity lock for ${phoneOrWaIdentifier}`);

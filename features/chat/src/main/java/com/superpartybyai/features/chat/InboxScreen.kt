@@ -296,7 +296,7 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                                         if (conv.client_id != null) {
                                             coroutineScope.launch {
                                                 try {
-                                                    val token = SupabaseClient.client.auth.currentAccessTokenOrNull()
+                                                    val token = withContext(Dispatchers.IO) { SupabaseClient.client.auth.currentAccessTokenOrNull() }
                                                     if (token != null) {
                                                         withContext(Dispatchers.IO) {
                                                             val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/clients/${conv.client_id}/real-number")

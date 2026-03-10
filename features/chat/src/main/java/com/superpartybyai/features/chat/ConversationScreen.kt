@@ -652,7 +652,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                     if (targetClientId != null) {
                                         coroutineScope.launch {
                                             try {
-                                                val token = SupabaseClient.client.auth.currentAccessTokenOrNull()
+                                                val token = withContext(Dispatchers.IO) { SupabaseClient.client.auth.currentAccessTokenOrNull() }
                                                 if (token != null) {
                                                     withContext(Dispatchers.IO) {
                                                         val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/clients/$targetClientId/real-number")

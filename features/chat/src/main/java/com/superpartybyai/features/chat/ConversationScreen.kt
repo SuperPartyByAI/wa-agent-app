@@ -211,6 +211,35 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         }
     }
     
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            tempCameraUri?.let {
+                pendingUri = it
+                typedCaption = ""
+                showCaptionDialog = true
+            }
+        } else {
+            tempCameraUri = null
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            val photoFile = File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
+            tempCameraUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Permisiune Cameră respinsă", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
     // Audio Recording State
     var isRecording by remember { mutableStateOf(false) }
     var audioFile by remember { mutableStateOf<File?>(null) }
@@ -727,7 +756,18 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                             expanded = showAttachMenu,
                             onDismissRequest = { showAttachMenu = false }
                         ) {
-                            DropdownMenuItem(text = { Text("Imagine / Video") }, onClick = { showAttachMenu = false; filePickerLauncher.launch("image/*") })
+                            DropdownMenuItem(text = { Text("Cameră Foto") }, onClick = { 
+                                showAttachMenu = false
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                } else {
+                                    val photoFile = File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
+                                    tempCameraUri = uri
+                                    takePictureLauncher.launch(uri)
+                                }
+                            })
+                            DropdownMenuItem(text = { Text("Galerie Foto/Video") }, onClick = { showAttachMenu = false; filePickerLauncher.launch("image/*") })
                             DropdownMenuItem(text = { Text("Document") }, onClick = { showAttachMenu = false; filePickerLauncher.launch("*/*") })
                             DropdownMenuItem(text = { Text("Locație") }, onClick = { showAttachMenu = false; showLocationDialog = true })
                             DropdownMenuItem(text = { Text("Contact") }, onClick = { showAttachMenu = false; showContactDialog = true })

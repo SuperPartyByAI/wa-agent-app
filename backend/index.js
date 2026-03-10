@@ -119,8 +119,16 @@ app.delete("/api/sessions/:sessionId", requireApiKey, async (req, res) => {
     try { session.client.end(undefined); } catch(e) {}
   }
   sessions.delete(sessionId);
-  await upsertSessionStatus(sessionId, 'DISCONNECTED');
-  res.json({ message: `Session ${sessionId} killed and removed.` });
+  
+  const { data } = await supabase.from('whatsapp_sessions').select('status').eq('session_key', sessionId).maybeSingle();
+  
+  if (data && (data.status === 'DISCONNECTED' || data.status === 'UNPAIRED' || data.status === 'CONFLICT')) {
+      await supabase.from('whatsapp_sessions').delete().eq('session_key', sessionId);
+      res.json({ message: `Session ${sessionId} permanently removed from database.` });
+  } else {
+      await upsertSessionStatus(sessionId, 'DISCONNECTED');
+      res.json({ message: `Session ${sessionId} gracefully disconnected.` });
+  }
 });
 
 app.post("/api/messages/send", requireApiKey, async (req, res) => {

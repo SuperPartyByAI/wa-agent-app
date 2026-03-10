@@ -121,6 +121,7 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId, altWaIdenti
 /**
  * Rebases technical aliases (QR-* or Unknown-*) for all clients belonging to a specific session
  * when that session receives a human-readable label or brand key.
+ * Now structurally handles sequential index allocation to avoid UNIQUE constraints.
  */
 async function rebaseRouteAliases(sessionId, newLabel, newBrandKey, newAliasPrefix) {
     console.log(`[RebaseRoute] Started rebase for ${sessionId} -> Prefix: ${newAliasPrefix}, Brand: ${newBrandKey}`);
@@ -137,6 +138,18 @@ async function rebaseRouteAliases(sessionId, newLabel, newBrandKey, newAliasPref
     const clientIds = [...new Set(convs.map(c => c.client_id))].filter(Boolean);
     if (clientIds.length === 0) return;
 
+    // Detect the current sequence highest watermark for the target brand
+    let currentMaxIndex = 0;
+    const { data: maxIdxData } = await supabase.from('clients')
+      .select('alias_index')
+      .eq('brand_key', newBrandKey)
+      .order('alias_index', { ascending: false })
+      .limit(1);
+
+    if (maxIdxData && maxIdxData.length > 0 && maxIdxData[0].alias_index) {
+        currentMaxIndex = maxIdxData[0].alias_index;
+    }
+
     // 2. Scan clients in batches
     for (let i = 0; i < clientIds.length; i += 100) {
         const batchIds = clientIds.slice(i, i + 100);
@@ -150,19 +163,22 @@ async function rebaseRouteAliases(sessionId, newLabel, newBrandKey, newAliasPref
         for (const client of clients) {
             if (!client.public_alias) continue;
 
-            // Only rebase if it's currently a technical fallback alias
-            if (client.public_alias.startsWith('QR-') || client.public_alias.startsWith('Unknown')) {
-                const newAlias = `${newAliasPrefix}-${client.id.substring(0, 6)}`;
-                console.log(`[RebaseRoute] Rebasing client: ${client.id} | ${client.public_alias} -> ${newAlias} | Brand: ${newBrandKey}`);
+            // Only rebase if it's currently a technical fallback alias or on a different brand
+            if (client.public_alias.startsWith('QR-') || client.public_alias.startsWith('Unknown') || client.brand_key !== newBrandKey) {
+                currentMaxIndex++;
+                const newAlias = `${newAliasPrefix}-${currentMaxIndex.toString().padStart(2, '0')}`;
+                
+                console.log(`[RebaseRoute] Rebasing client: ${client.id} | ${client.public_alias} -> ${newAlias} | Brand: ${newBrandKey} (Index: ${currentMaxIndex})`);
                 
                 await supabase.from('clients').update({
                     public_alias: newAlias,
-                    brand_key: newBrandKey
+                    brand_key: newBrandKey,
+                    alias_index: currentMaxIndex
                 }).eq('id', client.id);
                 
                 await supabase.from('client_identity_links').update({
                     brand_key: newBrandKey
-                }).eq('client_id', client.id);
+                }).eq('client_id', client.id).neq('brand_key', newBrandKey);
             }
         }
     }

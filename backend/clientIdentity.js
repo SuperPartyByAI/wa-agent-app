@@ -19,7 +19,7 @@ async function getSessionBrandParams(sessionId) {
  * Normalizes inputs and handles identity creation / alias mapping.
  * Avoids any unique constraint violations organically via recursive loops and PostgREST Native OUT maps.
  */
-async function resolveClientIdentity(phoneOrWaIdentifier, sessionId) {
+async function resolveClientIdentity(phoneOrWaIdentifier, sessionId, altWaIdentifier = null) {
     const isLid = phoneOrWaIdentifier.includes('@lid');
     const isGroup = phoneOrWaIdentifier.includes('@g.us');
     
@@ -37,6 +37,12 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId) {
         identifiers.push({ type: 'jid', value: `${phone}@s.whatsapp.net` });
     }
 
+    if (altWaIdentifier && altWaIdentifier.includes('@s.whatsapp.net')) {
+        const altPhone = altWaIdentifier.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('+', '');
+        identifiers.push({ type: 'msisdn', value: altPhone });
+        identifiers.push({ type: 'jid', value: `${altPhone}@s.whatsapp.net` });
+    }
+
     const brandParams = await getSessionBrandParams(sessionId);
 
     // Initial Lookup via Normalized Identity Links
@@ -49,7 +55,24 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId) {
         .limit(1)
         .maybeSingle();
 
-    if (linkData && linkData.clients) return linkData.clients;
+    if (linkData && linkData.clients) {
+        const clientId = linkData.client_id;
+        const upsertPayload = identifiers.map(i => ({
+            client_id: clientId,
+            brand_key: brandParams.brandKey,
+            identifier_type: i.type,
+            identifier_value: i.value,
+            is_primary: i.type === 'msisdn'
+        }));
+        
+        // Asynchronously bind any missing aliases (like MSISDN if it just appeared from remoteJidAlt)
+        supabase.from('client_identity_links').upsert(upsertPayload, { onConflict: 'brand_key,identifier_value', ignoreDuplicates: true }).then(() => {
+            const { updateClientRealPhoneGraph } = require('./pii');
+            updateClientRealPhoneGraph(clientId).catch(() => {});
+        });
+
+        return linkData.clients;
+    }
 
     // Creation or Split-Brain Auto-Merge Attempt via Atomic SQL Engine
     try {

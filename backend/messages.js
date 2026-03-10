@@ -197,7 +197,8 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
     }
     
     // Resolve Identity natively through atomic locks (avoiding concurrent key collision limits)
-    const client = await resolveClientIdentity(phoneOrWaIdentifier, sessionId);
+    const altIdentifier = msg.key.remoteJidAlt || null;
+    const client = await resolveClientIdentity(phoneOrWaIdentifier, sessionId, altIdentifier);
     if (!client) {
       console.log(`[Diagnostic] Skipping message ${msgId} due to missing client identity lock for ${phoneOrWaIdentifier}`);
       return;

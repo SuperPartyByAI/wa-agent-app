@@ -48,7 +48,7 @@ async function getClientGraphPhone(clientId) {
     // Fallback 3CX Call Events -> 70
     if (!bestMatch) {
       const { data: voiceCalls } = await supabase
-        .from('voice_calls')
+        .from('call_events')
         .select('from_number, to_number, direction')
         .in('client_id', siblingClientIds)
         .limit(10);

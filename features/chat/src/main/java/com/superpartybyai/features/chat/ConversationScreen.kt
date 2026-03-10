@@ -79,6 +79,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var messages by remember { mutableStateOf<List<MessageModel>>(emptyList()) }
     var inputMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
+    var loadError by remember { mutableStateOf<String?>(null) }
     var targetAlias by remember { mutableStateOf<String?>(null) }
     var currentSessionId by remember { mutableStateOf<String?>(null) }
     var targetAvatarUrl by remember { mutableStateOf<String?>(null) }
@@ -274,6 +275,8 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     
     val loadMessages: () -> Unit = {
         coroutineScope.launch {
+            isLoading = true
+            loadError = null
             try {
                 val response = SupabaseClient.client.postgrest["messages"]
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, sender_type, content, created_at, message_type, media_url, file_name, duration_seconds, latitude, longitude, contact_name, contact_vcard")) {
@@ -285,8 +288,9 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 messages = response
             } catch (e: Exception) {
                 e.printStackTrace()
+                loadError = e.message ?: "Eroare de conexiune sau schemă de date (verifică baza SQL)."
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Eroare încărcare mesaje: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Eroare DB: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             } finally {
                 isLoading = false
@@ -750,9 +754,20 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (isLoading && messages.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
+                }
+            } else if (loadError != null && messages.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+                        Icon(Icons.Default.Warning, contentDescription = "Eroare", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error)
+                        Text("Eroare la încărcare Supabase", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.error)
+                        Text(loadError ?: "A apărut o problemă necunoscută", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp))
+                        Button(onClick = { loadMessages() }) {
+                            Text("Reîncearcă")
+                        }
+                    }
                 }
             } else {
                 val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
@@ -761,7 +776,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Info, contentDescription = "Empty", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("Niciun mesaj găsit", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Trimite un mesaj pentru a deschide conversația.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Așteptând mesaje de pe rețeaua WhatsApp...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 } else {

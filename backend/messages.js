@@ -1,7 +1,8 @@
 const supabase = require('./supabase');
 const { resolveClientIdentity } = require('./clientIdentity');
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
-async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, externalId, sessionId, sock = null, bypassConvId = null) {
+async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, externalId, sessionId, sock = null, bypassConvId = null, extraMeta = {}) {
   try {
     const client = await resolveClientIdentity(phoneNumberOrIdentifier, sessionId);
     if (!client) return;
@@ -65,7 +66,8 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
       sender_type: 'agent',
       content: text,
       external_message_id: externalId || null,
-      status: 'sent'
+      status: 'sent',
+      ...extraMeta
     });
   } catch(e) {
     console.error(`[Supabase Outbound Error] ${e.message}`);
@@ -91,10 +93,107 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
     const phoneOrWaIdentifier = isLid ? waIdentifier : numericPhone;
     if (!isLid && (numericPhone.includes('@g.us') || numericPhone.includes('-'))) return;
 
-    const content = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
-    if (!content) {
-      console.log(`[Diagnostic] Skipping message ${msgId} due to empty content`, JSON.stringify(msg));
-      return; // Skip media/empty payloads for the baseline audit
+    let messageType = 'text';
+    let messageSubtype = null;
+    let caption = null;
+    let mediaUrl = null;
+    let storagePath = null;
+    let mimeType = null;
+    let fileName = null;
+    let fileSize = null;
+    let durationSeconds = null;
+    let latitude = null;
+    let longitude = null;
+    let contactName = null;
+    let contactVcard = null;
+    let isPtt = false;
+
+    let content = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+    
+    // Safety fallback for empty message objects from status broadcasts
+    if (!msg.message) return;
+
+    const messageKeys = Object.keys(msg.message);
+    const isMedia = messageKeys.some(k => ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage'].includes(k));
+
+    if (msg.message.imageMessage) {
+        messageType = 'image';
+        const imgMsg = msg.message.imageMessage;
+        caption = imgMsg.caption || null;
+        content = caption || "📷 Imagine";
+        mimeType = imgMsg.mimetype;
+        fileSize = imgMsg.fileLength ? Number(imgMsg.fileLength) : null;
+    } else if (msg.message.videoMessage) {
+        messageType = 'video';
+        const vidMsg = msg.message.videoMessage;
+        caption = vidMsg.caption || null;
+        content = caption || "🎥 Video";
+        mimeType = vidMsg.mimetype;
+        fileSize = vidMsg.fileLength ? Number(vidMsg.fileLength) : null;
+        durationSeconds = vidMsg.seconds;
+        if (vidMsg.gifPlayback) messageSubtype = 'gif';
+    } else if (msg.message.audioMessage) {
+        messageType = 'audio';
+        const audMsg = msg.message.audioMessage;
+        content = audMsg.ptt ? "🎤 Mesaj Vocal" : "🎵 Audio";
+        mimeType = audMsg.mimetype;
+        fileSize = audMsg.fileLength ? Number(audMsg.fileLength) : null;
+        durationSeconds = audMsg.seconds;
+        isPtt = !!audMsg.ptt;
+    } else if (msg.message.documentMessage) {
+        messageType = 'document';
+        const docMsg = msg.message.documentMessage;
+        caption = docMsg.caption || null;
+        fileName = docMsg.fileName;
+        content = caption || fileName || "📄 Document";
+        mimeType = docMsg.mimetype;
+        fileSize = docMsg.fileLength ? Number(docMsg.fileLength) : null;
+    } else if (msg.message.locationMessage) {
+        messageType = 'location';
+        const locMsg = msg.message.locationMessage;
+        latitude = locMsg.degreesLatitude;
+        longitude = locMsg.degreesLongitude;
+        content = locMsg.name ? `📍 ${locMsg.name}` : `📍 Locație (${latitude}, ${longitude})`;
+    } else if (msg.message.contactMessage) {
+        messageType = 'contact';
+        const ctMsg = msg.message.contactMessage;
+        contactName = ctMsg.displayName;
+        contactVcard = ctMsg.vcard;
+        content = `👤 Contact: ${contactName || 'Necunoscut'}`;
+    }
+
+    if (!content && messageType === 'text') {
+      console.log(`[Diagnostic] Skipping message ${msgId} due to empty content or unknown payload.`, JSON.stringify(msg));
+      return; 
+    }
+
+    if (isMedia && sock) {
+        try {
+            const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: require('pino')({ level: 'silent' }) });
+            if (buffer) {
+                const extMap = {
+                    'image/jpeg': '.jpg', 'image/png': '.png', 'video/mp4': '.mp4',
+                    'audio/ogg; codecs=opus': '.ogg', 'audio/mp4': '.m4a', 'application/pdf': '.pdf'
+                };
+                let ext = extMap[mimeType] || '';
+                if (!ext && fileName && fileName.includes('.')) ext = '.' + fileName.split('.').pop();
+                
+                storagePath = `inbound/${sessionId}/${msgId}${ext}`;
+                const { error: uploadErr } = await supabase.storage.from('whatsapp_media').upload(storagePath, buffer, {
+                    contentType: mimeType || 'application/octet-stream',
+                    upsert: true
+                });
+
+                if (uploadErr) {
+                    console.error(`[Media Upload Error] ${msgId}:`, uploadErr);
+                    storagePath = null;
+                } else {
+                    mediaUrl = supabase.storage.from('whatsapp_media').getPublicUrl(storagePath).data.publicUrl;
+                }
+            }
+        } catch (mediaErr) {
+            console.error(`[Media Download Exception] MsgId: ${msgId}`, mediaErr.message);
+        }
     }
     
     // Resolve Identity natively through atomic locks (avoiding concurrent key collision limits)
@@ -165,7 +264,22 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
         content: content,
         external_message_id: msgId,
         status: isOutbound ? 'sent' : 'delivered',
-        created_at: msgTimestamp.toISOString()
+        created_at: msgTimestamp.toISOString(),
+        message_type: messageType,
+        message_subtype: messageSubtype,
+        caption: caption,
+        media_url: mediaUrl,
+        storage_path: storagePath,
+        mime_type: mimeType,
+        file_name: fileName,
+        file_size: fileSize,
+        duration_seconds: durationSeconds,
+        latitude: latitude,
+        longitude: longitude,
+        contact_name: contactName,
+        contact_vcard: contactVcard,
+        is_ptt: isPtt,
+        raw_payload: msg.message
       });
       if (insertErr) {
         console.error(`[Supabase Insert Fatal]`, JSON.stringify(insertErr));

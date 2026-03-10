@@ -124,10 +124,26 @@ app.delete("/api/sessions/:sessionId", requireApiKey, async (req, res) => {
 });
 
 app.post("/api/messages/send", requireApiKey, async (req, res) => {
-  let { sessionId: requestedSessionId, text, conversationId } = req.body;
+  let { 
+    sessionId: requestedSessionId, 
+    text, 
+    conversationId,
+    message_type = 'text',
+    media_url,
+    mime_type,
+    file_name,
+    latitude,
+    longitude,
+    contact_name,
+    contact_vcard,
+    is_ptt
+  } = req.body;
 
-  if (!requestedSessionId || !conversationId || !text) {
-    return res.status(400).json({ error: "Missing sessionId, conversationId, or text" });
+  if (!requestedSessionId || !conversationId) {
+    return res.status(400).json({ error: "Missing sessionId or conversationId" });
+  }
+  if (message_type === 'text' && !text) {
+    return res.status(400).json({ error: "Missing text for text message" });
   }
 
   // Organic identity derived securely avoiding UI leaks
@@ -202,10 +218,29 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     let lastError = null;
     let result = null;
 
+    let baileysPayload = {};
+    const contentStr = text || "";
+
+    if (message_type === 'text') {
+        baileysPayload = { text: contentStr };
+    } else if (message_type === 'image') {
+        baileysPayload = { image: { url: media_url }, caption: contentStr };
+    } else if (message_type === 'video') {
+        baileysPayload = { video: { url: media_url }, caption: contentStr };
+    } else if (message_type === 'audio') {
+        baileysPayload = { audio: { url: media_url }, mimetype: mime_type || 'audio/mp4', ptt: !!is_ptt };
+    } else if (message_type === 'document') {
+        baileysPayload = { document: { url: media_url }, mimetype: mime_type || 'application/octet-stream', fileName: file_name || 'document', caption: contentStr };
+    } else if (message_type === 'location') {
+        baileysPayload = { location: { degreesLatitude: parseFloat(latitude), degreesLongitude: parseFloat(longitude), name: contentStr } };
+    } else if (message_type === 'contact') {
+        baileysPayload = { contacts: { displayName: contact_name, contacts: [{ vcard: contact_vcard }] } };
+    }
+
     for (let i = 0; i < 3; i++) {
         try {
             // Baileys structure
-            result = await activeSession.client.sendMessage(targetJid, { text: text });
+            result = await activeSession.client.sendMessage(targetJid, baileysPayload);
             success = true;
             break;
         } catch (err) {
@@ -221,7 +256,20 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
 
     // Explicit format mapping for external message ID resolution in Baileys
     const externalId = result?.key?.id || null;
-    syncOutboundMessageToSupabase(formattedRoute, text, externalId, activeSessionId, activeSession.client, conversationId).catch(e => {
+    const extraMeta = {
+      message_type,
+      caption: message_type !== 'text' ? contentStr : null,
+      media_url: media_url || null,
+      mime_type: mime_type || null,
+      file_name: file_name || null,
+      latitude: latitude ? parseFloat(latitude) : null,
+      longitude: longitude ? parseFloat(longitude) : null,
+      contact_name: contact_name || null,
+      contact_vcard: contact_vcard || null,
+      is_ptt: !!is_ptt
+    };
+
+    syncOutboundMessageToSupabase(formattedRoute, contentStr, externalId, activeSessionId, activeSession.client, conversationId, extraMeta).catch(e => {
         logger(activeSessionId, "error", `Failed to sync outbound message to Supabase: ${e.message}`);
     });
 

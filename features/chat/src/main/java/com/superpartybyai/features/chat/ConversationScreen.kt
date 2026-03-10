@@ -132,14 +132,111 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                             fileName = cursor.getString(nameIndex)
                         }
                     }
-                    val bytes = withContext(Dispatchers.IO) { cr.openInputStream(selectedUri)?.readBytes() }
+                    val startTotalMs = System.currentTimeMillis()
+                    var compressMs = 0L
+                    var uploadMs = 0L
+                    var originalBytesSize = 0
+                    var compressedBytesSize = 0
+                    var originalW = 0
+                    var originalH = 0
+                    var finalW = 0
+                    var finalH = 0
+
+                    @Suppress("RedundantValueInitialization", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+                    var bytes: ByteArray? = null
+                    val isImage = mimeType.startsWith("image/")
+                    
+                    if (isImage) {
+                        try {
+                            bytes = withContext(Dispatchers.IO) {
+                                val compressStart = System.currentTimeMillis()
+                                var inputStream = cr.openInputStream(selectedUri)
+                                originalBytesSize = inputStream?.available() ?: 0
+                                val options = android.graphics.BitmapFactory.Options()
+                                options.inJustDecodeBounds = true
+                                android.graphics.BitmapFactory.decodeStream(inputStream, null, options)
+                                inputStream?.close()
+
+                                val maxSize = 1600
+                                var scale = 1
+                                while (options.outWidth / scale / 2 >= maxSize || options.outHeight / scale / 2 >= maxSize) {
+                                    scale *= 2
+                                }
+
+                                val decodeOptions = android.graphics.BitmapFactory.Options()
+                                decodeOptions.inSampleSize = scale
+                                
+                                inputStream = cr.openInputStream(selectedUri)
+                                var bitmap = android.graphics.BitmapFactory.decodeStream(inputStream, null, decodeOptions)
+                                inputStream?.close()
+
+                                if (bitmap != null) {
+                                    inputStream = cr.openInputStream(selectedUri)
+                                    if (inputStream != null) {
+                                        val exif = android.media.ExifInterface(inputStream)
+                                        val orientation = exif.getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, android.media.ExifInterface.ORIENTATION_NORMAL)
+                                        val matrix = android.graphics.Matrix()
+                                        when (orientation) {
+                                            android.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                                            android.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                                            android.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                                        }
+                                        if (orientation != android.media.ExifInterface.ORIENTATION_NORMAL && orientation != android.media.ExifInterface.ORIENTATION_UNDEFINED) {
+                                            val rotated = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                                            if (rotated != bitmap) {
+                                                bitmap.recycle()
+                                                bitmap = rotated
+                                            }
+                                        }
+                                        inputStream.close()
+                                    }
+
+                                    var width = bitmap.width
+                                    var height = bitmap.height
+                                    originalW = options.outWidth
+                                    originalH = options.outHeight
+                                    
+                                    if (width > maxSize || height > maxSize) {
+                                        val ratio = Math.min(maxSize.toFloat() / width, maxSize.toFloat() / height)
+                                        width = (width * ratio).toInt()
+                                        height = (height * ratio).toInt()
+                                        val scaled = android.graphics.Bitmap.createScaledBitmap(bitmap, width, height, true)
+                                        if (scaled != bitmap) {
+                                            bitmap.recycle()
+                                            bitmap = scaled
+                                        }
+                                    }
+
+                                    val outStream = java.io.ByteArrayOutputStream()
+                                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, outStream)
+                                    val compressedBytes = outStream.toByteArray()
+                                    compressedBytesSize = compressedBytes.size
+                                    finalW = width
+                                    finalH = height
+                                    compressMs = System.currentTimeMillis() - compressStart
+                                    
+                                    bitmap.recycle()
+                                    compressedBytes
+                                } else {
+                                    cr.openInputStream(selectedUri)?.readBytes()
+                                }
+                            }
+                        } catch(e: Exception) { 
+                            android.util.Log.e("Superparty", "Compression OOM/Fail", e) 
+                            bytes = withContext(Dispatchers.IO) { cr.openInputStream(selectedUri)?.readBytes() }
+                        }
+                    } else {
+                        bytes = withContext(Dispatchers.IO) { cr.openInputStream(selectedUri)?.readBytes() }
+                    }
                     
                     if (bytes != null) {
                         val extension = fileName.substringAfterLast('.', "")
                         val finalFileName = if (extension.isNotEmpty() && extension != fileName) "${java.util.UUID.randomUUID()}.$extension" else java.util.UUID.randomUUID().toString()
                         val storagePath = "outbound/$currentSessionId/$finalFileName"
                         
-                        withContext(Dispatchers.IO) { SupabaseClient.client.storage.from("whatsapp_media").upload(storagePath, bytes, upsert = true) }
+                        val uploadStart = System.currentTimeMillis()
+                        withContext(Dispatchers.IO) { SupabaseClient.client.storage.from("whatsapp_media").upload(storagePath, bytes!!, upsert = true) }
+                        uploadMs = System.currentTimeMillis() - uploadStart
                         val publicUrl = SupabaseClient.client.storage.from("whatsapp_media").publicUrl(storagePath)
                         
                         val msgType = when {
@@ -178,6 +275,10 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                         }
                         
                         if (sendSuccessful) {
+                            val totalMs = System.currentTimeMillis() - startTotalMs
+                            if (isImage) {
+                                android.util.Log.i("Superparty", "[ImageCompression] originalBytes=$originalBytesSize compressedBytes=$compressedBytesSize originalWxH=${originalW}x${originalH} finalWxH=${finalW}x${finalH} quality=75 compressMs=$compressMs uploadMs=$uploadMs totalMs=$totalMs")
+                            }
                             messages = messages + MessageModel(
                                id = java.util.UUID.randomUUID().toString(),
                                sender_type = "agent",
@@ -190,8 +291,8 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                         }
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
-                    Toast.makeText(context, "Eroare atașament: ${e.message}", Toast.LENGTH_LONG).show()
+                    android.util.Log.e("Superparty", "Upload Crash", e)
+                    withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare atașament: [${e.javaClass.simpleName}] ${e.message}", Toast.LENGTH_LONG).show() }
                 } finally {
                     isUploading = false
                 }
@@ -645,7 +746,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                                 val resJson = JSONObject(resp)
                                                 realPhoneNumber = resJson.optString("realNumber", inputRealNumber)
                                             } else {
-                                                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                                                val err = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "{}"
                                                 val errMsg = try { JSONObject(err).optString("error", "HTTP $rc") } catch(e:Exception) { "HTTP $rc" }
                                                 throw Exception(errMsg)
                                             }

@@ -67,21 +67,29 @@ async function getClientGraphPhone(clientId) {
 
     // New Auto-Capture Rule: VCard / Contact Message -> 85
     if (!bestMatch) {
-      const { data: contactMsgs } = await supabase
-        .from('messages')
-        .select('contact_vcard')
-        .in('sender_id', (crossLinks || []).map(l => l.client_id).concat([clientId]))
-        .eq('message_type', 'contact')
-        .not('contact_vcard', 'is', null)
-        .limit(5);
+      const { data: convs } = await supabase
+        .from('conversations')
+        .select('id')
+        .in('client_id', siblingClientIds);
+        
+      if (convs && convs.length > 0) {
+        const convIds = convs.map(c => c.id);
+        const { data: contactMsgs } = await supabase
+          .from('messages')
+          .select('contact_vcard')
+          .in('conversation_id', convIds)
+          .eq('message_type', 'contact')
+          .not('contact_vcard', 'is', null)
+          .limit(5);
 
-      if (contactMsgs && contactMsgs.length > 0) {
-        for (let msg of contactMsgs) {
-          const match = msg.contact_vcard.match(/waid=([0-9]+)/);
-          if (match && match[1]) {
-             let finalNum = match[1];
-             if (!finalNum.startsWith('+')) finalNum = '+' + finalNum;
-             return { e164: finalNum, source: 'contact_vcard', confidence: 85, siblingClientIds };
+        if (contactMsgs && contactMsgs.length > 0) {
+          for (let msg of contactMsgs) {
+            const match = msg.contact_vcard.match(/waid=([0-9]+)/);
+            if (match && match[1]) {
+               let finalNum = match[1];
+               if (!finalNum.startsWith('+')) finalNum = '+' + finalNum;
+               return { e164: finalNum, source: 'contact_vcard', confidence: 85, siblingClientIds };
+            }
           }
         }
       }

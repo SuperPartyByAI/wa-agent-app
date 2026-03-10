@@ -21,10 +21,14 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
     if (bypassConvId) {
       convId = bypassConvId;
     } else {
-      // Route-Sticky Guard: Lock onto any existing open conversation for this physical person on this exact route, regardless of brand.
-      const { data: aliasLinks } = await supabase.from('client_identity_links').select('client_id').eq('identifier_value', phoneOrWaIdentifier);
+      // Route-Sticky Guard (Alias Drift Hardened): Lock onto any existing open conversation for the entire physical person graph.
+      const { data: myLinks } = await supabase.from('client_identity_links').select('identifier_value').eq('client_id', clientId);
+      const myIdentifiers = myLinks ? myLinks.map(l => l.identifier_value) : [];
+      if (!myIdentifiers.includes(phoneNumberOrIdentifier)) myIdentifiers.push(phoneNumberOrIdentifier);
+
+      const { data: aliasLinks } = await supabase.from('client_identity_links').select('client_id').in('identifier_value', myIdentifiers);
       if (aliasLinks && aliasLinks.length > 0) {
-        const aliasIds = aliasLinks.map(l => l.client_id);
+        const aliasIds = [...new Set(aliasLinks.map(l => l.client_id))];
         const { data: stickyConv } = await supabase.from('conversations')
           .select('id, client_id')
           .in('client_id', aliasIds)
@@ -112,10 +116,14 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
     let convId;
     let currentUpdatedAt = 0;
 
-    // Route-Sticky Guard: Lock onto any existing open conversation for this physical person on this exact route, regardless of brand.
-    const { data: aliasLinks } = await supabase.from('client_identity_links').select('client_id').eq('identifier_value', phoneOrWaIdentifier);
+    // Route-Sticky Guard (Alias Drift Hardened): Lock onto any existing open conversation for the entire physical person graph.
+    const { data: myLinks } = await supabase.from('client_identity_links').select('identifier_value').eq('client_id', clientId);
+    const myIdentifiers = myLinks ? myLinks.map(l => l.identifier_value) : [];
+    if (!myIdentifiers.includes(phoneOrWaIdentifier)) myIdentifiers.push(phoneOrWaIdentifier);
+
+    const { data: aliasLinks } = await supabase.from('client_identity_links').select('client_id').in('identifier_value', myIdentifiers);
     if (aliasLinks && aliasLinks.length > 0) {
-      const aliasIds = aliasLinks.map(l => l.client_id);
+      const aliasIds = [...new Set(aliasLinks.map(l => l.client_id))];
       const { data: stickyConv } = await supabase.from('conversations')
         .select('id, client_id, updated_at')
         .in('client_id', aliasIds)

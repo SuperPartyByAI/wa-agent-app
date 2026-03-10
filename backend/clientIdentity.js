@@ -6,13 +6,25 @@ async function getSessionBrandParams(sessionId) {
     if (sessionBrandCache.has(sessionId)) return sessionBrandCache.get(sessionId);
 
     const { data } = await supabase.from('whatsapp_sessions').select('label, brand_key, alias_prefix').eq('session_key', sessionId).limit(1).maybeSingle();
-    let label = (data && data.label) ? data.label.trim() : 'Unknown';
-    let brandKey = (data && data.brand_key) ? data.brand_key : label.toUpperCase().replace(/\s+/g, '_');
-    let aliasPrefix = (data && data.alias_prefix) ? data.alias_prefix : label.split(' ')[0];
+    
+    if (data && (data.label || data.brand_key)) {
+        let label = data.label ? data.label.trim() : sessionId;
+        let brandKey = data.brand_key ? data.brand_key : label.toUpperCase().replace(/\s+/g, '_');
+        let aliasPrefix = data.alias_prefix ? data.alias_prefix : label.split(' ')[0];
+        
+        const params = { label, brandKey, aliasPrefix };
+        sessionBrandCache.set(sessionId, params);
+        return params;
+    }
 
-    const params = { label, brandKey, aliasPrefix };
-    sessionBrandCache.set(sessionId, params);
-    return params;
+    // Structural Fallback for initially unlabelled sessions
+    // Do NOT cache this, allowing automatic recovery once the session gets a human label
+    const safeSuffix = sessionId.replace('wa_', '').substring(0, 6).toUpperCase();
+    return {
+        label: `QR-${safeSuffix}`,
+        brandKey: `SESSION_${safeSuffix}`,
+        aliasPrefix: `QR-${safeSuffix}`
+    };
 }
 
 /**

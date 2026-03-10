@@ -5,7 +5,7 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
   try {
     const client = await resolveClientIdentity(phoneNumberOrIdentifier, sessionId);
     if (!client) return;
-    const clientId = client.id;
+    let clientId = client.id;
 
     if (sock && !client.avatar_url) {
       setTimeout(async () => {
@@ -21,10 +21,27 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
     if (bypassConvId) {
       convId = bypassConvId;
     } else {
-      const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').eq('session_id', sessionId).order('updated_at', { ascending: false }).limit(1).maybeSingle();
-      if (existingConv) {
-        convId = existingConv.id;
-      } else {
+      // Route-Sticky Guard: Lock onto any existing open conversation for this physical person on this exact route, regardless of brand.
+      const { data: aliasLinks } = await supabase.from('client_identity_links').select('client_id').eq('identifier_value', phoneOrWaIdentifier);
+      if (aliasLinks && aliasLinks.length > 0) {
+        const aliasIds = aliasLinks.map(l => l.client_id);
+        const { data: stickyConv } = await supabase.from('conversations')
+          .select('id, client_id')
+          .in('client_id', aliasIds)
+          .eq('channel', 'whatsapp')
+          .eq('session_id', sessionId)
+          .eq('status', 'open')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (stickyConv) {
+          convId = stickyConv.id;
+          clientId = stickyConv.client_id;
+        }
+      }
+
+      if (!convId) {
         const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open', session_id: sessionId }).select().single();
         convId = newConv?.id;
       }
@@ -81,7 +98,7 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
       console.log(`[Diagnostic] Skipping message ${msgId} due to missing client identity lock for ${phoneOrWaIdentifier}`);
       return;
     }
-    const clientId = client.id;
+    let clientId = client.id;
     
     if (sock && !client.avatar_url) {
       setTimeout(async () => {
@@ -94,12 +111,29 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
     
     let convId;
     let currentUpdatedAt = 0;
-    const { data: existingConv } = await supabase.from('conversations').select('id, updated_at').eq('client_id', clientId).eq('channel', 'whatsapp').eq('session_id', sessionId).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+
+    // Route-Sticky Guard: Lock onto any existing open conversation for this physical person on this exact route, regardless of brand.
+    const { data: aliasLinks } = await supabase.from('client_identity_links').select('client_id').eq('identifier_value', phoneOrWaIdentifier);
+    if (aliasLinks && aliasLinks.length > 0) {
+      const aliasIds = aliasLinks.map(l => l.client_id);
+      const { data: stickyConv } = await supabase.from('conversations')
+        .select('id, client_id, updated_at')
+        .in('client_id', aliasIds)
+        .eq('channel', 'whatsapp')
+        .eq('session_id', sessionId)
+        .eq('status', 'open')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (stickyConv) {
+        convId = stickyConv.id;
+        clientId = stickyConv.client_id;
+        currentUpdatedAt = stickyConv.updated_at ? new Date(stickyConv.updated_at).getTime() : 0;
+      }
+    }
     
-    if (existingConv) {
-      convId = existingConv.id;
-      currentUpdatedAt = existingConv.updated_at ? new Date(existingConv.updated_at).getTime() : 0;
-    } else {
+    if (!convId) {
       const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open', session_id: sessionId }).select().single();
       convId = newConv?.id;
     }

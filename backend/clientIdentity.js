@@ -67,7 +67,16 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId) {
         if (rpcErr) throw rpcErr;
         
         // Supabase RPCs returning TABLE resolve as an array of rows
-        return Array.isArray(clientData) ? clientData[0] : clientData;
+        const client = Array.isArray(clientData) ? clientData[0] : clientData;
+        
+        if (client && client.id) {
+            const { updateClientRealPhoneGraph } = require('./pii');
+            setTimeout(() => {
+                updateClientRealPhoneGraph(client.id).catch(() => {});
+            }, 0);
+        }
+
+        return client;
 
     } catch (allocError) {
         console.error(`[resolveClientIdentity] Atomic Router failed for ${phoneOrWaIdentifier}:`, allocError);

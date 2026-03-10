@@ -258,15 +258,13 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     const externalId = result?.key?.id || null;
     const extraMeta = {
       message_type,
-      caption: message_type !== 'text' ? contentStr : null,
       media_url: media_url || null,
       mime_type: mime_type || null,
       file_name: file_name || null,
       latitude: latitude ? parseFloat(latitude) : null,
       longitude: longitude ? parseFloat(longitude) : null,
       contact_name: contact_name || null,
-      contact_vcard: contact_vcard || null,
-      is_ptt: !!is_ptt
+      contact_vcard: contact_vcard || null
     };
 
     syncOutboundMessageToSupabase(formattedRoute, contentStr, externalId, activeSessionId, activeSession.client, conversationId, extraMeta).catch(e => {
@@ -427,10 +425,12 @@ app.get("/api/clients/:clientId/real-number", async (req, res) => {
   }
 
   const token = authHeader.replace('Bearer ', '');
+  console.log(`[PII Resolver] Incoming request to resolve real number for client ${clientId}`);
   
   // 1. Authenticate user explicitly via Supabase Auth
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) {
+    console.log(`[PII Resolver] Auth Failed for client ${clientId}: ${authErr ? authErr.message : 'No User'}`);
     return res.status(401).json({ error: "Unauthorized. Invalid JWT Token." });
   }
 
@@ -440,67 +440,81 @@ app.get("/api/clients/:clientId/real-number", async (req, res) => {
   }
 
   try {
-    // 3. Graph Traversal to resolve linked device ID to physical owner MSISDN
-    // First, find all identifiers linked directly to this target clientId
-    const { data: directLinks, error: linkErr } = await supabase
-      .from('client_identity_links')
-      .select('identifier_value, identifier_type')
-      .eq('client_id', clientId);
+    // Check canonical property first 
+    const { data: clientData, error: clientErr } = await supabase
+      .from('clients')
+      .select('real_phone_e164')
+      .eq('id', clientId)
+      .single();
 
-    if (linkErr) throw linkErr;
-    if (!directLinks || directLinks.length === 0) {
-      return res.status(404).json({ error: 'Număr real indisponibil', reason: 'No identifiers found' });
+    if (clientData && clientData.real_phone_e164) {
+       console.log(`[PII Resolver] Success. Found canonical real hit for ${clientId}: ${clientData.real_phone_e164}`);
+       return res.json({ realNumber: clientData.real_phone_e164 });
     }
 
-    // Is there a direct MSISDN or JID right here?
-    let directPhone = directLinks.find(l => l.identifier_type === 'msisdn' || l.identifier_value.endsWith('@s.whatsapp.net'));
-    if (directPhone) {
-      let cleanVal = directPhone.identifier_value.replace('@s.whatsapp.net', '');
-      return res.json({ realNumber: cleanVal });
+    // Force recalculate if null
+    console.log(`[PII Resolver] No canonical property for ${clientId}. Recalculating graph...`);
+    const { updateClientRealPhoneGraph } = require('./pii');
+    await updateClientRealPhoneGraph(clientId);
+    
+    // Check again
+    const { data: clientRefreshed } = await supabase
+      .from('clients')
+      .select('real_phone_e164')
+      .eq('id', clientId)
+      .single();
+
+    if (clientRefreshed && clientRefreshed.real_phone_e164) {
+       return res.json({ realNumber: clientRefreshed.real_phone_e164 });
     }
 
-    // No direct hit. It's likely an isolated @lid. We must traverse sibling graph logic:
-    // Extract linked values to find siblings
-    const identifierValues = directLinks.map(l => l.identifier_value);
-
-    // Find all other clients sharing these same identifiers
-    const { data: crossLinks } = await supabase
-      .from('client_identity_links')
-      .select('client_id')
-      .in('identifier_value', identifierValues);
-
-    const siblingClientIds = Array.from(new Set((crossLinks || []).map(l => l.client_id)));
-
-    // Now pull ALL identifiers belonging to all sibling clients (the physical person's total identity footprint)
-    const { data: entireFootprint } = await supabase
-      .from('client_identity_links')
-      .select('identifier_value, identifier_type')
-      .in('client_id', siblingClientIds);
-
-    const fullLinks = entireFootprint || [];
-
-    // Prioritize MSISDN
-    let explicitMsisdn = fullLinks.find(l => l.identifier_type === 'msisdn');
-    if (explicitMsisdn) {
-      let finalNum = explicitMsisdn.identifier_value.replace('@s.whatsapp.net', '');
-      return res.json({ realNumber: finalNum });
-    }
-
-    // Fallback to JID (s.whatsapp.net)
-    let explicitJid = fullLinks.find(l => l.identifier_value.endsWith('@s.whatsapp.net'));
-    if (explicitJid) {
-       let finalNum = explicitJid.identifier_value.replace('@s.whatsapp.net', '');
-       return res.json({ realNumber: finalNum });
-    }
-
-    // If we traversed the entire graph and only found @lid or unknown
+    // If absolutely no graph matched
     return res.status(404).json({ error: 'Număr real indisponibil' });
-
   } catch(e) {
     console.error(`[PII Resolver] Error: ${e.message}`);
     return res.status(500).json({ error: 'Internal Server Error fetching PII' });
   }
 });
+
+app.post("/api/clients/:clientId/real-number", async (req, res) => {
+  const { clientId } = req.params;
+  const authHeader = req.headers.authorization;
+  const { realNumber, notes } = req.body;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "Unauthorized. Missing Bearer JWT." });
+  }
+  
+  if (!realNumber) {
+    return res.status(400).json({ error: "Missing 'realNumber' in JSON body." });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+  if (authErr || !user || user.email !== 'ursache.andrei1995@gmail.com') {
+    return res.status(403).json({ error: "Access Denied. Admin only." });
+  }
+
+  try {
+    await supabase.from('clients').update({
+      real_phone_e164: realNumber.replace(/[^0-9]/g, ''),
+      real_phone_source: 'manual_admin',
+      real_phone_confidence: 100,
+      real_phone_updated_at: new Date().toISOString(),
+      real_phone_notes: notes || null
+    }).eq('id', clientId);
+    
+    console.log(`[PII Resolver] Admin override forced canonical real hit for ${clientId}: ${realNumber}`);
+    
+    // Optionally trigger async sibling synchronization to propagate override to clones
+    return res.json({ success: true, realNumber: realNumber.replace(/[^0-9]/g, '') });
+  } catch (e) {
+    console.error(`[PII Resolver Override] Error: ${e.message}`);
+    return res.status(500).json({ error: 'Internal Server Error updating PII' });
+  }
+});
+
 
 app.get("/health", (req, res) => {
   res.json({

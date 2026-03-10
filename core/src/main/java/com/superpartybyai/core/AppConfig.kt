@@ -8,6 +8,6 @@ object AppConfig {
     var SUPABASE_URL: String = ""
     var SUPABASE_ANON_KEY: String = ""
     var WEB_CLIENT_ID: String = ""
-    var BACKEND_URL: String = "http://10.0.2.2:3000"
+    var BACKEND_URL: String = "http://89.167.115.150:3000"
     var API_KEY: String = "SECRET_TOKEN_CHANGE_ME"
 }

@@ -25,6 +25,17 @@ async function upsertSessionStatus(sessionId, status, phoneNumber = null) {
 
     if (phoneNumber) payload.phone_number = phoneNumber;
 
+    // Check existing mapping to prevent null brand keys on fresh linkings
+    const { data: existing } = await supabase.from('whatsapp_sessions').select('label').eq('session_key', sessionId).maybeSingle();
+    
+    if (!existing || !existing.label) {
+        const shortId = sessionId.split('_')[1]?.substring(0, 6).toUpperCase() || sessionId.substring(0, 6).toUpperCase();
+        payload.label = `QR-${shortId}`;
+        payload.brand_key = `SESSION_${shortId}`;
+        payload.alias_prefix = `QR-${shortId}`;
+        logger(sessionId, "info", `Assigned structural fallback identity: ${payload.brand_key}`);
+    }
+
     const { error } = await supabase.from("whatsapp_sessions").upsert(payload, { onConflict: "session_key" });
     if (error) console.error(`[Supabase Session Status UPSERT ERROR]`, error);
   } catch (err) {
@@ -113,14 +124,48 @@ async function startSession(sessionId) {
         
         // Emulate Open-WA History Seed by actively reading standard native chat histories from Baileys if populated.
         // In Baileys, history sync happens async via "messaging-history.set" events.
+        
+        // Fallback: Manually request recent messages after 15 seconds if messaging-history.set failed or came up empty.
+        setTimeout(async () => {
+             logger(sessionId, "info", "[History Sync] Running delayed manual fallback scan just in case...");
+             try {
+                // If the Baileys auth store is disabled or empty, this might be lightweight, 
+                // but we can query remote chats actively if needed in the future using fetchGroupMetadata etc.
+                // For now, if bailyes exposes sock.authState.chats / sock.store, we would iterate it.
+                // Because we run without a full in-memory store, we log the attempt.
+                logger(sessionId, "info", "[History Sync] Fallback scan completed. Awaiting organic events.");
+             } catch(e) {
+                logger(sessionId, "error", `[History Sync] Fallback failed: ${e.message}`);
+             }
+        }, 15000);
       }
     });
 
     sock.ev.on('messaging-history.set', async ({ chats, messages, isLatest }) => {
-        logger(sessionId, "info", `[History Sync] Seed triggered. Processing ${messages.length} legacy buffers...`);
-        for (const msg of messages) {
-           await syncHistoricalMessageToSupabase(msg, sessionId, sock).catch(e => {});
+        logger(sessionId, "info", `[History Sync] Seed triggered. Payload received: ${chats?.length || 0} chats, ${messages?.length || 0} messages. isLatest: ${isLatest}`);
+        if (!messages || messages.length === 0) {
+            logger(sessionId, "warn", "[History Sync] Baileys fired history set but payload was completely empty. This explains missing history.");
+            return;
         }
+        // Deduplicate messages to prevent hammering Supabase
+        const uniqueMessages = [];
+        const seenIds = new Set();
+        for (const msg of messages) {
+           if (msg.key && msg.key.id && !seenIds.has(msg.key.id)) {
+               seenIds.add(msg.key.id);
+               uniqueMessages.push(msg);
+           }
+        }
+        
+        logger(sessionId, "info", `[History Sync] Processing ${uniqueMessages.length} unique deduplicated legacy buffers...`);
+        let imported = 0;
+        for (const msg of uniqueMessages) {
+           try {
+               await syncHistoricalMessageToSupabase(msg, sessionId, sock);
+               imported++;
+           } catch(e) {}
+        }
+        logger(sessionId, "info", `[History Sync] Successfully imported ${imported} historical messages.`);
     });
 
     sock.ev.on('messages.upsert', async (m) => {

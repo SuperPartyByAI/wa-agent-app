@@ -1,0 +1,27 @@
+{
+  "key": {
+    "remoteJid": "153407742578775@lid",
+    "remoteJidAlt": "40737571397@s.whatsapp.net",
+    "fromMe": false,
+    "id": "ACF336E44AA99EFCBD217D773F30C254",
+    "participant": "",
+    "addressingMode": "lid"
+  },
+  "messageTimestamp": 1773168762,
+  "pushName": "ursache andrei1995",
+  "broadcast": false,
+  "message": {
+    "conversation": "Y1",
+    "messageContextInfo": {
+      "deviceListMetadata": {
+        "senderKeyHash": "FDp6Lt90Ljl+iw==",
+        "senderTimestamp": "1772914647",
+        "recipientKeyHash": "aL/rCqfjj3fWwg==",
+        "recipientTimestamp": "1773105860"
+      },
+      "deviceListMetadataVersion": 2,
+      "messageSecret": "KxUpEuEWVQPFf/JRCqVVQdaT+gI7hXdp4WRCjY8fSSU="
+    }
+  }
+}
+,

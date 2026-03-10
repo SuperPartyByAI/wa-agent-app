@@ -30,4 +30,5 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("com.google.android.gms:play-services-location:21.1.0")
 }

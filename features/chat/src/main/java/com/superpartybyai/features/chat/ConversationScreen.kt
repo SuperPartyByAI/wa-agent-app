@@ -51,6 +51,10 @@ import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.gotrue.auth
 
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import android.location.Location
+
 @Serializable
 data class MessageModel(
     val id: String,
@@ -102,9 +106,8 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var typedCaption by remember { mutableStateOf("") }
     
     var showLocationDialog by remember { mutableStateOf(false) }
-    var mockLatitude by remember { mutableStateOf("") }
-    var mockLongitude by remember { mutableStateOf("") }
-    var mockLocationName by remember { mutableStateOf("") }
+    var fetchingLocation by remember { mutableStateOf(false) }
+    var fetchedLocation by remember { mutableStateOf<Location?>(null) }
     
     var showContactDialog by remember { mutableStateOf(false) }
     var mockContactName by remember { mutableStateOf("") }
@@ -231,12 +234,40 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            val photoFile = File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+            val photoFile = File.createTempFile("camera_temp", ".jpg", context.cacheDir).apply { createNewFile() }
             val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
             tempCameraUri = uri
             takePictureLauncher.launch(uri)
         } else {
             Toast.makeText(context, "Permisiune Cameră respinsă", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        if (fineGranted || coarseGranted) {
+            fetchingLocation = true
+            showLocationDialog = true
+            try {
+                val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                    .addOnSuccessListener { location: Location? ->
+                        fetchedLocation = location
+                        fetchingLocation = false
+                    }
+                    .addOnFailureListener {
+                        fetchingLocation = false
+                        Toast.makeText(context, "Eroare senzor GPS", Toast.LENGTH_SHORT).show()
+                    }
+            } catch (e: SecurityException) {
+                fetchingLocation = false
+                Toast.makeText(context, "Lipsă permisiuni GPS sigure", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "Permisiune Locație respinsă", Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -452,52 +483,59 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     if (showLocationDialog) {
         AlertDialog(
             onDismissRequest = { showLocationDialog = false },
-            title = { Text("Trimite Locație") },
+            title = { Text("Trimite Locație (GPS Real)") },
             text = {
-                Column {
-                    OutlinedTextField(value = mockLatitude, onValueChange = { mockLatitude = it }, label = { Text("Latitudine (ex. 44.4268)") })
-                    OutlinedTextField(value = mockLongitude, onValueChange = { mockLongitude = it }, label = { Text("Longitudine (ex. 26.1025)") })
-                    OutlinedTextField(value = mockLocationName, onValueChange = { mockLocationName = it }, label = { Text("Nume Locație (opțional)") })
+                if (fetchingLocation) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                        Text("Preiau semnal satelit...")
+                    }
+                } else if (fetchedLocation != null) {
+                    val latStr = String.format("%.6f", fetchedLocation!!.latitude)
+                    val lonStr = String.format("%.6f", fetchedLocation!!.longitude)
+                    Text("📍 GPS Confirmă:\n\nLatitudine: $latStr\nLongitudine: $lonStr\n\nApasă Trimite pentru share.")
+                } else {
+                    Text("Nu s-a putut obține locația hardware. Asigurați-vă că GPS-ul este pornit din setările telefonului.")
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    showLocationDialog = false
-                    if (currentSessionId != null && mockLatitude.isNotBlank() && mockLongitude.isNotBlank()) {
-                         coroutineScope.launch {
-                             try {
-                                 withContext(Dispatchers.IO) {
-                                     val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/messages/send")
-                                     val conn = url.openConnection() as HttpURLConnection
-                                     conn.requestMethod = "POST"
-                                     conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                                     conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
-                                     conn.doOutput = true
-                                     val jsonBody = JSONObject().apply {
-                                         put("conversationId", contactId)
-                                         put("sessionId", currentSessionId)
-                                         put("message_type", "location")
-                                         put("latitude", mockLatitude.trim())
-                                         put("longitude", mockLongitude.trim())
-                                         if (mockLocationName.isNotBlank()) put("text", mockLocationName)
-                                     }
-                                     conn.outputStream.use { os ->
-                                         val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
-                                         os.write(input, 0, input.size)
-                                     }
-                                     if (conn.responseCode in 200..299) {
-                                         val namePart = if (mockLocationName.isNotBlank()) mockLocationName else "Locație (${mockLatitude}, ${mockLongitude})"
-                                         messages = messages + MessageModel(id = java.util.UUID.randomUUID().toString(), sender_type = "agent", content = "📍 $namePart", created_at = java.time.Instant.now().toString(), message_type = "location")
-                                     } else {
-                                         withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare: HTTP ${conn.responseCode}", Toast.LENGTH_LONG).show() }
-                                     }
-                                 }
-                             } catch(e: Exception) {
-                                 withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare Locație: ${e.message}", Toast.LENGTH_LONG).show() }
-                             }
-                         }
-                    }
-                }) { Text("Trimite") }
+                if (!fetchingLocation && fetchedLocation != null) {
+                    Button(onClick = {
+                        val latStr = fetchedLocation!!.latitude.toString()
+                        val lonStr = fetchedLocation!!.longitude.toString()
+                        showLocationDialog = false
+                        coroutineScope.launch {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/messages/send")
+                                    val conn = url.openConnection() as HttpURLConnection
+                                    conn.requestMethod = "POST"
+                                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                                    conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
+                                    conn.doOutput = true
+                                    val jsonBody = JSONObject().apply {
+                                        put("conversationId", contactId)
+                                        put("sessionId", currentSessionId)
+                                        put("message_type", "location")
+                                        put("latitude", latStr)
+                                        put("longitude", lonStr)
+                                    }
+                                    conn.outputStream.use { os ->
+                                        val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                                        os.write(input, 0, input.size)
+                                    }
+                                    if (conn.responseCode in 200..299) {
+                                        messages = messages + MessageModel(id = java.util.UUID.randomUUID().toString(), sender_type = "agent", content = "📍 Locație curentă ($latStr, $lonStr)", created_at = java.time.Instant.now().toString(), message_type = "location")
+                                    } else {
+                                        withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare: HTTP ${conn.responseCode}", Toast.LENGTH_LONG).show() }
+                                    }
+                                }
+                            } catch(e: Exception) {
+                                withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare Locație: ${e.message}", Toast.LENGTH_LONG).show() }
+                            }
+                        }
+                    }) { Text("Trimite") }
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showLocationDialog = false }) { Text("Anulează") }
@@ -758,10 +796,10 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                         ) {
                             DropdownMenuItem(text = { Text("Cameră Foto") }, onClick = { 
                                 showAttachMenu = false
-                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                                    cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
                                 } else {
-                                    val photoFile = File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                                    val photoFile = File.createTempFile("camera_temp", ".jpg", context.cacheDir).apply { createNewFile() }
                                     val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
                                     tempCameraUri = uri
                                     takePictureLauncher.launch(uri)
@@ -769,7 +807,32 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                             })
                             DropdownMenuItem(text = { Text("Galerie Foto/Video") }, onClick = { showAttachMenu = false; filePickerLauncher.launch("image/*") })
                             DropdownMenuItem(text = { Text("Document") }, onClick = { showAttachMenu = false; filePickerLauncher.launch("*/*") })
-                            DropdownMenuItem(text = { Text("Locație") }, onClick = { showAttachMenu = false; showLocationDialog = true })
+                            DropdownMenuItem(text = { Text("Locație") }, onClick = { 
+                                showAttachMenu = false
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                                    locationPermissionLauncher.launch(
+                                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    )
+                                } else {
+                                    fetchingLocation = true
+                                    showLocationDialog = true
+                                    try {
+                                        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+                                        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                                            .addOnSuccessListener { location: Location? ->
+                                                fetchedLocation = location
+                                                fetchingLocation = false
+                                            }
+                                            .addOnFailureListener {
+                                                fetchingLocation = false
+                                                Toast.makeText(context, "Eroare hardware obținere senzor locație", Toast.LENGTH_SHORT).show()
+                                            }
+                                    } catch (e: SecurityException) {
+                                        fetchingLocation = false
+                                        Toast.makeText(context, "Eroare securitate GPS rețea celulară", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            })
                             DropdownMenuItem(text = { Text("Contact") }, onClick = { showAttachMenu = false; showContactDialog = true })
                         }
                     }

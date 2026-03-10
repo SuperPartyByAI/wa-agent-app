@@ -5,7 +5,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Info
@@ -93,10 +92,6 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var showSetRealNumberDialog by remember { mutableStateOf(false) }
     var inputRealNumber by remember { mutableStateOf("") }
     var isSubmittingRealNumber by remember { mutableStateOf(false) }
-    
-    // Rename Modal State
-    var isRenamingClient by remember { mutableStateOf(false) }
-    var newAliasText by remember { mutableStateOf("") }
     
     // Upload & Picker State
     var isUploading by remember { mutableStateOf(false) }
@@ -495,59 +490,6 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         }
     }
 
-    if (isRenamingClient) {
-        AlertDialog(
-            onDismissRequest = { isRenamingClient = false },
-            title = { Text("Redenumește Clientul") },
-            text = {
-                OutlinedTextField(
-                    value = newAliasText,
-                    onValueChange = { newAliasText = it },
-                    label = { Text("Nume NOU (ex. Gigel Firma X)") },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    val aliasToSave = newAliasText
-                    isRenamingClient = false
-                    coroutineScope.launch {
-                        try {
-                            withContext(Dispatchers.IO) {
-                                val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/clients/rename")
-                                val conn = url.openConnection() as HttpURLConnection
-                                conn.requestMethod = "POST"
-                                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                                conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
-                                conn.doOutput = true
-                                val jsonBody = JSONObject().apply {
-                                    put("conversationId", contactId)
-                                    put("newAlias", aliasToSave)
-                                }
-                                conn.outputStream.use { os ->
-                                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
-                                    os.write(input, 0, input.size)
-                                }
-                                if (conn.responseCode !in 200..299) throw Exception("HTTP ${conn.responseCode}")
-                            }
-                            targetAlias = aliasToSave
-                            Toast.makeText(context, "Client redenumit!", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Eroare redenumire: ${e.message}", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }) {
-                    Text("Salvează")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { isRenamingClient = false }) {
-                    Text("Anulează")
-                }
-            }
-        )
-    }
-
 
 
     if (showLocationDialog) {
@@ -842,12 +784,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        isRenamingClient = true
-                        newAliasText = targetAlias ?: ""
-                    }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Rename Client")
-                    }
+                    // Intentionally left blank: Operator cannot arbitrarily edit the client name per compliance
                 }
             )
         },

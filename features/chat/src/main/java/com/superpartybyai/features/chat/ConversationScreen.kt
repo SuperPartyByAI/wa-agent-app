@@ -58,7 +58,11 @@ data class MessageModel(
     val message_type: String? = "text",
     val media_url: String? = null,
     val file_name: String? = null,
-    val duration_seconds: Int? = null
+    val duration_seconds: Int? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val contact_name: String? = null,
+    val contact_vcard: String? = null
 )
 
 @Serializable
@@ -81,20 +85,29 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var isRenamingClient by remember { mutableStateOf(false) }
     var newAliasText by remember { mutableStateOf("") }
     
-    // Upload State
+    // Upload & Picker State
     var isUploading by remember { mutableStateOf(false) }
+    var showAttachMenu by remember { mutableStateOf(false) }
+    var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    var showCaptionDialog by remember { mutableStateOf(false) }
+    var typedCaption by remember { mutableStateOf("") }
+    
+    var showLocationDialog by remember { mutableStateOf(false) }
+    var mockLatitude by remember { mutableStateOf("") }
+    var mockLongitude by remember { mutableStateOf("") }
+    var mockLocationName by remember { mutableStateOf("") }
+    
+    var showContactDialog by remember { mutableStateOf(false) }
+    var mockContactName by remember { mutableStateOf("") }
+    var mockContactPhone by remember { mutableStateOf("") }
     
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { selectedUri ->
-            if (currentSessionId == null) {
-                Toast.makeText(context, "Sesiunea sursă lipsește. Rutele de reply sunt blocate.", Toast.LENGTH_LONG).show()
-                return@let
-            }
+    val handleUploadAndSend: (Uri, String) -> Unit = { selectedUri, caption ->
+        if (currentSessionId == null) {
+            Toast.makeText(context, "Sesiunea sursă lipsește. Rutele de reply sunt blocate.", Toast.LENGTH_LONG).show()
+        } else {
             isUploading = true
             coroutineScope.launch {
                 try {
@@ -107,29 +120,25 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                             fileName = cursor.getString(nameIndex)
                         }
                     }
-                    val bytes = withContext(Dispatchers.IO) {
-                        cr.openInputStream(selectedUri)?.readBytes()
-                    }
+                    val bytes = withContext(Dispatchers.IO) { cr.openInputStream(selectedUri)?.readBytes() }
+                    
                     if (bytes != null) {
                         val extension = fileName.substringAfterLast('.', "")
-                        val finalFileName = if (extension.isNotEmpty()) "${java.util.UUID.randomUUID()}.$extension" else java.util.UUID.randomUUID().toString()
+                        val finalFileName = if (extension.isNotEmpty() && extension != fileName) "${java.util.UUID.randomUUID()}.$extension" else java.util.UUID.randomUUID().toString()
                         val storagePath = "outbound/$currentSessionId/$finalFileName"
                         
-                        // Upload directly to Supabase from device
-                        withContext(Dispatchers.IO) {
-                            SupabaseClient.client.storage.from("whatsapp_media").upload(storagePath, bytes, upsert = true)
-                        }
-                        
+                        withContext(Dispatchers.IO) { SupabaseClient.client.storage.from("whatsapp_media").upload(storagePath, bytes, upsert = true) }
                         val publicUrl = SupabaseClient.client.storage.from("whatsapp_media").publicUrl(storagePath)
                         
-                        // Instruct Backend to dispatch message
+                        val msgType = when {
+                            mimeType.startsWith("image/") -> "image"
+                            mimeType.startsWith("video/") -> "video"
+                            mimeType.startsWith("audio/") -> "audio"
+                            else -> "document"
+                        }
+                        
+                        var sendSuccessful = false
                         withContext(Dispatchers.IO) {
-                            val msgType = when {
-                                mimeType.startsWith("image/") -> "image"
-                                mimeType.startsWith("video/") -> "video"
-                                mimeType.startsWith("audio/") -> "audio"
-                                else -> "document"
-                            }
                             val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/messages/send")
                             val conn = url.openConnection() as HttpURLConnection
                             conn.requestMethod = "POST"
@@ -144,24 +153,29 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                 put("media_url", publicUrl)
                                 put("mime_type", mimeType)
                                 put("file_name", fileName)
+                                if (caption.isNotBlank()) put("text", caption)
                             }
                             
                             conn.outputStream.use { os ->
                                 val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
                                 os.write(input, 0, input.size)
                             }
-                            if (conn.responseCode !in 200..299) throw Exception("HTTP ${conn.responseCode}")
+                            if (conn.responseCode in 200..299) {
+                                sendSuccessful = true
+                            } else { throw Exception("HTTP ${conn.responseCode}") }
                         }
-                        messages = messages + MessageModel(
-                           id = java.util.UUID.randomUUID().toString(),
-                           sender_type = "agent",
-                           content = "Trimitere atașament: $fileName",
-                           created_at = java.time.Instant.now().toString(),
-                           message_type = if (mimeType.startsWith("image/")) "image" else "document",
-                           media_url = publicUrl,
-                           file_name = fileName
-                        )
-                        // Toast.makeText(context, "Fișier trimis!", Toast.LENGTH_SHORT).show()
+                        
+                        if (sendSuccessful) {
+                            messages = messages + MessageModel(
+                               id = java.util.UUID.randomUUID().toString(),
+                               sender_type = "agent",
+                               content = if (caption.isNotBlank()) caption else "Trimitere atașament: $fileName",
+                               created_at = java.time.Instant.now().toString(),
+                               message_type = msgType,
+                               media_url = publicUrl,
+                               file_name = fileName
+                            )
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -169,6 +183,21 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 } finally {
                     isUploading = false
                 }
+            }
+        }
+    }
+    
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val mimeType = context.contentResolver.getType(it) ?: ""
+            if (mimeType.startsWith("image/") || mimeType.startsWith("video/")) {
+                pendingUri = it
+                typedCaption = ""
+                showCaptionDialog = true
+            } else {
+                handleUploadAndSend(it, "")
             }
         }
     }
@@ -242,7 +271,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val response = SupabaseClient.client.postgrest["messages"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, sender_type, content, created_at, message_type, media_url, file_name, duration_seconds")) {
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, sender_type, content, created_at, message_type, media_url, file_name, duration_seconds, latitude, longitude, contact_name, contact_vcard")) {
                         filter {
                             eq("conversation_id", contactId)
                         }
@@ -354,6 +383,139 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         )
     }
 
+    if (showCaptionDialog) {
+        AlertDialog(
+            onDismissRequest = { showCaptionDialog = false; pendingUri = null; typedCaption = "" },
+            title = { Text("Adaugă o descriere (opțional)") },
+            text = {
+                OutlinedTextField(value = typedCaption, onValueChange = { typedCaption = it }, label = { Text("Descriere imagine / video") }, singleLine = false)
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showCaptionDialog = false
+                    pendingUri?.let { handleUploadAndSend(it, typedCaption) }
+                    pendingUri = null
+                    typedCaption = ""
+                }) { Text("Trimite") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCaptionDialog = false; pendingUri = null; typedCaption = "" }) { Text("Anulează") }
+            }
+        )
+    }
+
+    if (showLocationDialog) {
+        AlertDialog(
+            onDismissRequest = { showLocationDialog = false },
+            title = { Text("Trimite Locație") },
+            text = {
+                Column {
+                    OutlinedTextField(value = mockLatitude, onValueChange = { mockLatitude = it }, label = { Text("Latitudine (ex. 44.4268)") })
+                    OutlinedTextField(value = mockLongitude, onValueChange = { mockLongitude = it }, label = { Text("Longitudine (ex. 26.1025)") })
+                    OutlinedTextField(value = mockLocationName, onValueChange = { mockLocationName = it }, label = { Text("Nume Locație (opțional)") })
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showLocationDialog = false
+                    if (currentSessionId != null && mockLatitude.isNotBlank() && mockLongitude.isNotBlank()) {
+                         coroutineScope.launch {
+                             try {
+                                 withContext(Dispatchers.IO) {
+                                     val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/messages/send")
+                                     val conn = url.openConnection() as HttpURLConnection
+                                     conn.requestMethod = "POST"
+                                     conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                                     conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
+                                     conn.doOutput = true
+                                     val jsonBody = JSONObject().apply {
+                                         put("conversationId", contactId)
+                                         put("sessionId", currentSessionId)
+                                         put("message_type", "location")
+                                         put("latitude", mockLatitude.trim())
+                                         put("longitude", mockLongitude.trim())
+                                         if (mockLocationName.isNotBlank()) put("text", mockLocationName)
+                                     }
+                                     conn.outputStream.use { os ->
+                                         val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                                         os.write(input, 0, input.size)
+                                     }
+                                     if (conn.responseCode in 200..299) {
+                                         val namePart = if (mockLocationName.isNotBlank()) mockLocationName else "Locație (${mockLatitude}, ${mockLongitude})"
+                                         messages = messages + MessageModel(id = java.util.UUID.randomUUID().toString(), sender_type = "agent", content = "📍 $namePart", created_at = java.time.Instant.now().toString(), message_type = "location")
+                                     } else {
+                                         withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare: HTTP ${conn.responseCode}", Toast.LENGTH_LONG).show() }
+                                     }
+                                 }
+                             } catch(e: Exception) {
+                                 withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare Locație: ${e.message}", Toast.LENGTH_LONG).show() }
+                             }
+                         }
+                    }
+                }) { Text("Trimite") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLocationDialog = false }) { Text("Anulează") }
+            }
+        )
+    }
+
+    if (showContactDialog) {
+        AlertDialog(
+            onDismissRequest = { showContactDialog = false },
+            title = { Text("Trimite Contact Card") },
+            text = {
+                Column {
+                    OutlinedTextField(value = mockContactName, onValueChange = { mockContactName = it }, label = { Text("Nume Contact") })
+                    OutlinedTextField(value = mockContactPhone, onValueChange = { mockContactPhone = it }, label = { Text("Telefon VCard (ex. +407...)") })
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showContactDialog = false
+                    if (currentSessionId != null && mockContactName.isNotBlank() && mockContactPhone.isNotBlank()) {
+                         coroutineScope.launch {
+                             try {
+                                 withContext(Dispatchers.IO) {
+                                     val cleanPhone = mockContactPhone.trim().replace(" ", "")
+                                     val waid = cleanPhone.replace("+", "")
+                                     val vcard = "BEGIN:VCARD\nVERSION:3.0\nN:;${mockContactName};;;\nFN:${mockContactName}\nTEL;type=CELL;waid=${waid}:${cleanPhone}\nEND:VCARD"
+                                     val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/messages/send")
+                                     val conn = url.openConnection() as HttpURLConnection
+                                     conn.requestMethod = "POST"
+                                     conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                                     conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
+                                     conn.doOutput = true
+                                     val jsonBody = JSONObject().apply {
+                                         put("conversationId", contactId)
+                                         put("sessionId", currentSessionId)
+                                         put("message_type", "contact")
+                                         put("contact_name", mockContactName.trim())
+                                         put("contact_vcard", vcard)
+                                     }
+                                     conn.outputStream.use { os ->
+                                         val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                                         os.write(input, 0, input.size)
+                                     }
+                                     if (conn.responseCode in 200..299) {
+                                         messages = messages + MessageModel(id = java.util.UUID.randomUUID().toString(), sender_type = "agent", content = "👤 Contact: $mockContactName", created_at = java.time.Instant.now().toString(), message_type = "contact")
+                                     } else {
+                                         withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare: HTTP ${conn.responseCode}", Toast.LENGTH_LONG).show() }
+                                     }
+                                 }
+                             } catch(e: Exception) {
+                                 withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare Contact: ${e.message}", Toast.LENGTH_LONG).show() }
+                             }
+                         }
+                    }
+                }) { Text("Trimite") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showContactDialog = false }) { Text("Anulează") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -393,8 +555,19 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 if (isUploading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(8.dp))
                 } else {
-                    IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Add, contentDescription = "Attach File")
+                    Box {
+                        IconButton(onClick = { showAttachMenu = true }) {
+                            Icon(androidx.compose.material.icons.Icons.Default.Add, contentDescription = "Attach File")
+                        }
+                        DropdownMenu(
+                            expanded = showAttachMenu,
+                            onDismissRequest = { showAttachMenu = false }
+                        ) {
+                            DropdownMenuItem(text = { Text("Imagine / Video") }, onClick = { showAttachMenu = false; filePickerLauncher.launch("image/*") })
+                            DropdownMenuItem(text = { Text("Document") }, onClick = { showAttachMenu = false; filePickerLauncher.launch("*/*") })
+                            DropdownMenuItem(text = { Text("Locație") }, onClick = { showAttachMenu = false; showLocationDialog = true })
+                            DropdownMenuItem(text = { Text("Contact") }, onClick = { showAttachMenu = false; showContactDialog = true })
+                        }
                     }
                 }
                 TextField(
@@ -487,13 +660,9 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                         }
                                         val rc = conn.responseCode
                                         if (rc !in 200..299) {
-                                            withContext(Dispatchers.Main) {
-                                                Toast.makeText(context, "Eroare trimitere: HTTP $rc", Toast.LENGTH_LONG).show()
-                                            }
-                                            return@withContext
+                                            throw Exception("HTTP $rc")
                                         }
                                     }
-                                    // Append locally optimistically
                                     messages = messages + MessageModel(
                                        id = java.util.UUID.randomUUID().toString(),
                                        sender_type = "agent",
@@ -568,9 +737,32 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                             }
                                         }
                                     } else if (msg.message_type == "location") {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.clickable {
+                                                if (msg.latitude != null && msg.longitude != null) {
+                                                    try {
+                                                        uriHandler.openUri("geo:${msg.latitude},${msg.longitude}?q=${msg.latitude},${msg.longitude}")
+                                                    } catch (e: Exception) { }
+                                                }
+                                            }.padding(4.dp)
+                                        ) {
                                             Icon(androidx.compose.material.icons.Icons.Default.LocationOn, contentDescription = "Locație", modifier = Modifier.padding(end=4.dp))
                                             Text(text = msg.content, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                    } else if (msg.message_type == "contact") {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(4.dp)) {
+                                            Icon(Icons.Default.Person, contentDescription = "Contact", modifier = Modifier.padding(end=4.dp))
+                                            Column {
+                                                Text(text = msg.content, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                                if (!msg.contact_vcard.isNullOrBlank()) {
+                                                    val waidRegex = "waid=([0-9+]+)".toRegex()
+                                                    val match = waidRegex.find(msg.contact_vcard)
+                                                    if (match != null) {
+                                                        Text(text = "WhatsApp: +${match.groupValues[1]}", style = MaterialTheme.typography.labelSmall)
+                                                    }
+                                                }
+                                            }
                                         }
                                     } else {
                                         Text(

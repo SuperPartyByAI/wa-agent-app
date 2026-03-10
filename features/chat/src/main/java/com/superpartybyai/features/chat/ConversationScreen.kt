@@ -101,9 +101,6 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     // Upload & Picker State
     var isUploading by remember { mutableStateOf(false) }
     var showAttachMenu by remember { mutableStateOf(false) }
-    var pendingUri by remember { mutableStateOf<Uri?>(null) }
-    var showCaptionDialog by remember { mutableStateOf(false) }
-    var typedCaption by remember { mutableStateOf("") }
     
     var showLocationDialog by remember { mutableStateOf(false) }
     var fetchingLocation by remember { mutableStateOf(false) }
@@ -304,14 +301,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val mimeType = context.contentResolver.getType(it) ?: ""
-            if (mimeType.startsWith("image/") || mimeType.startsWith("video/")) {
-                pendingUri = it
-                typedCaption = ""
-                showCaptionDialog = true
-            } else {
-                handleUploadAndSend(it, "")
-            }
+            handleUploadAndSend(it, "")
         }
     }
     
@@ -322,9 +312,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     ) { success: Boolean ->
         if (success) {
             tempCameraUri?.let {
-                pendingUri = it
-                typedCaption = ""
-                showCaptionDialog = true
+                handleUploadAndSend(it, "")
             }
         } else {
             tempCameraUri = null
@@ -560,26 +548,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         )
     }
 
-    if (showCaptionDialog) {
-        AlertDialog(
-            onDismissRequest = { showCaptionDialog = false; pendingUri = null; typedCaption = "" },
-            title = { Text("Adaugă o descriere (opțional)") },
-            text = {
-                OutlinedTextField(value = typedCaption, onValueChange = { typedCaption = it }, label = { Text("Descriere imagine / video") }, singleLine = false)
-            },
-            confirmButton = {
-                Button(onClick = {
-                    showCaptionDialog = false
-                    pendingUri?.let { handleUploadAndSend(it, typedCaption) }
-                    pendingUri = null
-                    typedCaption = ""
-                }) { Text("Trimite") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCaptionDialog = false; pendingUri = null; typedCaption = "" }) { Text("Anulează") }
-            }
-        )
-    }
+
 
     if (showLocationDialog) {
         AlertDialog(

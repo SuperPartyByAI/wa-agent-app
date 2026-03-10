@@ -10,7 +10,15 @@ async function runBackfill() {
     msisdn: 0,
     jid: 0,
     contact_vcard: 0,
-    '3cx_call_event': 0
+    '3cx_call_event': 0,
+    crm_manual: 0,
+    facebook: 0,
+    website: 0,
+    instagram: 0,
+    manual: 0,
+    whatsapp: 0,
+    call: 0,
+    other: 0
   };
   let numărIndisponibil = 0;
   

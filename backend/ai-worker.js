@@ -202,6 +202,17 @@ supabase.channel('calls-coordinator')
       }
   }).subscribe();
 
+supabase.channel('clients-coordinator')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, async (payload) => {
+      const client = payload.new || payload.old;
+      // Triggers for INSERT or UPDATE if phone exists/changes
+      if (client && client.id && (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE')) {
+         if (payload.new && payload.new.phone) {
+            require('./pii').updateClientRealPhoneGraph(client.id).catch(e => console.error('[Auto-PII CRM Error]', e.message));
+         }
+      }
+  }).subscribe();
+
 const adminApp = express();
 
 adminApp.get('/debug/extractions', (req, res) => {

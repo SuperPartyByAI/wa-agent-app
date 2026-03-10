@@ -30,6 +30,24 @@ async function getClientGraphPhone(clientId) {
     const fullLinks = entireFootprint || [];
     let bestMatch = null;
 
+    // Prioritize CRM / Native Database Lead -> 95
+    const { data: crmData } = await supabase
+      .from('clients')
+      .select('phone, source')
+      .in('id', siblingClientIds)
+      .not('phone', 'is', null)
+      .limit(10);
+      
+    if (crmData && crmData.length > 0) {
+      for (const cd of crmData) {
+        if (cd.phone && cd.phone.trim().length > 5) {
+          let cleanNum = cd.phone.replace(/[\s\-()]/g, '');
+          if (!cleanNum.startsWith('+')) cleanNum = '+' + cleanNum;
+          return { e164: cleanNum, source: cd.source || 'crm_manual', confidence: 95, siblingClientIds };
+        }
+      }
+    }
+
     // Prioritize MSISDN -> 90
     let explicitMsisdn = fullLinks.find(l => l.identifier_type === 'msisdn');
     if (explicitMsisdn) {

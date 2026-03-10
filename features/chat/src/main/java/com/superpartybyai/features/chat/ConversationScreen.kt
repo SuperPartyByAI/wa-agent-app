@@ -9,7 +9,20 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import android.media.MediaRecorder
+import java.io.File
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.provider.OpenableColumns
+import io.github.jan.supabase.storage.storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -68,8 +81,162 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var isRenamingClient by remember { mutableStateOf(false) }
     var newAliasText by remember { mutableStateOf("") }
     
+    // Upload State
+    var isUploading by remember { mutableStateOf(false) }
+    
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { selectedUri ->
+            if (currentSessionId == null) {
+                Toast.makeText(context, "Sesiunea sursă lipsește. Rutele de reply sunt blocate.", Toast.LENGTH_LONG).show()
+                return@let
+            }
+            isUploading = true
+            coroutineScope.launch {
+                try {
+                    val cr = context.contentResolver
+                    val mimeType = cr.getType(selectedUri) ?: "application/octet-stream"
+                    var fileName = "attachment"
+                    cr.query(selectedUri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (cursor.moveToFirst() && nameIndex >= 0) {
+                            fileName = cursor.getString(nameIndex)
+                        }
+                    }
+                    val bytes = withContext(Dispatchers.IO) {
+                        cr.openInputStream(selectedUri)?.readBytes()
+                    }
+                    if (bytes != null) {
+                        val extension = fileName.substringAfterLast('.', "")
+                        val finalFileName = if (extension.isNotEmpty()) "${java.util.UUID.randomUUID()}.$extension" else java.util.UUID.randomUUID().toString()
+                        val storagePath = "outbound/$currentSessionId/$finalFileName"
+                        
+                        // Upload directly to Supabase from device
+                        withContext(Dispatchers.IO) {
+                            SupabaseClient.client.storage.from("whatsapp_media").upload(storagePath, bytes, upsert = true)
+                        }
+                        
+                        val publicUrl = SupabaseClient.client.storage.from("whatsapp_media").publicUrl(storagePath)
+                        
+                        // Instruct Backend to dispatch message
+                        withContext(Dispatchers.IO) {
+                            val msgType = when {
+                                mimeType.startsWith("image/") -> "image"
+                                mimeType.startsWith("video/") -> "video"
+                                mimeType.startsWith("audio/") -> "audio"
+                                else -> "document"
+                            }
+                            val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/messages/send")
+                            val conn = url.openConnection() as HttpURLConnection
+                            conn.requestMethod = "POST"
+                            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                            conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
+                            conn.doOutput = true
+                            
+                            val jsonBody = JSONObject().apply {
+                                put("conversationId", contactId)
+                                put("sessionId", currentSessionId)
+                                put("message_type", msgType)
+                                put("media_url", publicUrl)
+                                put("mime_type", mimeType)
+                                put("file_name", fileName)
+                            }
+                            
+                            conn.outputStream.use { os ->
+                                val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                                os.write(input, 0, input.size)
+                            }
+                            if (conn.responseCode !in 200..299) throw Exception("HTTP ${conn.responseCode}")
+                        }
+                        messages = messages + MessageModel(
+                           id = java.util.UUID.randomUUID().toString(),
+                           sender_type = "agent",
+                           content = "Trimitere atașament: $fileName",
+                           created_at = java.time.Instant.now().toString(),
+                           message_type = if (mimeType.startsWith("image/")) "image" else "document",
+                           media_url = publicUrl,
+                           file_name = fileName
+                        )
+                        // Toast.makeText(context, "Fișier trimis!", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(context, "Eroare atașament: ${e.message}", Toast.LENGTH_LONG).show()
+                } finally {
+                    isUploading = false
+                }
+            }
+        }
+    }
+    
+    // Audio Recording State
+    var isRecording by remember { mutableStateOf(false) }
+    var audioFile by remember { mutableStateOf<File?>(null) }
+    var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    
+    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (!isGranted) {
+            Toast.makeText(context, "Permisiune Microfon respinsă", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    val stopRecordingAndUpload: () -> Unit = {
+        if (isRecording) {
+            isRecording = false
+            try {
+                mediaRecorder?.stop()
+                mediaRecorder?.release()
+                mediaRecorder = null
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            audioFile?.let { file ->
+                if (file.exists() && file.length() > 0) {
+                    isUploading = true
+                    coroutineScope.launch {
+                        try {
+                            val bytes = withContext(Dispatchers.IO) { file.readBytes() }
+                            val finalFileName = "${java.util.UUID.randomUUID()}.m4a"
+                            val storagePath = "outbound/$currentSessionId/$finalFileName"
+                            
+                            withContext(Dispatchers.IO) { SupabaseClient.client.storage.from("whatsapp_media").upload(storagePath, bytes, upsert = true) }
+                            val publicUrl = SupabaseClient.client.storage.from("whatsapp_media").publicUrl(storagePath)
+                            
+                            withContext(Dispatchers.IO) {
+                                val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/messages/send")
+                                val conn = url.openConnection() as HttpURLConnection
+                                conn.requestMethod = "POST"
+                                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                                conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
+                                conn.doOutput = true
+                                val jsonBody = JSONObject().apply {
+                                    put("conversationId", contactId)
+                                    put("sessionId", currentSessionId)
+                                    put("message_type", "audio")
+                                    put("media_url", publicUrl)
+                                    put("mime_type", "audio/mp4")
+                                    put("is_ptt", true)
+                                }
+                                conn.outputStream.use { os ->
+                                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                                    os.write(input, 0, input.size)
+                                }
+                                if (conn.responseCode !in 200..299) throw Exception("HTTP ${conn.responseCode}")
+                            }
+                            messages = messages + MessageModel(id = java.util.UUID.randomUUID().toString(), sender_type = "agent", content = "🎤 Mesaj vocal", created_at = java.time.Instant.now().toString(), message_type = "audio", media_url = publicUrl, file_name = "Voice Note")
+                        } catch (e: Exception) { e.printStackTrace(); Toast.makeText(context, "Eroare Voice Note: ${e.message}", Toast.LENGTH_LONG).show() }
+                        finally { isUploading = false }
+                    }
+                }
+            }
+        }
+    }
     
     val loadMessages: () -> Unit = {
         coroutineScope.launch {
@@ -223,14 +390,75 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         },
         bottomBar = {
             BottomAppBar {
+                if (isUploading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(8.dp))
+                } else {
+                    IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Add, contentDescription = "Attach File")
+                    }
+                }
                 TextField(
-                    value = inputMessage, 
-                    onValueChange = { inputMessage = it },
+                    value = if (isRecording) "🎤 Se înregistrează..." else inputMessage, 
+                    onValueChange = { if (!isRecording) inputMessage = it },
                     modifier = Modifier.weight(1f).padding(8.dp),
-                    placeholder = { Text("Type AI-assisted reply...") }
+                    placeholder = { Text("Scrie mesaj sau apasă pe mic pentru audio...") },
+                    enabled = !isRecording
                 )
-                Button(
-                    onClick = { 
+                if (inputMessage.isBlank()) {
+                    IconButton(
+                        onClick = { },
+                        modifier = Modifier.padding(end = 8.dp).pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    if (currentSessionId == null) {
+                                        Toast.makeText(context, "Sesiunea sursă lipsește", Toast.LENGTH_SHORT).show()
+                                        return@detectTapGestures
+                                    }
+                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        return@detectTapGestures
+                                    }
+                                    isRecording = true
+                                    val newAudioFile = File(context.cacheDir, "ptt_${System.currentTimeMillis()}.m4a")
+                                    audioFile = newAudioFile
+                                    try {
+                                        val recorder = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                            MediaRecorder(context)
+                                        } else {
+                                            MediaRecorder()
+                                        }
+                                        recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+                                        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                                        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                                        recorder.setOutputFile(newAudioFile.absolutePath)
+                                        recorder.prepare()
+                                        recorder.start()
+                                        mediaRecorder = recorder
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        isRecording = false
+                                        Toast.makeText(context, "Eroare inițializare microfon", Toast.LENGTH_SHORT).show()
+                                    }
+                                    try {
+                                        awaitRelease()
+                                        stopRecordingAndUpload()
+                                    } finally {
+                                        stopRecordingAndUpload()
+                                    }
+                                }
+                            )
+                        }
+                    ) {
+                        Card(
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            colors = CardDefaults.cardColors(containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Mic", modifier = Modifier.padding(12.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = { 
                         if (currentSessionId == null) {
                             Toast.makeText(context, "Sesiunea sursă lipsește. Rutele de reply sunt blocate.", Toast.LENGTH_LONG).show()
                             return@Button
@@ -287,6 +515,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 }
             }
         }
+    }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (isLoading) {

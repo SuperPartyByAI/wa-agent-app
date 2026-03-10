@@ -285,6 +285,9 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 messages = response
             } catch (e: Exception) {
                 e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Eroare încărcare mesaje: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             } finally {
                 isLoading = false
             }
@@ -753,8 +756,17 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                 }
             } else {
                 val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-                LazyColumn(modifier = Modifier.weight(1f).padding(16.dp)) {
-                    items(messages.size) { index ->
+                if (messages.isEmpty()) {
+                    Box(modifier = Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Info, contentDescription = "Empty", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Niciun mesaj găsit", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Trimite un mesaj pentru a deschide conversația.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.weight(1f).padding(16.dp)) {
+                        items(messages.size) { index ->
                         val msg = messages[index]
                         val isAgent = msg.sender_type == "agent" || msg.sender_type == "ai"
                         
@@ -839,4 +851,5 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
             }
         }
     }
+}
 }

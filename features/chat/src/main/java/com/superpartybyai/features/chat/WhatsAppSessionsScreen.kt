@@ -158,10 +158,22 @@ fun WhatsAppSessionsScreen(
                     sessionToRename = null
                     coroutineScope.launch {
                         try {
-                            SupabaseClient.client.postgrest["whatsapp_sessions"].update({
-                                set("label", newLabel)
-                            }) {
-                                filter { eq("session_key", targetSession.session_key) }
+                            withContext(Dispatchers.IO) {
+                                val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/sessions/rename")
+                                val conn = url.openConnection() as HttpURLConnection
+                                conn.requestMethod = "POST"
+                                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                                conn.setRequestProperty("x-api-key", com.superpartybyai.core.AppConfig.API_KEY)
+                                conn.doOutput = true
+                                val jsonBody = JSONObject().apply {
+                                    put("sessionId", targetSession.session_key)
+                                    put("newLabel", newLabel)
+                                }
+                                conn.outputStream.use { os ->
+                                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                                    os.write(input, 0, input.size)
+                                }
+                                if (conn.responseCode !in 200..299) throw Exception("HTTP ${conn.responseCode}")
                             }
                             Toast.makeText(context, "Sesiune redenumită!", Toast.LENGTH_SHORT).show()
                             loadSessions()

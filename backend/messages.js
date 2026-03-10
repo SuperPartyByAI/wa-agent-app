@@ -1,7 +1,7 @@
 const supabase = require('./supabase');
 const { resolveClientIdentity } = require('./clientIdentity');
 
-async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, externalId, sessionId, sock = null) {
+async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, externalId, sessionId, sock = null, bypassConvId = null) {
   try {
     const client = await resolveClientIdentity(phoneNumberOrIdentifier, sessionId);
     if (!client) return;
@@ -18,12 +18,16 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
     }
 
     let convId;
-    const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').order('updated_at', { ascending: false }).limit(1).maybeSingle();
-    if (existingConv) {
-      convId = existingConv.id;
+    if (bypassConvId) {
+      convId = bypassConvId;
     } else {
-      const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open' }).select().single();
-      convId = newConv?.id;
+      const { data: existingConv } = await supabase.from('conversations').select('id').eq('client_id', clientId).eq('channel', 'whatsapp').order('updated_at', { ascending: false }).limit(1).maybeSingle();
+      if (existingConv) {
+        convId = existingConv.id;
+      } else {
+        const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open' }).select().single();
+        convId = newConv?.id;
+      }
     }
     if (!convId) return;
     
@@ -66,11 +70,17 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
     if (!isLid && (numericPhone.includes('@g.us') || numericPhone.includes('-'))) return;
 
     const content = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
-    if (!content) return; // Skip media/empty payloads for the baseline audit
+    if (!content) {
+      console.log(`[Diagnostic] Skipping message ${msgId} due to empty content`, JSON.stringify(msg));
+      return; // Skip media/empty payloads for the baseline audit
+    }
     
     // Resolve Identity natively through atomic locks (avoiding concurrent key collision limits)
     const client = await resolveClientIdentity(phoneOrWaIdentifier, sessionId);
-    if (!client) return;
+    if (!client) {
+      console.log(`[Diagnostic] Skipping message ${msgId} due to missing client identity lock for ${phoneOrWaIdentifier}`);
+      return;
+    }
     const clientId = client.id;
     
     if (sock && !client.avatar_url) {
@@ -93,22 +103,29 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
       const { data: newConv } = await supabase.from('conversations').insert({ client_id: clientId, channel: 'whatsapp', status: 'open' }).select().single();
       convId = newConv?.id;
     }
-    if (!convId) return;
+    if (!convId) {
+      console.log(`[Diagnostic] Skipping message ${msgId} because conversation could not be created/found for client ${clientId}`);
+      return;
+    }
 
     const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', msgId).limit(1).maybeSingle();
+    console.log(`[Diagnostic] Attempting to insert msg ${msgId} (Exist: ${!!existingMsg}) to conv ${convId}`);
     if (!existingMsg) {
       const msgTimestamp = msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : new Date();
       
-      await supabase.from('messages').insert({
+      const { error: insertErr } = await supabase.from('messages').insert({
         conversation_id: convId,
         session_id: sessionId,
         direction: isOutbound ? 'outbound' : 'inbound',
         sender_type: isOutbound ? 'agent' : 'client',
         content: content,
         external_message_id: msgId,
-        status: isOutbound ? 'sent' : 'received',
+        status: isOutbound ? 'sent' : 'delivered',
         created_at: msgTimestamp.toISOString()
       });
+      if (insertErr) {
+        console.error(`[Supabase Insert Fatal]`, JSON.stringify(insertErr));
+      }
 
       if (msgTimestamp.getTime() > currentUpdatedAt) {
         await supabase.from('conversations').update({ 

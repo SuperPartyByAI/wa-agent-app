@@ -77,5 +77,6 @@ async function resolveClientIdentity(phoneOrWaIdentifier, sessionId) {
 
 module.exports = {
     resolveClientIdentity,
-    getSessionBrandParams
+    getSessionBrandParams,
+    sessionBrandCache
 };

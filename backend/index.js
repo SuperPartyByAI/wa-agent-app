@@ -219,7 +219,7 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
 
     // Explicit format mapping for external message ID resolution in Baileys
     const externalId = result?.key?.id || null;
-    syncOutboundMessageToSupabase(formattedRoute, text, externalId, activeSessionId, activeSession.client).catch(e => {
+    syncOutboundMessageToSupabase(formattedRoute, text, externalId, activeSessionId, activeSession.client, conversationId).catch(e => {
         logger(activeSessionId, "error", `Failed to sync outbound message to Supabase: ${e.message}`);
     });
 
@@ -232,6 +232,47 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
   } catch (err) {
     logger(activeSessionId, "error", `General error sending message to ${formattedRoute}: ${err.message}`);
     res.status(500).json({ error: "Failed to send message.", details: err.message });
+  }
+});
+
+app.post("/api/sessions/rename", requireApiKey, async (req, res) => {
+  const { sessionId, newLabel } = req.body;
+  if (!sessionId) return res.status(400).json({ error: "sessionId is required" });
+  try {
+    const { error } = await supabase.from("whatsapp_sessions")
+      .update({ label: newLabel, updated_at: new Date().toISOString() })
+      .eq("session_key", sessionId);
+    if (error) throw error;
+    
+    // Invalidate the RAM mapping so the new Label (e.g., "Divertix") applies to all future inbound generated clients
+    try {
+      const { sessionBrandCache } = require('./clientIdentity');
+      sessionBrandCache.delete(sessionId);
+    } catch(e) {
+      console.error("[SessionRename] Failed to bust session memory cache:", e);
+    }
+
+    res.json({ success: true, message: "Session renamed successfully." });
+  } catch (err) {
+    logger(sessionId, "error", `Failed to rename session: ${err.message}`);
+    res.status(500).json({ error: "Database error", details: err.message });
+  }
+});
+
+app.post("/api/clients/rename", requireApiKey, async (req, res) => {
+  const { conversationId, newAlias } = req.body;
+  if (!conversationId || !newAlias) return res.status(400).json({ error: "conversationId and newAlias are required" });
+  try {
+    const { data: conv } = await supabase.from("conversations").select("client_id").eq("id", conversationId).single();
+    if (!conv || !conv.client_id) return res.status(404).json({ error: "Conversation or client not found." });
+    
+    const { error } = await supabase.from("clients")
+      .update({ public_alias: newAlias, updated_at: new Date().toISOString() })
+      .eq("id", conv.client_id);
+    if (error) throw error;
+    res.json({ success: true, message: "Client alias updated successfully." });
+  } catch (err) {
+    res.status(500).json({ error: "Database error", details: err.message });
   }
 });
 
@@ -282,8 +323,13 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
       const message = `[Sistem] Apel de intrare pe extensia ${extension} de la ${number}.`;
       const formattedNumber = number.replace('+', '');
       // Baileys structure
-      await targetSession.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: message });
+      const result = await targetSession.client.sendMessage(`${formattedNumber}@s.whatsapp.net`, { text: message });
       console.log(`[3CX Action] Sent WA message to ${formattedNumber}`);
+      
+      const externalId = result?.key?.id || null;
+      syncOutboundMessageToSupabase(formattedNumber, message, externalId, targetSessionId, targetSession.client).catch(e => {
+        console.error(`[3CX Sync Error] Failed to sync outbound message to Supabase: ${e.message}`);
+      });
     }
     res.json({ success: true, message: "Event processed and WA message triggered." });
   } catch (err) {

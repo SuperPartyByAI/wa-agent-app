@@ -48,6 +48,7 @@ import androidx.compose.ui.layout.ContentScale
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.gotrue.auth
 
 @Serializable
 data class MessageModel(
@@ -66,7 +67,7 @@ data class MessageModel(
 )
 
 @Serializable
-data class ClientIdentity(val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
+data class ClientIdentity(val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null, val id: String? = null)
 
 @Serializable
 data class ConvClientIdentity(val clients: ClientIdentity? = null, val session_id: String? = null)
@@ -80,6 +81,9 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var targetAlias by remember { mutableStateOf<String?>(null) }
     var currentSessionId by remember { mutableStateOf<String?>(null) }
     var targetAvatarUrl by remember { mutableStateOf<String?>(null) }
+    var targetClientId by remember { mutableStateOf<String?>(null) }
+    var showRealNumberDialog by remember { mutableStateOf(false) }
+    var realPhoneNumber by remember { mutableStateOf("") }
     
     // Rename Modal State
     var isRenamingClient by remember { mutableStateOf(false) }
@@ -292,11 +296,12 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 val convInfo = SupabaseClient.client.postgrest["conversations"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(avatar_url, public_alias, internal_client_code), session_id")) {
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("clients(id, avatar_url, public_alias, internal_client_code), session_id")) {
                         filter { eq("id", contactId) }
                     }.decodeSingleOrNull<ConvClientIdentity>()
                 targetAlias = convInfo?.clients?.public_alias ?: convInfo?.clients?.internal_client_code ?: "Anonymous Identity"
                 targetAvatarUrl = convInfo?.clients?.avatar_url
+                targetClientId = convInfo?.clients?.id
                 if (convInfo?.session_id != null) {
                     currentSessionId = convInfo.session_id
                 }
@@ -516,20 +521,59 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         )
     }
 
+    if (showRealNumberDialog) {
+        AlertDialog(
+            onDismissRequest = { showRealNumberDialog = false },
+            title = { Text("Număr Fizic Real (Admin)") },
+            text = { Text("MSISDN / Identificator WhatsApp:\n\n$realPhoneNumber\n\n(Afișat exclusiv pentru sesiunea ursache.andrei1995@gmail.com)") },
+            confirmButton = {
+                TextButton(onClick = { showRealNumberDialog = false }) { Text("Închide") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { 
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        val avatarModifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .padding(end = 8.dp)
+                            .clickable {
+                                val currentUserEmail = SupabaseClient.client.auth.currentUserOrNull()?.email
+                                if (currentUserEmail == "ursache.andrei1995@gmail.com") {
+                                    if (targetClientId != null) {
+                                        coroutineScope.launch {
+                                            try {
+                                                @Serializable data class PiiResult(val identifier_value: String? = null)
+                                                val links = SupabaseClient.client.postgrest["client_identity_links"]
+                                                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("identifier_value")) {
+                                                        filter { eq("client_id", targetClientId!!) }
+                                                    }.decodeList<PiiResult>()
+                                                val bestLink = links.firstOrNull { it.identifier_value?.endsWith("@s.whatsapp.net") == true } ?: links.firstOrNull()
+                                                realPhoneNumber = bestLink?.identifier_value ?: "Niciun număr fizic legat găsit în DB"
+                                                showRealNumberDialog = true
+                                            } catch (e: Exception) {
+                                                withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare extragere ID: ${e.message}", Toast.LENGTH_SHORT).show() }
+                                            }
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "Baza de Client ID nu este sincronizată încă.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+
                         if (!targetAvatarUrl.isNullOrEmpty()) {
                             AsyncImage(
                                 model = targetAvatarUrl,
                                 contentDescription = "Avatar",
-                                modifier = Modifier.size(32.dp).clip(CircleShape).padding(end = 8.dp),
+                                modifier = avatarModifier,
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(32.dp).padding(end = 8.dp))
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = avatarModifier)
                         }
                         Column {
                             Text(targetAlias ?: "Chat Details", style = MaterialTheme.typography.bodyLarge)

@@ -31,7 +31,8 @@ async function run() {
         "202603090002_client_alias_hardening.sql",
         "202603090003_zero_trust_rls_exposure.sql",
         "202603100001_client_identity_links.sql",
-        "202603100002_auto_merge_fk_completeness.sql"
+        "202603100002_auto_merge_fk_completeness.sql",
+        "202603100003_inbox_message_previews.sql"
     ];
     
     const dir = path.join(__dirname, "..", "supabase", "migrations");

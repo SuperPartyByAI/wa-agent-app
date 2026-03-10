@@ -29,6 +29,11 @@ import androidx.compose.ui.layout.ContentScale
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 
 @Serializable
 data class ClientRef(val full_name: String, val avatar_url: String? = null, val public_alias: String? = null, val internal_client_code: String? = null)
@@ -56,6 +61,10 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
     var conversations by remember { mutableStateOf<List<InboxSummaryModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    
+    var showRealNumberDialog by remember { mutableStateOf(false) }
+    var realPhoneNumber by remember { mutableStateOf("") }
 
     val loadConversations: () -> Unit = {
         coroutineScope.launch {
@@ -98,6 +107,17 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                 loadConversations()
             }
         }
+    }
+
+    if (showRealNumberDialog) {
+        AlertDialog(
+            onDismissRequest = { showRealNumberDialog = false },
+            title = { Text("Număr Fizic Real (Admin Inbox)") },
+            text = { Text("MSISDN / Identificator WhatsApp:\n\n$realPhoneNumber\n\n(Afișat exclusiv pentru sesiunea ursache.andrei1995@gmail.com)") },
+            confirmButton = {
+                TextButton(onClick = { showRealNumberDialog = false }) { Text("Închide") }
+            }
+        )
     }
 
     Scaffold(
@@ -166,15 +186,45 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                         },
                         trailingContent = { Text(timeString, style = MaterialTheme.typography.labelSmall) },
                         leadingContent = {
+                            val avatarModifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    val currentUserEmail = SupabaseClient.client.auth.currentUserOrNull()?.email
+                                    if (currentUserEmail == "ursache.andrei1995@gmail.com") {
+                                        if (conv.client_id != null) {
+                                            coroutineScope.launch {
+                                                try {
+                                                    @Serializable data class PiiResult(val identifier_value: String? = null)
+                                                    val links = SupabaseClient.client.postgrest["client_identity_links"]
+                                                        .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("identifier_value")) {
+                                                            filter { eq("client_id", conv.client_id) }
+                                                        }.decodeList<PiiResult>()
+                                                    val bestLink = links.firstOrNull { it.identifier_value?.endsWith("@s.whatsapp.net") == true } ?: links.firstOrNull()
+                                                    realPhoneNumber = bestLink?.identifier_value ?: "Niciun număr legat găsit în DB"
+                                                    showRealNumberDialog = true
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) { Toast.makeText(context, "Eroare DB: ${e.message}", Toast.LENGTH_SHORT).show() }
+                                                }
+                                            }
+                                        } else {
+                                            Toast.makeText(context, "Client ID invalid.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        // Fallback default action for non-admins
+                                        onChatClick(conv.conversation_id)
+                                    }
+                                }
+
                             if (!conv.avatar_url.isNullOrEmpty()) {
                                 AsyncImage(
                                     model = conv.avatar_url,
                                     contentDescription = "Profile Picture",
-                                    modifier = Modifier.size(40.dp).clip(CircleShape),
+                                    modifier = avatarModifier,
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
-                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp))
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = avatarModifier)
                             }
                         }
                     )

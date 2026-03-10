@@ -86,6 +86,9 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var targetClientId by remember { mutableStateOf<String?>(null) }
     var showRealNumberDialog by remember { mutableStateOf(false) }
     var realPhoneNumber by remember { mutableStateOf("") }
+    var showSetRealNumberDialog by remember { mutableStateOf(false) }
+    var inputRealNumber by remember { mutableStateOf("") }
+    var isSubmittingRealNumber by remember { mutableStateOf(false) }
     
     // Rename Modal State
     var isRenamingClient by remember { mutableStateOf(false) }
@@ -529,13 +532,107 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         )
     }
 
+    if (showSetRealNumberDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSubmittingRealNumber) showSetRealNumberDialog = false },
+            title = { Text("Setează Număr Real") },
+            text = {
+                Column {
+                    Text("Introduceți numărul canonic pentru acest client. Se vor suprascrie automat sursele deduse.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp))
+                    OutlinedTextField(
+                        value = inputRealNumber,
+                        onValueChange = { inputRealNumber = it },
+                        label = { Text("Număr (+40...)") },
+                        enabled = !isSubmittingRealNumber,
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (inputRealNumber.isNotBlank() && targetClientId != null) {
+                            isSubmittingRealNumber = true
+                            coroutineScope.launch {
+                                try {
+                                    val token = SupabaseClient.client.auth.currentAccessTokenOrNull()
+                                    if (token != null) {
+                                        withContext(Dispatchers.IO) {
+                                            val url = URL("${com.superpartybyai.core.AppConfig.BACKEND_URL}/api/clients/$targetClientId/real-number")
+                                            val conn = url.openConnection() as HttpURLConnection
+                                            conn.requestMethod = "POST"
+                                            conn.setRequestProperty("Authorization", "Bearer $token")
+                                            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                                            conn.doOutput = true
+                                            val jsonBody = JSONObject().apply {
+                                                put("realNumber", inputRealNumber.trim())
+                                                put("notes", "Manual override from ConversationScreen")
+                                            }
+                                            conn.outputStream.use { os ->
+                                                val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                                                os.write(input, 0, input.size)
+                                            }
+                                            val rc = conn.responseCode
+                                            if (rc in 200..299) {
+                                                val resp = conn.inputStream.bufferedReader().use { it.readText() }
+                                                val resJson = JSONObject(resp)
+                                                realPhoneNumber = resJson.optString("realNumber", inputRealNumber)
+                                            } else {
+                                                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                                                val errMsg = try { JSONObject(err).optString("error", "HTTP $rc") } catch(e:Exception) { "HTTP $rc" }
+                                                throw Exception(errMsg)
+                                            }
+                                        }
+                                        showSetRealNumberDialog = false
+                                        showRealNumberDialog = true
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Eroare salvare: ${e.message}", Toast.LENGTH_LONG).show()
+                                    }
+                                } finally {
+                                    isSubmittingRealNumber = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isSubmittingRealNumber
+                ) {
+                    if (isSubmittingRealNumber) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Salvează")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showSetRealNumberDialog = false },
+                    enabled = !isSubmittingRealNumber
+                ) { Text("Anulează") }
+            }
+        )
+    }
+
     if (showRealNumberDialog) {
+        val currentUserEmail = SupabaseClient.client.auth.currentUserOrNull()?.email
         AlertDialog(
             onDismissRequest = { showRealNumberDialog = false },
             title = { Text("Număr Fizic Real (Admin)") },
             text = { Text("MSISDN / Identificator WhatsApp:\n\n$realPhoneNumber\n\n(Afișat exclusiv pentru sesiunea ursache.andrei1995@gmail.com)") },
             confirmButton = {
                 TextButton(onClick = { showRealNumberDialog = false }) { Text("Închide") }
+            },
+            dismissButton = {
+                if (currentUserEmail == "ursache.andrei1995@gmail.com" && realPhoneNumber == "Număr real indisponibil") {
+                    TextButton(onClick = {
+                        showRealNumberDialog = false
+                        inputRealNumber = ""
+                        showSetRealNumberDialog = true
+                    }) {
+                        Text("Setează număr real")
+                    }
+                }
             }
         )
     }
@@ -761,7 +858,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
             } else if (loadError != null && messages.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                        Icon(Icons.Default.Warning, contentDescription = "Eroare", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error)
+                        Icon(androidx.compose.material.icons.Icons.Default.Info, contentDescription = "Eroare", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error)
                         Text("Eroare la încărcare Supabase", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.error)
                         Text(loadError ?: "A apărut o problemă necunoscută", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp))
                         Button(onClick = { loadMessages() }) {

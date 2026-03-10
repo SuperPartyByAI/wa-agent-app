@@ -497,18 +497,27 @@ app.post("/api/clients/:clientId/real-number", async (req, res) => {
   }
 
   try {
+    let normalizedPhone = realNumber.replace(/[^0-9+]/g, '');
+    if (!normalizedPhone.startsWith('+')) {
+      normalizedPhone = '+' + normalizedPhone;
+    }
+    
+    if (normalizedPhone.length < 10 || normalizedPhone.length > 20) {
+      return res.status(400).json({ error: 'Format invald, minim 10 cifre. (Exemplu: +407...)' });
+    }
+
     await supabase.from('clients').update({
-      real_phone_e164: realNumber.replace(/[^0-9]/g, ''),
+      real_phone_e164: normalizedPhone,
       real_phone_source: 'manual_admin',
       real_phone_confidence: 100,
       real_phone_updated_at: new Date().toISOString(),
       real_phone_notes: notes || null
     }).eq('id', clientId);
     
-    console.log(`[PII Resolver] Admin override forced canonical real hit for ${clientId}: ${realNumber}`);
+    console.log(`[PII Resolver] Admin override forced canonical real hit for ${clientId}: ${normalizedPhone}`);
     
     // Optionally trigger async sibling synchronization to propagate override to clones
-    return res.json({ success: true, realNumber: realNumber.replace(/[^0-9]/g, '') });
+    return res.json({ success: true, realNumber: normalizedPhone });
   } catch (e) {
     console.error(`[PII Resolver Override] Error: ${e.message}`);
     return res.status(500).json({ error: 'Internal Server Error updating PII' });

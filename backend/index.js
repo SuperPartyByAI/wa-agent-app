@@ -154,7 +154,9 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     }
   }
 
-  let activeSessionId = requestedSessionId;
+  // STRICT ROUTING ENFORCEMENT: The conversation's route unconditionally dictates the outbound session!
+  // We override the Android UI's requested string to prevent cross-routing bugs.
+  let activeSessionId = convData.session_id || requestedSessionId;
   let activeSession = sessions.get(activeSessionId);
   let fallbackUsed = false;
 

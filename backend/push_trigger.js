@@ -1,6 +1,6 @@
 const { Client } = require('pg');
 
-const client = new Client('postgresql://postgres.jrfhprnuxxfwkwjwdsez:Andrei209512!@aws-0-eu-west-1.pooler.supabase.com:5432/postgres');
+const client = new Client(process.env.SUPABASE_CONNECTION_STRING);
 
 (async () => {
   try {

@@ -1,14 +1,7 @@
 const { Client } = require('pg');
+require("dotenv").config();
 
-const URIs = [
-  'postgresql://postgres.jrfhprnuxxfwkwjwdsez:Andrei2095120@aws-0-eu-west-1.pooler.supabase.com:6543/postgres',
-  'postgresql://postgres.jrfhprnuxxfwkwjwdsez:Andrei2095120@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
-  'postgresql://postgres.jrfhprnuxxfwkwjwdsez:Andrei2095120@jrfhprnuxxfwkwjwdsez.pooler.supabase.com:6543/postgres',
-  'postgresql://postgres:Andrei2095120@aws-0-eu-west-1.pooler.supabase.com:6543/postgres',
-  'postgresql://postgres:Andrei2095120@db.jrfhprnuxxfwkwjwdsez.supabase.co:6543/postgres',
-  'postgresql://postgres.jrfhprnuxxfwkwjwdsez:Andrei2095120@db.jrfhprnuxxfwkwjwdsez.supabase.co:6543/postgres',
-  'postgresql://postgres.jrfhprnuxxfwkwjwdsez:Andrei2095120@aws-0-eu-west-1.pooler.supabase.com:5432/postgres'
-];
+const URIs = process.env.SUPABASE_CONNECTION_STRING ? [process.env.SUPABASE_CONNECTION_STRING] : [];
 
 async function run() {
   for(let u of URIs) {

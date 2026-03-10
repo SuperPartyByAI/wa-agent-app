@@ -419,8 +419,12 @@ app.post("/3cx/event", requireApiKey, async (req, res) => {
 app.get("/api/clients/:clientId/real-number", async (req, res) => {
   const { clientId } = req.params;
   const authHeader = req.headers.authorization;
+  
+  console.log(`\n\n[DIAGNOSTIC TRACE] API Hit! GET /api/clients/${clientId}/real-number`);
+  console.log(`[DIAGNOSTIC TRACE] Auth Header Present: ${!!authHeader}`);
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log(`[DIAGNOSTIC TRACE] Rejected: Missing Bearer Token`);
     return res.status(401).json({ error: "Unauthorized. Missing Bearer JWT." });
   }
 
@@ -430,12 +434,15 @@ app.get("/api/clients/:clientId/real-number", async (req, res) => {
   // 1. Authenticate user explicitly via Supabase Auth
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) {
-    console.log(`[PII Resolver] Auth Failed for client ${clientId}: ${authErr ? authErr.message : 'No User'}`);
+    console.log(`[PII Resolver] Auth Failed for client ${clientId}: ${authErr ? authErr.message : 'No User'}. Token length: ${token.length}`);
     return res.status(401).json({ error: "Unauthorized. Invalid JWT Token." });
   }
 
+  console.log(`[DIAGNOSTIC TRACE] User authenticated successfully: ${user.email}`);
+
   // 2. Gate admin specifically
   if (user.email !== 'ursache.andrei1995@gmail.com') {
+    console.log(`[DIAGNOSTIC TRACE] Rejected: Not an admin (${user.email})`);
     return res.status(403).json({ error: "Access Denied. Nu ai drepturi de administrator pentru a prelua PII (Număr fizic real)." });
   }
 

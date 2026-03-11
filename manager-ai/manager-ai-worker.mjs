@@ -111,14 +111,31 @@ Return a STRICT JSON object matching this exact schema:
             if (err1) console.error("[AI Worker] DB Error memory:", err1.message);
         }
 
-        const { error: err2 } = await supabase.from('ai_event_drafts').upsert({
-            conversation_id: conversation_id,
-            client_id: clientId,
-            draft_type: analysis.event_draft.draft_type,
-            structured_data_json: analysis.event_draft.structured_data,
-            missing_fields_json: analysis.event_draft.missing_fields,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'conversation_id' }); // Assuming 1 active draft per conversation for now
+        // Since conversation_id is not inherently unique in 002 schema, standard upsert fails.
+        // We will perform a manual update string or delete-insert strategy to emulate upsert gracefully.
+        const { data: existingDraft } = await supabase.from('ai_event_drafts').select('id').eq('conversation_id', conversation_id).maybeSingle();
+        
+        let err2 = null;
+        if (existingDraft) {
+             const { error } = await supabase.from('ai_event_drafts').update({
+                client_id: clientId,
+                draft_type: analysis.event_draft.draft_type,
+                structured_data_json: analysis.event_draft.structured_data,
+                missing_fields_json: analysis.event_draft.missing_fields,
+                updated_at: new Date().toISOString()
+            }).eq('id', existingDraft.id);
+            err2 = error;
+        } else {
+             const { error } = await supabase.from('ai_event_drafts').insert({
+                conversation_id: conversation_id,
+                client_id: clientId,
+                draft_type: analysis.event_draft.draft_type,
+                structured_data_json: analysis.event_draft.structured_data,
+                missing_fields_json: analysis.event_draft.missing_fields,
+                updated_at: new Date().toISOString()
+            });
+            err2 = error;
+        }
         if (err2) console.error("[AI Worker] DB Error drafts:", err2.message);
 
         const statePayload = {

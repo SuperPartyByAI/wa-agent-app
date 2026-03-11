@@ -179,6 +179,12 @@ async function rebaseRouteAliases(sessionId, newLabel, newBrandKey, newAliasPref
                 await supabase.from('client_identity_links').update({
                     brand_key: newBrandKey
                 }).eq('client_id', client.id).neq('brand_key', newBrandKey);
+                
+                await supabase.from('brand_alias_counters').upsert({
+                    brand_key: newBrandKey,
+                    current_index: currentMaxIndex,
+                    updated_at: new Date().toISOString()
+                });
             }
         }
     }

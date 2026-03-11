@@ -1,17 +1,26 @@
-# AI SQL Migrations
+# SQL Migrations for Superparty wa-agent-app
 
-These migration files create the foundational AI schema for Server-Driven UI in the Superparty app.
+This directory contains the SQL files needed to configure the Supabase PostgreSQL database for the AI-Agent integrations.
 
-## Execution Order and Dependencies
+## Execution Order
 
-1. **`002_ai_schema_baselines.sql`**: Creates the base AI tables (`ai_conversation_state`, `ai_client_memory`, `ai_event_drafts`, `ai_operator_prompts`, `ai_ui_schemas`). Depends on existing `conversations` and `clients` tables.
-2. **`003_collaborator_onboarding_schema.sql`**: Extends collaborator and staff schemas (optional for the core text pipeline).
-3. **`004_ai_schema_policies_and_triggers.sql`**: (NEW) Adds PostgreSQL triggers for strictly updating the `updated_at` timestamps on row modifications. Applies necessary RLS policies to allow the Android client to read elements (like `ai_ui_schemas`) directly if bypassing the ManagerAi Node endpoint. Depends on 002.
+Migrations must be executed in the following order:
 
-## How to Apply
+1. \`001_brand_aliases.sql\` - Baseline for brand identity routing.
+2. \`002_ai_schema_baselines.sql\` - Core AI tables (\`ai_client_memory\`, \`ai_conversation_state\`, etc.).
+3. \`003_collaborator_onboarding_schema.sql\` - Onboarding AI UI state records.
+4. \`004_ai_schema_policies_and_triggers.sql\` - Essential Triggers for \`updated_at\` and basic RLS policies.
 
-To apply these migrations safely on the live Supabase instance:
+## Preconditions
 
-1. Navigate to your Supabase Dashboard -> SQL Editor.
-2. Open each file (`002`, `003`, `004`) in sequential order.
-3. Click "Run" on each file and verify that the success message appears. Do not proceed to the next script if the previous one fails.
+- The \`public\` schema must exist in Supabase.
+- A service role key must be provisioned for backend ingestion.
+
+## Standardized Configuration (.env) Rules
+
+Both \`whts-up\` and \`ManagerAi\` deploy from a single GitHub path (\`/opt/wa-agent-app\`), but load their environment natively.
+
+- **whts-up (89.167.115.150)**: Env loaded natively from \`/opt/wa-agent-app/backend/.env\`
+- **ManagerAi (91.98.16.90)**: Env loaded natively from \`/opt/wa-agent-app/manager-ai/.env\`
+
+_WARNING: NEVER commit `.env` files to this repository. The SSH deploy scripts migrate these securely during runtime._

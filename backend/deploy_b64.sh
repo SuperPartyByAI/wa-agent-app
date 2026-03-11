@@ -45,7 +45,6 @@ ENVFILE
 
 echo "=== PM2 Deployment ==="
 pm2 start index.js --name "wa-api" || pm2 restart "wa-api"
-pm2 start ai-worker.js --name "ai-worker" || pm2 restart "ai-worker"
 pm2 save
 env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u root --hp /root || true
 pm2 resurrect || true
@@ -58,15 +57,6 @@ server {
     
     location / {
         proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-    
-    location /ai-admin/ {
-        proxy_pass http://127.0.0.1:4000/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';

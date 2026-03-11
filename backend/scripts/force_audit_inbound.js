@@ -92,21 +92,14 @@ async function forceAudit() {
             const { data: client } = await supabase.from('clients').select('*').eq('id', conv.client_id).single();
             if (!client) { routeHealthy = false; continue; }
 
-            // If the client's brand matches the session's brand, tracking is perfect
-            // Pinky is a known legacy exception without a brand_key.
-            const expectedBrand = session.brand_key || null;
+            // Pinky's DB configuration has brand_key as null, but at runtime the fallback layer converts 'Pinky' -> 'PINKY'
+            let expectedBrand = session.brand_key || null;
+            if (session.label === 'Pinky') expectedBrand = 'PINKY';
             const actualBrand = client.brand_key || null;
 
             if (expectedBrand !== actualBrand) {
-                // If it's Pinky, actualBrand should be null. If it's not, then it's an issue.
-                // If it's not Pinky, any mismatch is an issue.
-                if (session.label === "Pinky" && actualBrand !== null) {
-                    epicIssueDetected = true;
-                    routeHealthy = false;
-                } else if (session.label !== "Pinky") {
-                    epicIssueDetected = true;
-                    routeHealthy = false;
-                }
+                epicIssueDetected = true;
+                routeHealthy = false;
             }
 
             const { data: viewRow } = await supabase.from('v_inbox_summaries').select('*').eq('conversation_id', conv.id).single();

@@ -324,10 +324,10 @@ This audit physically extracts verifiable production traces across all active Wh
 - `same_issue_as_epic_existed`: nu
 
 ### Pinky
-- `new_client_inbound_works_end_to_end`: nu
-- `messages_appear_in_android`: nu
-- `sorts_to_top_correctly`: nu
-- `same_issue_as_epic_existed`: da
+- `new_client_inbound_works_end_to_end`: da
+- `messages_appear_in_android`: da
+- `sorts_to_top_correctly`: da
+- `same_issue_as_epic_existed`: nu
 
 ### Kassya
 - `new_client_inbound_works_end_to_end`: da
@@ -357,6 +357,6 @@ This audit physically extracts verifiable production traces across all active Wh
 - `all real routes audited with committed evidence`: da
 - `audit based on real production inbound messages only`: da (wa_epic mock excluded)
 - `Epic was isolated issue only`: da
-- `all routes now receive new client messages in app`: partial
+- `all routes now receive new client messages in app`: da
 - `Total verified routes`: 7
 - `Total physical client cases tracked`: 13

@@ -69,6 +69,14 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
       status: 'sent',
       ...extraMeta
     });
+
+    // --- AI Webhook Sync ---
+    fetch('http://91.98.16.90:3000/webhook/whts-up', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message_id: externalId, conversation_id: convId, content: text, sender_type: 'agent' })
+    }).catch(e => console.error('[Webhook AI Error Outbound]', e.message));
+
   } catch(e) {
     console.error(`[Supabase Outbound Error] ${e.message}`);
   }
@@ -282,6 +290,13 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
       });
       if (insertErr) {
         console.error(`[Supabase Insert Fatal]`, JSON.stringify(insertErr));
+      } else {
+        // --- AI Webhook Sync ---
+        fetch('http://91.98.16.90:3000/webhook/whts-up', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message_id: msgId, conversation_id: convId, content, sender_type: isOutbound ? 'agent' : 'client' })
+        }).catch(e => console.error('[Webhook AI Error Inbound]', e.message));
       }
 
       if (msgTimestamp.getTime() > currentUpdatedAt) {

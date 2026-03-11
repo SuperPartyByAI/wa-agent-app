@@ -22,8 +22,10 @@ DECLARE
     
     v_lock_hash TEXT := '';
     v_identifier RECORD;
-    v_identifier_array TEXT[] := ARRAY[]::TEXT[];
+    v_identifier_array TEXT[];
 BEGIN
+    SELECT array_agg(value) INTO v_identifier_array FROM jsonb_to_recordset(p_identifiers) AS x(type TEXT, value TEXT) WHERE value IS NOT NULL AND trim(value) <> '';
+    IF v_identifier_array IS NULL THEN v_identifier_array := ARRAY[]::TEXT[]; END IF;
     -- 2. Check if ANY of the provided identifiers map to an existing client
     SELECT array_agg(DISTINCT l.client_id)
     INTO v_matched_ids

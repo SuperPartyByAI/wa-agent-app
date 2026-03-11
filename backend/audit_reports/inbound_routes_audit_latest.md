@@ -64,7 +64,7 @@ This audit physically extracts verifiable production traces across all active Wh
 ### Detalii Trace: Superparty (wa_138176ff)
 
 #### Trace 1
-- `remoteJid`: AC452ED866...***
+- `message_external_id`: AC452ED866...***
 - `message_id`: 2d1e0269-efb4-4876-9907-3c1ff51edb5f
 - `conversation_id`: e4ab072b-ba10-4b6f-b07e-503e7a28edb7
 - `session_key`: wa_138176ff
@@ -82,7 +82,7 @@ This audit physically extracts verifiable production traces across all active Wh
 - `final_index_in_inbox`: 1
 
 #### Trace 2
-- `remoteJid`: AC10B0288D...***
+- `message_external_id`: AC10B0288D...***
 - `message_id`: 2b2f22be-5130-46e0-b67d-a5179d76cac4
 - `conversation_id`: 350fd312-b632-4d7f-b356-55fcf7d99f06
 - `session_key`: wa_138176ff
@@ -102,7 +102,7 @@ This audit physically extracts verifiable production traces across all active Wh
 ### Detalii Trace: Divertix (wa_live_006)
 
 #### Trace 1
-- `remoteJid`: AC8672EE27...***
+- `message_external_id`: AC8672EE27...***
 - `message_id`: 96b74f77-6094-4e7a-ac45-09fcba947e64
 - `conversation_id`: 6a5d1a1b-d741-458c-9f5f-e05e00532288
 - `session_key`: wa_live_006
@@ -120,7 +120,7 @@ This audit physically extracts verifiable production traces across all active Wh
 - `final_index_in_inbox`: 0
 
 #### Trace 2
-- `remoteJid`: ACF3349F07...***
+- `message_external_id`: ACF3349F07...***
 - `message_id`: 0e88e245-1697-489f-94fa-8f444d177843
 - `conversation_id`: 6a5d1a1b-d741-458c-9f5f-e05e00532288
 - `session_key`: wa_live_006
@@ -140,7 +140,7 @@ This audit physically extracts verifiable production traces across all active Wh
 ### Detalii Trace: Pinky (wa_9352c113)
 
 #### Trace 1
-- `remoteJid`: AC09DDD456...***
+- `message_external_id`: AC09DDD456...***
 - `message_id`: 31376b96-0a6b-49c5-a766-bfa01469cac1
 - `conversation_id`: 8bab9886-097c-4ab4-bdf7-e90e661b1eb7
 - `session_key`: wa_9352c113
@@ -160,7 +160,7 @@ This audit physically extracts verifiable production traces across all active Wh
 ### Detalii Trace: Kassya (wa_b2e48a45)
 
 #### Trace 1
-- `remoteJid`: ACEBE5F6B2...***
+- `message_external_id`: ACEBE5F6B2...***
 - `message_id`: 623f4e1c-0da2-4f9c-98f6-4f3cf9292f92
 - `conversation_id`: 4c8cb51d-b940-48b9-a5aa-26793e5ea4d8
 - `session_key`: wa_b2e48a45
@@ -178,7 +178,7 @@ This audit physically extracts verifiable production traces across all active Wh
 - `final_index_in_inbox`: 0
 
 #### Trace 2
-- `remoteJid`: 2A50E07373...***
+- `message_external_id`: 2A50E07373...***
 - `message_id`: 49b19186-83ef-4433-a423-ef2559f131d0
 - `conversation_id`: 46f3e157-cb1e-4b5c-9c28-5a6aa83e760d
 - `session_key`: wa_b2e48a45
@@ -198,7 +198,7 @@ This audit physically extracts verifiable production traces across all active Wh
 ### Detalii Trace: Epic (wa_b5743b6a)
 
 #### Trace 1
-- `remoteJid`: AC8F23A73A...***
+- `message_external_id`: AC8F23A73A...***
 - `message_id`: ee16c96f-1266-4fc9-a7f5-a2c22377cf4e
 - `conversation_id`: a5652d1f-0844-482a-a40a-53c76279448d
 - `session_key`: wa_b5743b6a
@@ -216,7 +216,7 @@ This audit physically extracts verifiable production traces across all active Wh
 - `final_index_in_inbox`: 0
 
 #### Trace 2
-- `remoteJid`: A5815E5FBE...***
+- `message_external_id`: A5815E5FBE...***
 - `message_id`: 01b1d722-18d0-410f-9b59-63ca4db7f0c0
 - `conversation_id`: 057e2b55-3944-4412-9b0f-b699e5f3ce3e
 - `session_key`: wa_b5743b6a
@@ -236,7 +236,7 @@ This audit physically extracts verifiable production traces across all active Wh
 ### Detalii Trace: Galaxy (wa_b8d8b5c8)
 
 #### Trace 1
-- `remoteJid`: AC196F5527...***
+- `message_external_id`: AC196F5527...***
 - `message_id`: 392fbac4-e0df-4038-aefa-69a12f624506
 - `conversation_id`: 8d441754-9d78-4c2d-8577-6fe518f6502c
 - `session_key`: wa_b8d8b5c8
@@ -254,7 +254,7 @@ This audit physically extracts verifiable production traces across all active Wh
 - `final_index_in_inbox`: 77
 
 #### Trace 2
-- `remoteJid`: AC47BE3CBB...***
+- `message_external_id`: AC47BE3CBB...***
 - `message_id`: 2a4c62b2-c565-4862-8137-aeacb2b48dd2
 - `conversation_id`: b36c4822-5c75-4f9a-8072-0b3e9659bc40
 - `session_key`: wa_b8d8b5c8
@@ -274,7 +274,7 @@ This audit physically extracts verifiable production traces across all active Wh
 ### Detalii Trace: Wowparty (wa_b46e5e75)
 
 #### Trace 1
-- `remoteJid`: AC6A3D89B6...***
+- `message_external_id`: AC6A3D89B6...***
 - `message_id`: 28d5e18b-f2f5-46e3-914d-8d47a6b38f95
 - `conversation_id`: 5951a63c-ec74-43ee-9ea0-9f8af047356f
 - `session_key`: wa_b46e5e75
@@ -292,7 +292,7 @@ This audit physically extracts verifiable production traces across all active Wh
 - `final_index_in_inbox`: 1
 
 #### Trace 2
-- `remoteJid`: AC7CEEF45A...***
+- `message_external_id`: AC7CEEF45A...***
 - `message_id`: 62c6b0ba-01e0-4e41-8e56-0c095f0c4485
 - `conversation_id`: 3e13195c-6006-4906-b531-915b3bd35f32
 - `session_key`: wa_b46e5e75
@@ -324,9 +324,9 @@ This audit physically extracts verifiable production traces across all active Wh
 - `same_issue_as_epic_existed`: nu
 
 ### Pinky
-- `new_client_inbound_works_end_to_end`: da
-- `messages_appear_in_android`: da
-- `sorts_to_top_correctly`: da
+- `new_client_inbound_works_end_to_end`: nu
+- `messages_appear_in_android`: nu
+- `sorts_to_top_correctly`: nu
 - `same_issue_as_epic_existed`: da
 
 ### Kassya
@@ -357,6 +357,6 @@ This audit physically extracts verifiable production traces across all active Wh
 - `all real routes audited with committed evidence`: da
 - `audit based on real production inbound messages only`: da (wa_epic mock excluded)
 - `Epic was isolated issue only`: da
-- `all routes now receive new client messages in app`: da
+- `all routes now receive new client messages in app`: partial
 - `Total verified routes`: 7
 - `Total physical client cases tracked`: 13

@@ -92,13 +92,20 @@ async function forceAudit() {
             const { data: client } = await supabase.from('clients').select('*').eq('id', conv.client_id).single();
             if (!client) { routeHealthy = false; continue; }
 
+            // If the client's brand matches the session's brand, tracking is perfect
+            // Pinky is a known legacy exception without a brand_key.
             const expectedBrand = session.brand_key || null;
             const actualBrand = client.brand_key || null;
 
             if (expectedBrand !== actualBrand) {
-                epicIssueDetected = true;
-                if (session.label !== "Pinky") {
-                     routeHealthy = false;
+                // If it's Pinky, actualBrand should be null. If it's not, then it's an issue.
+                // If it's not Pinky, any mismatch is an issue.
+                if (session.label === "Pinky" && actualBrand !== null) {
+                    epicIssueDetected = true;
+                    routeHealthy = false;
+                } else if (session.label !== "Pinky") {
+                    epicIssueDetected = true;
+                    routeHealthy = false;
                 }
             }
 
@@ -109,8 +116,8 @@ async function forceAudit() {
 
             // Using formatting strictly required by user
             appendLog(`\n#### Trace ${validTracesFound + 1}`);
-             // Obfuscating physical device identity for public repo safety
-            appendLog(`- \`remoteJid\`: ${truncateString(msg.external_message_id, 10)}${msg.external_message_id ? '***' : ''}`);
+            // Obfuscating physical device identity for public repo safety
+            appendLog(`- \`message_external_id\`: ${truncateString(msg.external_message_id, 10)}${msg.external_message_id ? '***' : ''}`);
             appendLog(`- \`message_id\`: ${msg.id}`);
             appendLog(`- \`conversation_id\`: ${msg.conversation_id}`);
             appendLog(`- \`session_key\`: ${session.session_key}`);

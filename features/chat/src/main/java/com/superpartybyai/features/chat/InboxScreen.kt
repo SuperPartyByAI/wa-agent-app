@@ -44,8 +44,8 @@ data class ClientRef(val full_name: String, val avatar_url: String? = null, val 
 @Serializable
 data class InboxSummaryModel(
     val conversation_id: String,
-    val conversation_status: String,
-    val conversation_updated_at: String,
+    val conversation_status: String? = null,
+    val conversation_updated_at: String? = null,
     val client_id: String? = null,
     val session_id: String? = null,
     val session_label: String? = null,
@@ -79,16 +79,16 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                 if (conversations.isEmpty()) isLoading = true
                 
                 // Fetch raw array first for diagnostic logging
-                val rawResponse = SupabaseClient.client.postgrest["v_inbox_summaries"]
+                val result = SupabaseClient.client.postgrest["v_inbox_summaries"]
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("conversation_id, conversation_status, conversation_updated_at, client_id, session_id, session_label, full_name, avatar_url, public_alias, internal_client_code, last_message_content, last_message_at, last_message_from_me"))
-                    .data
                     
+                val rawResponse = result.data
                 android.util.Log.e("InboxScreen", "Raw v_inbox_summaries response length: " + rawResponse.length)
                 if (rawResponse.contains("a5652d1f")) {
                     android.util.Log.e("InboxScreen", "Found target conv a5652d1f in raw response!")
                 }
                 
-                val response = io.github.jan.supabase.postgrest.query.PostgrestResult(rawResponse, null).decodeList<InboxSummaryModel>()
+                val response = result.decodeList<InboxSummaryModel>()
                 
                 android.util.Log.e("InboxScreen", "Decoded conversations size: ${response.size}")
                 response.find { it.last_message_from_me == true }?.let {
@@ -97,6 +97,7 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                 
                 conversations = response.sortedByDescending { it.last_message_at ?: "" }
             } catch (e: Exception) {
+                android.util.Log.e("InboxScreen", "Error loading conversations: ${e.message}", e)
                 e.printStackTrace()
             } finally {
                 isLoading = false

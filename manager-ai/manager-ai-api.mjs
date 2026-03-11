@@ -2,25 +2,63 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import crypto from 'crypto';
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+    verify: (req, res, buf) => {
+        req.rawBody = buf.toString(); // For body parser if needed elsewhere, but we handled it in the route
+    }
+}));
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 // Webhook inside from whts-up (WhatsApp transport)
-app.post('/webhook/whts-up', async (req, res) => {
-    const { message_id, conversation_id, content, sender_type } = req.body;
-    console.log(`[Webhook MSG] Received msg ${message_id} for conv ${conversation_id} from ${sender_type}`);
-    
-    // In V1, we just fire an async process and return 200 immediately to not block WhatsApp
-    res.status(200).json({ status: 'queued' });
-    
-    // Abstracting to Worker logic
-    processConversation(conversation_id).catch(console.error);
+app.post('/webhook/whts-up', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+        const signature = req.headers['x-hub-signature'];
+        const webhookSecret = process.env.MANAGER_AI_WEBHOOK_SECRET || 'dev-secret-123';
+        
+        if (!signature) {
+            console.warn('[Webhook security] Missing signature');
+            return res.status(401).json({ error: 'Missing signature' });
+        }
+        
+        const hash = `sha256=${crypto.createHmac('sha256', webhookSecret).update(req.body).digest('hex')}`;
+        
+        if (hash !== signature) {
+            console.warn('[Webhook security] Invalid signature');
+            return res.status(403).json({ error: 'Invalid signature' });
+        }
+        
+        const payload = JSON.parse(req.body.toString());
+        const { message_id, conversation_id, content, sender_type } = payload;
+        console.log(`[Webhook MSG] Received verified msg ${message_id} for conv ${conversation_id} from ${sender_type}`);
+        
+        // Idempotency check: see if we already have this message processed
+        const { data: stateData } = await supabase
+            .from('ai_conversation_state')
+            .select('last_processed_message_id')
+            .eq('conversation_id', conversation_id)
+            .maybeSingle();
+            
+        if (stateData && stateData.last_processed_message_id === message_id) {
+             console.log(`[Webhook MSG] Idempotency catch: Msg ${message_id} already processed. Skipping.`);
+             return res.status(200).json({ status: 'already_processed' });
+        }
+        
+        // Return 200 immediately to not block WhatsApp
+        res.status(200).json({ status: 'queued' });
+        
+        // Abstracting to Worker logic with message_id to track last processed
+        processConversation(conversation_id, message_id).catch(console.error);
+    } catch (e) {
+        console.error('[Webhook error]', e.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 // Endpoint for Android app to fetch dynamic UI schema (Brain AI tab)

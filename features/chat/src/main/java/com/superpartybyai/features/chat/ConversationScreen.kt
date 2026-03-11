@@ -54,6 +54,10 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import android.location.Location
 
+import com.superpartybyai.features.chat.ai.AiSchemaNode
+import com.superpartybyai.features.chat.ai.AiRepository
+import com.superpartybyai.features.chat.ai.AiSchemaRenderer
+
 @Serializable
 data class MessageModel(
     val id: String,
@@ -104,6 +108,12 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
     var showContactDialog by remember { mutableStateOf(false) }
     var mockContactName by remember { mutableStateOf("") }
     var mockContactPhone by remember { mutableStateOf("") }
+    
+    var selectedTab by remember { mutableStateOf(0) }
+    var aiSchema by remember { mutableStateOf<List<AiSchemaNode>?>(null) }
+    var isLoadingSchema by remember { mutableStateOf(false) }
+    var schemaError by remember { mutableStateOf<String?>(null) }
+    val aiRepository = remember { AiRepository() }
     
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -490,6 +500,25 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
         }
     }
 
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 1 && aiSchema == null && contactId.isNotBlank()) {
+            isLoadingSchema = true
+            schemaError = null
+            try {
+                val schema = aiRepository.fetchSchema(contactId)
+                if (schema.isNotEmpty()) {
+                    aiSchema = schema
+                } else {
+                    schemaError = "Schema invalidă sau indisponibilă."
+                }
+            } catch (e: Exception) {
+                schemaError = e.message
+            } finally {
+                isLoadingSchema = false
+            }
+        }
+    }
+
 
 
     if (showLocationDialog) {
@@ -789,8 +818,9 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
             )
         },
         bottomBar = {
-            BottomAppBar {
-                if (isUploading) {
+            if (selectedTab == 0) {
+                BottomAppBar {
+                    if (isUploading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(8.dp))
                 } else {
                     Box {
@@ -957,11 +987,17 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                     Text("Send")
                 }
             }
+                }
+            }
         }
-    }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (isLoading && messages.isEmpty()) {
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) { Text("Chat", modifier = Modifier.padding(16.dp)) }
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) { Text("Creier AI", modifier = Modifier.padding(16.dp)) }
+            }
+            if (selectedTab == 0) {
+                if (isLoading && messages.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
@@ -1070,8 +1106,45 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                         }
                     }
                 }
+                }
+            }
+            } else {
+                if (isLoadingSchema) {
+                    Box(modifier = Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (schemaError != null) {
+                    Box(modifier = Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+                            Icon(Icons.Default.Info, contentDescription = "Eroare AI", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error)
+                            Text("Eroare Schema UI", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.error)
+                            Text(schemaError ?: "Eroare necunoscută", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp))
+                            Button(onClick = { 
+                                isLoadingSchema = true
+                                schemaError = null
+                                coroutineScope.launch {
+                                    try {
+                                        val schema = aiRepository.fetchSchema(contactId)
+                                        if (schema.isNotEmpty()) aiSchema = schema else schemaError = "Schema goală"
+                                    } catch (e: Exception) { schemaError = e.message }
+                                    finally { isLoadingSchema = false }
+                                }
+                            }) { Text("Reîncearcă") }
+                        }
+                    }
+                } else if (aiSchema != null) {
+                    LazyColumn(modifier = Modifier.weight(1f).fillMaxSize().padding(16.dp)) {
+                        item {
+                            AiSchemaRenderer(
+                                components = aiSchema!!,
+                                onAction = { actionStr, payload ->
+                                    Toast.makeText(context, "Acțiune: $actionStr trimisă", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
-}
 }

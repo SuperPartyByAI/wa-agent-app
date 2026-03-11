@@ -1,6 +1,47 @@
 const supabase = require('./supabase');
 const { resolveClientIdentity } = require('./clientIdentity');
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+const crypto = require('crypto');
+
+async function sendWebhookToManagerAi(payload, attempt = 1) {
+  const maxRetries = 3;
+  const webhookSecret = process.env.MANAGER_AI_WEBHOOK_SECRET || 'dev-secret-123';
+  const url = process.env.MANAGER_AI_WEBHOOK_URL || 'http://91.98.16.90:3000/webhook/whts-up';
+  
+  const bodyString = JSON.stringify(payload);
+  const signature = crypto.createHmac('sha256', webhookSecret).update(bodyString).digest('hex');
+  
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Hub-Signature': `sha256=${signature}`
+      },
+      body: bodyString,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeout);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    console.log(`[Webhook AI Success] Msg: ${payload.message_id} to ${url}`);
+  } catch (error) {
+    if (attempt < maxRetries) {
+      console.warn(`[Webhook AI Warn] Failed to send msg ${payload.message_id}, retrying ${attempt}/${maxRetries}... (${error.message})`);
+      await new Promise(res => setTimeout(res, 1000 * attempt));
+      await sendWebhookToManagerAi(payload, attempt + 1);
+    } else {
+      console.error(`[Webhook AI Fatal] Could not send msg ${payload.message_id} after ${maxRetries} attempts: ${error.message}`);
+    }
+  }
+}
 
 async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, externalId, sessionId, sock = null, bypassConvId = null, extraMeta = {}) {
   try {
@@ -71,11 +112,13 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
     });
 
     // --- AI Webhook Sync ---
-    fetch('http://91.98.16.90:3000/webhook/whts-up', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message_id: externalId, conversation_id: convId, content: text, sender_type: 'agent' })
-    }).catch(e => console.error('[Webhook AI Error Outbound]', e.message));
+    sendWebhookToManagerAi({
+      message_id: externalId,
+      conversation_id: convId,
+      content: text,
+      sender_type: 'agent',
+      timestamp: new Date().toISOString()
+    });
 
   } catch(e) {
     console.error(`[Supabase Outbound Error] ${e.message}`);
@@ -292,11 +335,13 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
         console.error(`[Supabase Insert Fatal]`, JSON.stringify(insertErr));
       } else {
         // --- AI Webhook Sync ---
-        fetch('http://91.98.16.90:3000/webhook/whts-up', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message_id: msgId, conversation_id: convId, content, sender_type: isOutbound ? 'agent' : 'client' })
-        }).catch(e => console.error('[Webhook AI Error Inbound]', e.message));
+        sendWebhookToManagerAi({
+          message_id: msgId,
+          conversation_id: convId,
+          content,
+          sender_type: isOutbound ? 'agent' : 'client',
+          timestamp: new Date().toISOString()
+        });
       }
 
       if (msgTimestamp.getTime() > currentUpdatedAt) {

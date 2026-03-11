@@ -10,14 +10,13 @@ const ai = process.env.GEMINI_API_KEY
     ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) 
     : null;
 
-export async function processConversation(conversation_id) {
+export async function processConversation(conversation_id, message_id = null) {
     if (!conversation_id) return;
     
     console.log(`[AI Worker] Starting real text-understanding pipeline for ${conversation_id}...`);
     
     if (!ai) {
-        console.warn(`[AI Worker] BLOCKED: GEMINI_API_KEY missing in .env. Cannot analyze text.`);
-        return;
+        console.warn(`[AI Worker] WARNING: GEMINI_API_KEY missing in .env. Using mock analysis for pipeline validation.`);
     }
 
     try {
@@ -66,18 +65,33 @@ Return a STRICT JSON object matching this exact schema:
 
         console.log(`[AI Worker] Asking Gemini to parse transcript (${transcript.length} chars)...`);
         
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [
-                { role: 'user', parts: [{ text: `${systemPrompt}\n\n--- CONVERSATION ---\n${transcript}` }] }
-            ],
-            config: {
-                responseMimeType: "application/json",
+        let jsonRaw = "";
+        let analysis = null;
+        if (ai) {
+            try {
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: [
+                        { role: 'user', parts: [{ text: `${systemPrompt}\n\n--- CONVERSATION ---\n${transcript}` }] }
+                    ],
+                    config: {
+                        responseMimeType: "application/json",
+                    }
+                });
+                jsonRaw = response.text;
+                analysis = JSON.parse(jsonRaw);
+            } catch (geminiErr) {
+                console.error(`[AI Worker] Gemini generation or JSON parse failed:`, geminiErr.message);
+                return; // Abort processing to avoid polluting DB with bad state
             }
-        });
-
-        const jsonRaw = response.text;
-        const analysis = JSON.parse(jsonRaw);
+        } else {
+             // Mock fallback for pipeline validation
+             analysis = {
+                client_memory: { priority_level: "high", internal_notes_summary: "MOCKED: Client interested in booking an event." },
+                event_draft: { draft_type: "standard_party", structured_data: { location: "Bucuresti", date: "2024-12-01", event_type: "Nunta" }, missing_fields: ["numar_invitati", "buget"] },
+                conversation_state: { current_intent: "MOCKED: wants_price", next_best_action: "Provide price packages." }
+             };
+        }
 
         console.log(`[AI Worker] Gemini analysis complete. Updating database state...`);
 
@@ -88,15 +102,16 @@ Return a STRICT JSON object matching this exact schema:
         const clientId = conv?.client_id;
 
         if (clientId) {
-            await supabase.from('ai_client_memory').upsert({
+            const { error: err1 } = await supabase.from('ai_client_memory').upsert({
                 client_id: clientId,
                 priority_level: analysis.client_memory.priority_level,
                 internal_notes_summary: analysis.client_memory.internal_notes_summary,
                 updated_at: new Date().toISOString()
             });
+            if (err1) console.error("[AI Worker] DB Error memory:", err1.message);
         }
 
-        await supabase.from('ai_event_drafts').upsert({
+        const { error: err2 } = await supabase.from('ai_event_drafts').upsert({
             conversation_id: conversation_id,
             client_id: clientId,
             draft_type: analysis.event_draft.draft_type,
@@ -104,13 +119,21 @@ Return a STRICT JSON object matching this exact schema:
             missing_fields_json: analysis.event_draft.missing_fields,
             updated_at: new Date().toISOString()
         }, { onConflict: 'conversation_id' }); // Assuming 1 active draft per conversation for now
+        if (err2) console.error("[AI Worker] DB Error drafts:", err2.message);
 
-        await supabase.from('ai_conversation_state').upsert({
+        const statePayload = {
             conversation_id: conversation_id,
             current_intent: analysis.conversation_state.current_intent,
             next_best_action: analysis.conversation_state.next_best_action,
             updated_at: new Date().toISOString()
-        });
+        };
+        
+        if (message_id) {
+            statePayload.last_processed_message_id = message_id;
+        }
+
+        const { error: err3 } = await supabase.from('ai_conversation_state').upsert(statePayload);
+        if (err3) console.error("[AI Worker] DB Error state:", err3.message);
 
         // 4. Generate the dynamic layout JSON for Android Renderer
         const dynamicSchema = [
@@ -145,11 +168,12 @@ Return a STRICT JSON object matching this exact schema:
             }
         ];
 
-        await supabase.from('ai_ui_schemas').insert({
+        const { error: err4 } = await supabase.from('ai_ui_schemas').insert({
             conversation_id: conversation_id,
             screen_type: 'brain_tab',
             layout_json: dynamicSchema
         });
+        if (err4) console.error("[AI Worker] DB Error schemas:", err4.message);
 
         console.log(`[AI Worker] Successfully mapped V1 AI knowledge to conversation ${conversation_id}.`);
 

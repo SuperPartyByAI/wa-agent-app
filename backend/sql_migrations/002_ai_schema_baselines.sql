@@ -1,3 +1,6 @@
+-- Supabase / Postgres: Ensure pgcrypto exists for gen_random_uuid() before usage
+create extension if not exists pgcrypto;
+
 -- 1. ai_conversation_state
 CREATE TABLE IF NOT EXISTS ai_conversation_state (
     conversation_id UUID PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,

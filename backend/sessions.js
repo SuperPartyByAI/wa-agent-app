@@ -182,27 +182,30 @@ async function startSession(sessionId) {
     });
 
     sock.ev.on('messages.upsert', async (m) => {
-      // m.type === 'notify' means real new message physically sent
-      if (m.type === 'notify') {
-        for (const msg of m.messages) {
-          logger(sessionId, "info", `[messages.upsert Hook] Remote: ${msg.key.remoteJid} | FromMe: ${msg.key.fromMe}`);
-          await syncHistoricalMessageToSupabase(msg, sessionId, sock).catch(e => console.error(e));
-          
-          if (!msg.key.fromMe && WEBHOOK_URL) {
-            try {
-              await fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  event: "whatsapp_message_received",
-                  sessionId,
-                  from: msg.key.remoteJid,
-                  text: msg.message?.conversation || msg.message?.extendedTextMessage?.text || "",
-                  timestamp: Date.now()
-                })
-              });
-            } catch (err) {}
-          }
+      if (!['notify', 'append'].includes(m.type)) return;
+
+      for (const msg of m.messages || []) {
+        logger(
+          sessionId,
+          "info",
+          `[messages.upsert] Type: ${m.type} | Remote: ${msg?.key?.remoteJid} | FromMe: ${msg?.key?.fromMe} | Id: ${msg?.key?.id}`
+        );
+        await syncHistoricalMessageToSupabase(msg, sessionId, sock).catch(e => console.error(e));
+        
+        if (!msg.key?.fromMe && WEBHOOK_URL) {
+          try {
+            await fetch(WEBHOOK_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                event: "whatsapp_message_received",
+                sessionId,
+                from: msg.key.remoteJid,
+                text: msg.message?.conversation || msg.message?.extendedTextMessage?.text || "",
+                timestamp: Date.now()
+              })
+            });
+          } catch (err) {}
         }
       }
     });

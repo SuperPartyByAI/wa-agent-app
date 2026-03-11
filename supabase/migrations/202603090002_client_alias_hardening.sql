@@ -12,7 +12,7 @@ BEGIN
         updated_at = timezone('utc'::text, now())
     RETURNING current_index INTO idx;
 
-    alias := p_alias_prefix || '-' || LPAD(idx::TEXT, 2, '0');
+    alias := p_alias_prefix || '-' || idx::TEXT;
 END;
 $$ LANGUAGE plpgsql;
 

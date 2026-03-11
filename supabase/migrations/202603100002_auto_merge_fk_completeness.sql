@@ -24,19 +24,6 @@ DECLARE
     v_identifier RECORD;
     v_identifier_array TEXT[] := ARRAY[]::TEXT[];
 BEGIN
-    -- 1. Extract values to generate a symmetric sorted hash for transaction-level Parallelism Locking
-    FOR v_identifier IN SELECT * FROM jsonb_to_recordset(p_identifiers) AS x(type TEXT, value TEXT) LOOP
-        IF v_identifier.value IS NOT NULL AND trim(v_identifier.value) <> '' THEN
-            v_identifier_array := array_append(v_identifier_array, v_identifier.value);
-        END IF;
-    END LOOP;
-
-    -- Sort the array elements identically to ensure lock string symmetry regardless of payload JSON ordering
-    SELECT array_to_string(array(SELECT unnest(v_identifier_array) ORDER BY 1), '|') INTO v_lock_hash;
-
-    -- Serialize identical requests natively across parallel NodeJS hooks
-    PERFORM pg_advisory_xact_lock(hashtext(p_brand_key || '|' || v_lock_hash));
-
     -- 2. Check if ANY of the provided identifiers map to an existing client
     SELECT array_agg(DISTINCT l.client_id)
     INTO v_matched_ids

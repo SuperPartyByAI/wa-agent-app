@@ -82,23 +82,29 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                 val result = SupabaseClient.client.postgrest["v_inbox_summaries"]
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("conversation_id, conversation_status, conversation_updated_at, client_id, session_id, session_label, full_name, avatar_url, public_alias, internal_client_code, last_message_content, last_message_at, last_message_from_me"))
                     
-                val targetId = "a5652d1f-0844-482a-a40a-53c76279448d"
+                val targetIds = listOf(
+                    "a5652d1f-0844-482a-a40a-53c76279448d", // Epic-71
+                    "350fd312-b632-4d7f-b356-55fcf7d99f06", // Superparty-16
+                    "3119205d-dbbf-4787-bdad-3129fe2eeebc"  // Wowparty-05
+                )
+                
                 val rawResponse = result.data
-                android.util.Log.e("InboxScreen", "Target present in raw response: " + rawResponse.contains(targetId))
-                
                 val response = result.decodeList<InboxSummaryModel>()
-                val targetInResponse = response.find { it.conversation_id == targetId }
-                android.util.Log.e("InboxScreen", "Target present after decodeList: ${targetInResponse != null}")
-                
                 conversations = response.sortedByDescending { it.last_message_at ?: "" }
                 
-                val targetInConversations = conversations.find { it.conversation_id == targetId }
-                val targetIndex = conversations.indexOfFirst { it.conversation_id == targetId }
-                
-                android.util.Log.e("InboxScreen", "Target present in final conversations state: ${targetInConversations != null}")
-                if (targetInConversations != null) {
-                    android.util.Log.e("InboxScreen", "Target final index in list: $targetIndex")
-                    android.util.Log.e("InboxScreen", "Target state -> conv_id: ${targetInConversations.conversation_id}, content: ${targetInConversations.last_message_content}, at: ${targetInConversations.last_message_at}, from_me: ${targetInConversations.last_message_from_me}, alias: ${targetInConversations.public_alias}, session: ${targetInConversations.session_label}")
+                android.util.Log.e("InboxScreen", "--- MATRIX AUDIT TRACE ---")
+                targetIds.forEach { targetId ->
+                    val inRaw = rawResponse.contains(targetId)
+                    val inResponse = response.any { it.conversation_id == targetId }
+                    val inFinal = conversations.any { it.conversation_id == targetId }
+                    val finalIdx = conversations.indexOfFirst { it.conversation_id == targetId }
+                    
+                    if (inFinal) {
+                        val c = conversations.find { it.conversation_id == targetId }!!
+                        android.util.Log.e("InboxScreen", "TARGET [$targetId]: raw=$inRaw | resp=$inResponse | final=$inFinal | idx=$finalIdx | alias=${c.public_alias} | prefix=${c.last_message_from_me}")
+                    } else {
+                        android.util.Log.e("InboxScreen", "TARGET [$targetId]: raw=$inRaw | resp=$inResponse | final=$inFinal")
+                    }
                 }
                 
             } catch (e: Exception) {
@@ -268,7 +274,9 @@ fun InboxScreen(modifier: Modifier = Modifier, onChatClick: (String) -> Unit, on
                 items(conversations.size) { index ->
                     val conv = conversations[index]
                     val baseName = conv.public_alias ?: conv.full_name ?: "Unknown Client"
-                    val contactName = if (conv.conversation_id == "a5652d1f-0844-482a-a40a-53c76279448d") "[DEBUG TARGET] $baseName" else baseName
+                    
+                    val targetIds = listOf("a5652d1f-0844-482a-a40a-53c76279448d", "350fd312-b632-4d7f-b356-55fcf7d99f06", "3119205d-dbbf-4787-bdad-3129fe2eeebc")
+                    val contactName = if (targetIds.contains(conv.conversation_id)) "[DEBUG HOST] $baseName" else baseName
                     
                     val prefix = if (conv.last_message_from_me == true) "Tu: " else ""
                     val messagePreview = conv.last_message_content?.let { previewText -> 

@@ -183,6 +183,45 @@ app.post('/api/ai/reply/approve', async (req, res) => {
 });
 
 import { processConversation } from './src/orchestration/processConversation.mjs';
+import { getAuditSummary, getRecentDecisions, getConversationDiagnostic } from './src/repositories/auditRepository.mjs';
+
+// ─── Audit Endpoints for Controlled Activation Pilot ───
+
+// Summary: eligibility breakdown, reply status, stages, confidence buckets
+app.get('/api/ai/audit/summary', async (req, res) => {
+    try {
+        const hours = parseInt(req.query.hours || '24', 10);
+        const summary = await getAuditSummary(hours);
+        res.json(summary);
+    } catch (err) {
+        console.error('[Audit] Summary error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Recent decisions with key fields
+app.get('/api/ai/audit/recent', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit || '20', 10);
+        const recent = await getRecentDecisions(limit);
+        res.json(recent);
+    } catch (err) {
+        console.error('[Audit] Recent error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Full diagnostic for a single conversation
+app.get('/api/ai/audit/conversation/:conversation_id', async (req, res) => {
+    try {
+        const { conversation_id } = req.params;
+        const diagnostic = await getConversationDiagnostic(conversation_id);
+        res.json(diagnostic);
+    } catch (err) {
+        console.error('[Audit] Diagnostic error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {

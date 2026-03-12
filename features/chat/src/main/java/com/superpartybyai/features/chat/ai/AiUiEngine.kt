@@ -33,6 +33,12 @@ private fun RenderNode(
                 node.title?.let {
                     Text(text = it, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 8.dp))
                 }
+                node.items?.forEach { item ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                        Text(text = item.label, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, modifier = Modifier.weight(0.4f))
+                        Text(text = item.value ?: "", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.6f))
+                    }
+                }
                 node.children?.forEach { child ->
                     RenderNode(child, formState, onAction)
                 }
@@ -43,6 +49,12 @@ private fun RenderNode(
                 Column(modifier = Modifier.padding(16.dp)) {
                     node.title?.let {
                         Text(text = it, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    node.items?.forEach { item ->
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                            Text(text = item.label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(0.35f))
+                            Text(text = item.value ?: "—", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.65f))
+                        }
                     }
                     node.children?.forEach { child ->
                         RenderNode(child, formState, onAction)

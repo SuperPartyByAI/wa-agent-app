@@ -6,6 +6,7 @@ import { buildSystemPrompt } from '../prompts/systemPrompt.mjs';
 import { buildBrainSchema } from '../schemas/buildBrainSchema.mjs';
 import { evaluateEligibility } from '../policy/evaluateEligibility.mjs';
 import { evaluateSalesCycle } from '../policy/evaluateSalesCycle.mjs';
+import { composeHumanReply } from '../replies/composeHumanReply.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
 
@@ -138,7 +139,7 @@ export async function processConversation(conversation_id, message_id = null, op
         serviceData.service_requirements = analysis.service_requirements;
 
         const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
-        const suggestedReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
+        let suggestedReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
         const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: '' };
         const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: {}, missing_fields: [] };
         const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
@@ -215,13 +216,26 @@ export async function processConversation(conversation_id, message_id = null, op
         if (message_id) statePayload.last_processed_message_id = message_id;
         await supabase.from('ai_conversation_state').upsert(statePayload);
 
+        // ── 8.5. Compose humanized reply ──
+        let composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false };
+        if (eligibility.eligible || !decision.needs_human_review) {
+            composerResult = await composeHumanReply({
+                analysis,
+                entityMemory,
+                salesCycle,
+                conversationStage: dbStage || decision.conversation_stage,
+                conversationText: userMessage
+            });
+            suggestedReply = composerResult.reply;
+        }
+
         // ── 9. Auto-send logic ──
         let replyStatus = 'pending';
         let sentBy = 'pending';
         let sentAt = null;
 
         if (eligibility.eligible) {
-            console.log(`[Pipeline] Auto-reply ALLOWED (confidence=${decision.confidence_score}). Sending...`);
+            console.log(`[Pipeline] Auto-reply ALLOWED (confidence=${decision.confidence_score}, style=${composerResult.replyStyle}). Sending...`);
             const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
             if (sent) {
                 replyStatus = 'sent';

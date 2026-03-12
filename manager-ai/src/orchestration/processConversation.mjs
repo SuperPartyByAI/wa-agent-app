@@ -179,7 +179,7 @@ export async function processConversation(conversation_id, message_id = null, op
             }
 
             // Minimal audit
-            await supabase.from('ai_reply_decisions').insert({
+            const { error: fpAuditErr } = await supabase.from('ai_reply_decisions').insert({
                 conversation_id,
                 suggested_reply: fpReply.reply,
                 can_auto_reply: true,
@@ -188,14 +188,9 @@ export async function processConversation(conversation_id, message_id = null, op
                 conversation_stage: convStateForFP?.current_stage || 'lead',
                 reply_status: fpReplyStatus,
                 sent_by: fpSentBy,
-                sent_at: fpSentAt,
-                reply_style: fpReply.replyStyle,
-                composer_used: false,
-                next_step: fastPath.fast_path_type,
-                progression_status: 'fast_path',
-                autonomy_level: 'full',
-                escalation_reason: spamCheck.allow_send ? null : spamCheck.block_reason
-            }).catch(err => console.warn('[FastPath] Audit insert error:', err.message));
+                sent_at: fpSentAt
+            });
+            if (fpAuditErr) console.warn('[FastPath] Audit insert error:', fpAuditErr.message);
 
             // Update conversation state
             await supabase.from('ai_conversation_state').upsert({

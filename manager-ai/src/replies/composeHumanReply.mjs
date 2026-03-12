@@ -18,7 +18,9 @@ export async function composeHumanReply({
     conversationStage,
     conversationText,
     serviceConfidence,
-    progression
+    progression,
+    kbGrounding,
+    learnedContext
 }) {
     const draftReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
 
@@ -42,10 +44,35 @@ export async function composeHumanReply({
         progression
     });
 
+    // Inject KB grounding or learned context into conversation text
+    let enrichedText = conversationText;
+
+    if (kbGrounding) {
+        enrichedText = `--- KNOWLEDGE BASE (SURSĂ DE ADEVĂR FACTUALĂ) ---
+Informație verificată pentru: ${kbGrounding.knowledgeKey}
+Categorie: ${kbGrounding.category}
+
+${kbGrounding.factualAnswer}
+
+REGULĂ: Folosește informația de mai sus ca sursă de adevăr. NU inventa peste ea. Formulează natural și scurt.
+---
+
+${conversationText}`;
+    } else if (learnedContext && learnedContext.length > 0) {
+        const examples = learnedContext.map(c =>
+            `- Context: "${c.questionContext}" → Răspuns bun: "${c.correctedReply}" (scope: ${c.scope})`
+        ).join('\n');
+        enrichedText = `--- EXEMPLE CORECTE ANTERIOARE (GHID, NU SURSĂ ABSOLUTĂ) ---
+${examples}
+---
+
+${conversationText}`;
+    }
+
     try {
         const composedReply = await callLocalLLMText(
             composerPrompt,
-            conversationText
+            enrichedText
         );
 
         // Clean up response

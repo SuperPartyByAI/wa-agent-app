@@ -353,59 +353,8 @@ export async function processConversation(conversation_id, message_id = null, op
             return;
         }
 
-        // ── 3.7. Knowledge Base fast-path — check BEFORE LLM ──
-        const { searchKnowledgeBase } = await import('../knowledge/knowledgeBase.mjs');
-        const kbMatch = await searchKnowledgeBase(lastClientMessageText);
+        // ── 3.7. (KB lookup moved AFTER guards — see step 7.1) ──
 
-        if (kbMatch && kbMatch.score >= 0.6) {
-            console.log(`[Pipeline] KB MATCH: score=${kbMatch.score.toFixed(2)}, category=${kbMatch.category}`);
-
-            // Use KB answer directly — no LLM needed!
-            const kbReply = kbMatch.answer;
-
-            // Run shouldReplyNow checks
-            const kbReplyDecision = await shouldReplyNow({
-                conversationId: conversation_id,
-                lastClientMessage: lastClientMessageText,
-                replyText: kbReply,
-                conversationStage: convStateForFP?.current_stage || 'lead',
-                supabase
-            });
-
-            let kbStatus = 'pending';
-            let kbSentBy = 'reply_engine';
-            let kbSentAt = null;
-
-            if (kbReplyDecision.decision === 'reply_now') {
-                const sent = await sendViaWhatsApp(conversation_id, kbReply);
-                if (sent) {
-                    kbStatus = 'sent';
-                    kbSentBy = 'ai';
-                    kbSentAt = new Date().toISOString();
-                }
-                await clearFollowUp(conversation_id, 'kb_replied');
-            }
-
-            await supabase.from('ai_reply_decisions').insert({
-                conversation_id,
-                suggested_reply: kbReply,
-                can_auto_reply: true,
-                needs_human_review: false,
-                confidence_score: Math.round(kbMatch.score * 100),
-                conversation_stage: convStateForFP?.current_stage || 'lead',
-                reply_status: kbStatus,
-                sent_by: kbSentBy,
-                sent_at: kbSentAt,
-                next_step: 'kb_answer',
-                progression_status: 'kb_fast_path',
-                escalation_reason: kbStatus === 'sent' ? null : `kb_blocked_${kbReplyDecision.decision}`
-            });
-
-            console.log(`[Pipeline] KB done ${conversation_id}. Score: ${kbMatch.score.toFixed(2)}, Reply: ${kbStatus}, Decision: ${kbReplyDecision.decision}. ${Date.now() - t_pipeline_start}ms`);
-            return;
-        }
-
-        // ── 3.8. No KB match — full LLM pipeline ──
         let userMessage = `--- CONVERSATIE ---\n${transcript}`;
         if (operator_prompt) {
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
@@ -496,6 +445,81 @@ export async function processConversation(conversation_id, message_id = null, op
 
         console.log(`[Pipeline] Services: [${serviceData.selected_services.join(', ')}], Entity: ${entityMemory.entity_type} (${entityMemory.entity_confidence}%), Eligibility: ${eligibility.eligible ? 'ALLOWED' : eligibility.reason}, Cycle: ${salesCycle.cycle_eligibility}/${salesCycle.cycle_reason}, Decision: confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
 
+        // ── 7.1. KB Lookup — AFTER all guards, service-aware ──
+        const { searchKnowledgeBase, getLearningContext } = await import('../knowledge/knowledgeBase.mjs');
+        const kbMatch = await searchKnowledgeBase(lastClientMessageText, {
+            detectedServices: serviceData.selected_services,
+            conversationStage: dbStage || decision.conversation_stage
+        });
+
+        if (kbMatch) {
+            console.log(`[Pipeline] KB: key=${kbMatch.knowledgeKey}, score=${kbMatch.score.toFixed(2)}, mode=${kbMatch.mode}, reason=[${kbMatch.matchReason}]`);
+        } else {
+            console.log('[Pipeline] KB: no match found');
+        }
+
+        // ── 7.2. KB Direct Answer Path ──
+        // If strong KB match AND eligibility allows → send KB answer directly, skip LLM
+        if (kbMatch && kbMatch.mode === 'kb_direct_answer' && eligibility.eligible) {
+            const kbReply = kbMatch.answer;
+
+            // Run shouldReplyNow — respects ALL guards
+            const kbReplyDecision = await shouldReplyNow({
+                conversationId: conversation_id,
+                newReply: kbReply,
+                nextStep: 'kb_direct_answer',
+                lastClientMessage: lastClientMessageText
+            });
+
+            let kbStatus = 'pending';
+            let kbSentBy = 'reply_engine';
+            let kbSentAt = null;
+
+            if (kbReplyDecision.decision === 'reply_now') {
+                const sent = await sendViaWhatsApp(conversation_id, kbReply);
+                if (sent) {
+                    kbStatus = 'sent';
+                    kbSentBy = 'ai';
+                    kbSentAt = new Date().toISOString();
+                }
+                await clearFollowUp(conversation_id, 'kb_replied');
+            } else {
+                kbStatus = 'blocked';
+                console.log(`[Pipeline] KB direct blocked: ${kbReplyDecision.decision} — ${kbReplyDecision.reason}`);
+            }
+
+            // Audit
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: kbReply,
+                can_auto_reply: true,
+                needs_human_review: false,
+                confidence_score: Math.round(kbMatch.score * 100),
+                conversation_stage: dbStage || decision.conversation_stage,
+                reply_status: kbStatus,
+                sent_by: kbSentBy,
+                sent_at: kbSentAt,
+                next_step: 'kb_direct_answer',
+                progression_status: 'kb_direct_answer',
+                autonomy_level: 'full',
+                eligibility_status: eligibility.eligible ? 'eligible' : 'blocked',
+                eligibility_reason: eligibility.reason,
+                escalation_reason: kbStatus === 'sent' ? null : `kb_blocked_${kbReplyDecision.decision}`
+            });
+
+            // Update conversation state
+            await supabase.from('ai_conversation_state').upsert({
+                conversation_id,
+                current_stage: dbStage || decision.conversation_stage,
+                next_best_action: 'kb_direct_answer',
+                updated_at: new Date().toISOString(),
+                ...(message_id ? { last_processed_message_id: message_id } : {})
+            });
+
+            console.log(`[Pipeline] KB DIRECT done ${conversation_id}. Key: ${kbMatch.knowledgeKey}, Score: ${kbMatch.score.toFixed(2)}, Reply: ${kbStatus}. ${Date.now() - t_pipeline_start}ms`);
+            return;
+        }
+
         // ── 8. Persist to DB ──
         // Client memory + entity memory
         if (clientId) {
@@ -559,6 +583,31 @@ export async function processConversation(conversation_id, message_id = null, op
         });
         console.log(`[Pipeline] Service Detection: status=${serviceConfidence.service_detection_status}, confirmation=${serviceConfidence.service_confirmation_allowed}, confirmed=[${serviceConfidence.confirmed_services.join(',')}], ambiguous=[${serviceConfidence.ambiguous_services.join(',')}]`);
 
+        // ── 8.5.1. KB Grounded Composer context ──
+        // If KB matched in grounded mode, inject facts for composer
+        let kbGroundingContext = null;
+        if (kbMatch && kbMatch.mode === 'kb_grounded_composer') {
+            kbGroundingContext = {
+                knowledgeKey: kbMatch.knowledgeKey,
+                factualAnswer: kbMatch.answer,
+                category: kbMatch.category,
+                requiredContext: kbMatch.requiredContext,
+                metadata: kbMatch.metadata
+            };
+            console.log(`[Pipeline] KB grounded context injected: key=${kbMatch.knowledgeKey}`);
+        }
+
+        // ── 8.5.2. Learned corrections as supplementary LLM context ──
+        let learnedContext = [];
+        if (!kbMatch) {
+            learnedContext = await getLearningContext(lastClientMessageText, {
+                serviceTags: serviceData.selected_services
+            });
+            if (learnedContext.length > 0) {
+                console.log(`[Pipeline] Learned context: ${learnedContext.length} corrections available`);
+            }
+        }
+
         // ── 8.6. Conversation Progression Engine ──
         const replyContext = buildReplyContext({ analysis, entityMemory, serviceConfidence });
         const progression = evaluateNextStep({
@@ -598,20 +647,38 @@ export async function processConversation(conversation_id, message_id = null, op
             console.log(`[Pipeline] Escalation: type=${escalation.escalation_type}, reason=${escalation.escalation_reason}`);
         }
 
-        // ── 8.9. Compose humanized reply (with progression context) ──
+        // ── 8.9. Compose humanized reply (with progression + KB grounding context) ──
         let composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, serviceDetectionStatus: 'unknown' };
         let t_composer_ms = 0;
         if (eligibility.eligible || !decision.needs_human_review) {
             const t_comp_start = Date.now();
-            composerResult = await composeHumanReply({
-                analysis,
-                entityMemory,
-                salesCycle,
-                conversationStage: dbStage || decision.conversation_stage,
-                conversationText: userMessage,
-                serviceConfidence,
-                progression
-            });
+
+            // If KB grounded mode, use KB answer as base truth
+            if (kbGroundingContext) {
+                composerResult = await composeHumanReply({
+                    analysis,
+                    entityMemory,
+                    salesCycle,
+                    conversationStage: dbStage || decision.conversation_stage,
+                    conversationText: userMessage,
+                    serviceConfidence,
+                    progression,
+                    kbGrounding: kbGroundingContext
+                });
+                console.log(`[Pipeline] Composer used KB grounding: key=${kbGroundingContext.knowledgeKey}`);
+            } else {
+                composerResult = await composeHumanReply({
+                    analysis,
+                    entityMemory,
+                    salesCycle,
+                    conversationStage: dbStage || decision.conversation_stage,
+                    conversationText: userMessage,
+                    serviceConfidence,
+                    progression,
+                    learnedContext
+                });
+            }
+
             suggestedReply = composerResult.reply;
             t_composer_ms = Date.now() - t_comp_start;
             console.log(`[Pipeline] Composer completed in ${t_composer_ms}ms`);

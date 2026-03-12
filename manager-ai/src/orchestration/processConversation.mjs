@@ -213,7 +213,11 @@ export async function processConversation(conversation_id, message_id = null, op
                     lastClientMessage: lastClientMessageText,
                     conversationStage: convStateForFP?.current_stage || 'lead',
                     nextStep: fastPath.fast_path_type,
-                    conversationStatus: convStateForFP?.current_stage
+                    conversationStatus: convStateForFP?.current_stage,
+                    closingSignalDetected: replyDecision.closingSignalDetected,
+                    customerPausedDetected: replyDecision.customerPausedDetected,
+                    humanTakeoverActive: replyDecision.humanTakeoverActive,
+                    aiCommitmentPending: replyDecision.aiCommitmentPending
                 });
                 if (fpFollowUpElig.eligible) {
                     const schedResult = await scheduleFollowUp({
@@ -271,6 +275,7 @@ export async function processConversation(conversation_id, message_id = null, op
 
         if (isAngry) {
             console.log(`[Pipeline] Early exit: angry/confused -> escalate`);
+            await clearFollowUp(conversation_id, 'escalated_pre_llm');
             await supabase.from('ai_reply_decisions').insert({
                 conversation_id,
                 suggested_reply: '[escalated - client sentiment]',
@@ -281,6 +286,42 @@ export async function processConversation(conversation_id, message_id = null, op
                 escalation_reason: 'escalated_client_sentiment'
             });
             console.log(`[Pipeline] EscalateExit done ${conversation_id}. ${Date.now() - t_pipeline_start}ms`);
+            return;
+        }
+
+        // Pre-LLM closing signal check
+        const { detectClosingSignal: detectClose } = await import('../policy/shouldReplyNow.mjs');
+        const closingCheck = detectClose(lastClientMessageText);
+        if (closingCheck.detected && !closingCheck.hasOpenQuestion && !closingCheck.hasActiveIntent) {
+            console.log(`[Pipeline] Early exit: closing signal -> stay_silent`);
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: '[stay_silent - closing signal]',
+                can_auto_reply: false, needs_human_review: false, confidence_score: 100,
+                conversation_stage: convStateForFP?.current_stage || 'lead',
+                reply_status: 'blocked', sent_by: 'reply_engine',
+                next_step: 'stay_silent', progression_status: 'closing_signal',
+                escalation_reason: 'blocked_closing_signal'
+            });
+            console.log(`[Pipeline] ClosingExit done ${conversation_id}. ${Date.now() - t_pipeline_start}ms`);
+            return;
+        }
+
+        // Pre-LLM customer paused check
+        const PAUSE_RE = /^(revin eu|revin|ma mai gandesc|mă mai gândesc|ok.*revin|bine.*revin|te anunt eu|te anunț eu|lasa ca revin|lasă că revin|mai vorbim|va anunt|vă anunț)$/i;
+        const pauseNorm = lastClientMessageText.toLowerCase().trim().replace(/[!?.]+$/g, '').trim();
+        if (pauseNorm.length <= 35 && PAUSE_RE.test(pauseNorm)) {
+            console.log(`[Pipeline] Early exit: customer paused -> stay_silent`);
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: '[stay_silent - customer paused]',
+                can_auto_reply: false, needs_human_review: false, confidence_score: 100,
+                conversation_stage: convStateForFP?.current_stage || 'lead',
+                reply_status: 'blocked', sent_by: 'reply_engine',
+                next_step: 'stay_silent', progression_status: 'customer_paused',
+                escalation_reason: 'blocked_customer_paused'
+            });
+            console.log(`[Pipeline] PausedExit done ${conversation_id}. ${Date.now() - t_pipeline_start}ms`);
             return;
         }
 
@@ -546,7 +587,11 @@ export async function processConversation(conversation_id, message_id = null, op
                     conversationStage: decision.conversation_stage,
                     existingDraft: existingDraftRow,
                     nextStep: progression.next_step,
-                    conversationStatus: dbStage
+                    conversationStatus: dbStage,
+                    closingSignalDetected: replyDecisionResult.closingSignalDetected,
+                    customerPausedDetected: replyDecisionResult.customerPausedDetected,
+                    humanTakeoverActive: replyDecisionResult.humanTakeoverActive,
+                    aiCommitmentPending: replyDecisionResult.aiCommitmentPending
                 });
 
                 if (followUpElig.eligible) {

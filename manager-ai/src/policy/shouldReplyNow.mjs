@@ -29,19 +29,13 @@ export function releaseConversationLock(conversationId) {
 /**
  * Reply / Wait / Silence / Escalate Decision Engine
  *
- * Central decision point. Called BEFORE any send attempt.
+ * 13 checks, 5 decisions:
+ *  reply_now | wait_for_more_messages | wait_for_missing_info | stay_silent | escalate
  *
- * @param {object} params
- * @param {string} params.conversationId
- * @param {string} params.newReply           - reply about to be sent
- * @param {string} params.nextStep           - current next_step
- * @param {object} [params.mutation]         - mutation object
- * @param {string} [params.lastClientMessage]
- * @param {object} [params.escalation]       - escalation engine result
- * @param {object} [params.decision]         - LLM decision object
- * @param {object} [params.serviceConfidence]
- * @returns {Promise<object>}
- *   { decision, reason, details, turnState, significantUpdate, duplicateRisk, cooldownActive }
+ * Signals returned:
+ *  decision, reason, details, turnState, significantUpdate, duplicateRisk,
+ *  cooldownActive, newInformationDetected, closingSignalDetected,
+ *  customerPausedDetected, humanTakeoverActive, aiCommitmentPending
  */
 export async function shouldReplyNow({
     conversationId,
@@ -61,7 +55,11 @@ export async function shouldReplyNow({
         significantUpdate: false,
         duplicateRisk: false,
         cooldownActive: false,
-        newInformationDetected: false
+        newInformationDetected: false,
+        closingSignalDetected: false,
+        customerPausedDetected: false,
+        humanTakeoverActive: false,
+        aiCommitmentPending: false
     };
 
     // ── 1. Master switch ──
@@ -70,31 +68,61 @@ export async function shouldReplyNow({
     }
 
     try {
-        // ── 2. Acknowledgment / empty message → stay_silent ──
-        if (lastClientMessage && isAcknowledgment(lastClientMessage)) {
-            console.log(`[ReplyEngine] Stay silent: acknowledgment message "${lastClientMessage.substring(0, 30)}"`);
-            return { ...result, decision: 'stay_silent', reason: 'blocked_acknowledgment_only', turnState: 'client_ack', details: lastClientMessage.substring(0, 50) };
+        // ── 2. HUMAN TAKEOVER GUARD ──
+        const takeover = await detectHumanTakeover(conversationId);
+        result.humanTakeoverActive = takeover.active;
+        if (takeover.active) {
+            console.log(`[ReplyEngine] Stay silent: human takeover (operator replied ${takeover.elapsedSec}s ago)`);
+            return { ...result, decision: 'stay_silent', reason: 'blocked_human_takeover', turnState: 'human_takeover', details: `Operator replied ${takeover.elapsedSec}s ago` };
         }
 
-        // ── 3. Escalation check ──
+        // ── 3. Acknowledgment → stay_silent ──
+        if (lastClientMessage && isAcknowledgment(lastClientMessage)) {
+            console.log(`[ReplyEngine] Stay silent: acknowledgment "${lastClientMessage.substring(0, 30)}"`);
+            return { ...result, decision: 'stay_silent', reason: 'blocked_acknowledgment_only', turnState: 'client_ack' };
+        }
+
+        // ── 4. Customer paused → stay_silent, no follow-up ──
+        if (lastClientMessage && isCustomerPaused(lastClientMessage)) {
+            console.log(`[ReplyEngine] Stay silent: customer paused "${lastClientMessage.substring(0, 30)}"`);
+            result.customerPausedDetected = true;
+            return { ...result, decision: 'stay_silent', reason: 'blocked_customer_paused', turnState: 'customer_paused' };
+        }
+
+        // ── 5. Closing signal guard ──
+        if (lastClientMessage) {
+            const closing = detectClosingSignal(lastClientMessage);
+            result.closingSignalDetected = closing.detected;
+            if (closing.detected && !closing.hasOpenQuestion && !closing.hasActiveIntent) {
+                console.log(`[ReplyEngine] Stay silent: closing signal (pure close, no open question)`);
+                return { ...result, decision: 'stay_silent', reason: 'blocked_closing_signal', turnState: 'soft_closed_turn', details: closing.signal };
+            }
+            // If closing + open question → closing is neutralized, continue evaluation
+            if (closing.detected && (closing.hasOpenQuestion || closing.hasActiveIntent)) {
+                console.log(`[ReplyEngine] Closing signal neutralized: coexists with open question/intent`);
+                result.closingSignalDetected = false; // neutralized
+            }
+        }
+
+        // ── 6. Escalation check ──
         if (escalation?.needs_escalation) {
             console.log(`[ReplyEngine] Escalate: ${escalation.escalation_type} — ${escalation.escalation_reason}`);
             return { ...result, decision: 'escalate', reason: `escalated_${escalation.escalation_type}`, details: escalation.escalation_reason, turnState: 'escalated' };
         }
 
-        // Check for confused/angry client
         if (lastClientMessage && isConfusedOrAngry(lastClientMessage)) {
             console.log(`[ReplyEngine] Escalate: confused/angry client`);
-            return { ...result, decision: 'escalate', reason: 'escalated_client_sentiment', details: 'Client appears confused or frustrated', turnState: 'escalated' };
+            return { ...result, decision: 'escalate', reason: 'escalated_client_sentiment', turnState: 'escalated' };
         }
 
-        // ── 4. Wait for more messages (burst detection) ──
+        // ── 7. Burst detection → wait_for_more_messages ──
         const burstState = await detectMessageBurst(conversationId);
         if (burstState.inBurst) {
-            console.log(`[ReplyEngine] Wait: message burst detected (${burstState.recentCount} msgs in ${burstState.windowSec}s)`);
+            console.log(`[ReplyEngine] Wait: message burst (${burstState.recentCount} msgs in ${burstState.windowSec}s)`);
             return { ...result, decision: 'wait_for_more_messages', reason: 'blocked_debounce_window', turnState: 'client_burst', details: `${burstState.recentCount} messages in last ${burstState.windowSec}s` };
         }
-        // ── 4b. Wait for missing info (client has intent but incomplete data) ──
+
+        // ── 8. Wait for missing info (intent but incomplete data) ──
         if (lastClientMessage) {
             const hasIntent = /animator|popcorn|vata|ursitoare|petrecere|eveniment|nunta|botez|serbare|arcada|baloane|cifre|mos|gheata|parfumerie/i.test(lastClientMessage);
             if (hasIntent) {
@@ -105,14 +133,16 @@ export async function shouldReplyNow({
                 const hasGuests = /\d+\s*(copii|persoane|invitati)/i.test(msg);
                 const missingCount = [hasDate, hasLocation, hasTime, hasGuests].filter(x => !x).length;
 
-                if (missingCount >= 3) {
-                    console.log(`[ReplyEngine] Wait for missing info: intent detected but ${missingCount} fields missing`);
-                    return { ...result, decision: 'wait_for_missing_info', reason: 'incomplete_client_data', turnState: 'missing_info', details: `${missingCount} critical fields missing`, newInformationDetected: true };
+                // Only wait_for_missing_info if 3+ fields missing AND it's a short/simple request
+                // If message is detailed enough, reply_now with clarifying question is better
+                if (missingCount >= 3 && lastClientMessage.length < 80) {
+                    console.log(`[ReplyEngine] Wait for missing info: ${missingCount} fields missing, short message`);
+                    return { ...result, decision: 'wait_for_missing_info', reason: 'incomplete_client_data', turnState: 'missing_info', details: `${missingCount} fields missing`, newInformationDetected: true };
                 }
             }
         }
 
-        // ── 5. Fetch last AI reply for comparison ──
+        // ── 9. Fetch last AI reply for comparison ──
         const { data: lastSentRows } = await supabase
             .from('ai_reply_decisions')
             .select('suggested_reply, sent_at, created_at, next_step')
@@ -124,7 +154,6 @@ export async function shouldReplyNow({
 
         const lastSent = lastSentRows?.[0];
 
-        // No previous AI reply → always reply
         if (!lastSent) {
             return { ...result, decision: 'reply_now', reason: 'allowed_first_reply', turnState: 'first_turn', newInformationDetected: true };
         }
@@ -137,38 +166,38 @@ export async function shouldReplyNow({
         result.duplicateRisk = similarity > DUP_THRESHOLD;
         result.cooldownActive = elapsedSec < COOLDOWN_SEC;
 
-        // ── 6. Significant update override (checked BEFORE cooldown) ──
+        // ── 10. AI commitment pending check ──
+        result.aiCommitmentPending = detectAiCommitmentPending(lastReplyText);
+
+        // ── 11. Significant update override ──
         const sigUpdate = checkSignificantUpdate(mutation, nextStep, lastSent.next_step, lastClientMessage);
         result.significantUpdate = sigUpdate.significant;
         result.newInformationDetected = sigUpdate.significant;
 
-        if (sigUpdate.significant) {
-            // Even if duplicate text, significant changes allow reply
-            if (similarity < 0.95) {
-                console.log(`[ReplyEngine] Reply now: significant update — ${sigUpdate.reason}`);
-                return { ...result, decision: 'reply_now', reason: 'allowed_significant_update', details: sigUpdate.reason, turnState: 'significant_update' };
-            }
+        if (sigUpdate.significant && similarity < 0.95) {
+            console.log(`[ReplyEngine] Reply now: significant update — ${sigUpdate.reason}`);
+            return { ...result, decision: 'reply_now', reason: 'allowed_significant_update', details: sigUpdate.reason, turnState: 'significant_update' };
         }
 
-        // ── 7. Cooldown ──
+        // ── 12. Cooldown ──
         if (result.cooldownActive && !sigUpdate.significant) {
             console.log(`[ReplyEngine] Stay silent: cooldown (${elapsedSec}s < ${COOLDOWN_SEC}s)`);
             return { ...result, decision: 'stay_silent', reason: 'blocked_recent_ai_cooldown', details: `Last AI reply ${elapsedSec}s ago`, turnState: 'cooldown' };
         }
 
-        // ── 8. Duplicate guard ──
+        // ── 13. Duplicate guard ──
         if (similarity > DUP_THRESHOLD) {
             console.log(`[ReplyEngine] Stay silent: duplicate (${(similarity * 100).toFixed(0)}%)`);
-            return { ...result, decision: 'stay_silent', reason: 'blocked_duplicate_reply', details: `Similarity=${(similarity * 100).toFixed(0)}%`, turnState: 'duplicate', duplicateRisk: true };
+            return { ...result, decision: 'stay_silent', reason: 'blocked_duplicate_reply', turnState: 'duplicate', duplicateRisk: true };
         }
 
-        // ── 9. No new info check ──
+        // ── 14. No new info ──
         if (lastSent.next_step && nextStep === lastSent.next_step && similarity > NO_INFO_THRESHOLD) {
-            console.log(`[ReplyEngine] Stay silent: no new info (same step=${nextStep}, sim=${(similarity * 100).toFixed(0)}%)`);
-            return { ...result, decision: 'stay_silent', reason: 'blocked_no_new_information', details: `Same next_step="${nextStep}", sim=${(similarity * 100).toFixed(0)}%`, turnState: 'no_new_info' };
+            console.log(`[ReplyEngine] Stay silent: no new info (step=${nextStep}, sim=${(similarity * 100).toFixed(0)}%)`);
+            return { ...result, decision: 'stay_silent', reason: 'blocked_no_new_information', turnState: 'no_new_info' };
         }
 
-        // ── 10. All clear → reply ──
+        // ── 15. All clear → reply ──
         console.log(`[ReplyEngine] Reply now: new turn (elapsed=${elapsedSec}s, sim=${(similarity * 100).toFixed(0)}%, nextStep=${nextStep})`);
         return { ...result, decision: 'reply_now', reason: 'allowed_new_turn', turnState: 'new_turn', newInformationDetected: true };
 
@@ -178,37 +207,129 @@ export async function shouldReplyNow({
     }
 }
 
-// ── Helpers ──
+// ════════════════════════════════════════
+// GUARDS & DETECTORS
+// ════════════════════════════════════════
 
-/** Detect if client is still in a message burst. */
-async function detectMessageBurst(conversationId) {
-    const windowMs = DEBOUNCE_SEC * 1000;
-    const cutoff = new Date(Date.now() - windowMs).toISOString();
+/** Human Takeover Guard: detect if operator replied recently. */
+async function detectHumanTakeover(conversationId) {
+    const { data: operatorMsgs } = await supabase
+        .from('messages')
+        .select('created_at, sender_type')
+        .eq('conversation_id', conversationId)
+        .eq('direction', 'outbound')
+        .in('sender_type', ['agent', 'operator', 'human'])
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-    const { data: recentMsgs } = await supabase
+    if (!operatorMsgs || operatorMsgs.length === 0) {
+        return { active: false, elapsedSec: null };
+    }
+
+    const lastOpAt = new Date(operatorMsgs[0].created_at).getTime();
+
+    // Check if last outbound was from operator (not AI)
+    const { data: lastAiSent } = await supabase
+        .from('ai_reply_decisions')
+        .select('sent_at, created_at')
+        .eq('conversation_id', conversationId)
+        .eq('reply_status', 'sent')
+        .eq('sent_by', 'ai')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    const lastAiAt = lastAiSent?.[0]
+        ? new Date(lastAiSent[0].sent_at || lastAiSent[0].created_at).getTime()
+        : 0;
+
+    // Operator replied MORE RECENTLY than AI → human takeover active
+    if (lastOpAt > lastAiAt) {
+        const elapsedSec = Math.round((Date.now() - lastOpAt) / 1000);
+        return { active: true, elapsedSec, lastOperatorReplyAt: operatorMsgs[0].created_at };
+    }
+
+    // Check if last inbound from client came AFTER the operator reply
+    // If yes, it's a new turn — takeover may be released
+    const { data: lastClientMsg } = await supabase
         .from('messages')
         .select('created_at')
         .eq('conversation_id', conversationId)
         .eq('sender_type', 'client')
-        .gt('created_at', cutoff)
+        .eq('direction', 'inbound')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(1);
 
-    const count = recentMsgs?.length || 0;
-    // Burst = 3+ client messages in the debounce window
-    return { inBurst: count >= 3, recentCount: count, windowSec: DEBOUNCE_SEC };
+    if (lastClientMsg?.[0]) {
+        const clientAt = new Date(lastClientMsg[0].created_at).getTime();
+        // Client wrote AFTER operator but AFTER AI → new turn, takeover released
+        if (clientAt > lastOpAt && clientAt > lastAiAt) {
+            return { active: false, elapsedSec: null, released: true };
+        }
+    }
+
+    return { active: false, elapsedSec: null };
+}
+
+/** Detect closing signal in message. */
+export function detectClosingSignal(text) {
+    const lower = text.toLowerCase().trim();
+    const CLOSING_PATTERNS = [
+        /^o zi (buna|frumoasa|minunata)/i,
+        /va (doresc|dorim) o zi/i,
+        /multumesc.*o zi/i, /mersi.*o zi/i,
+        /^(mersi mult|multumesc mult|multumim mult)$/i,
+        /^vorbim$/i, /^ramane asa$/i, /^rămâne așa$/i,
+        /^bine.*merc/i, /^bine.*mult/i,
+        /^(ms|merci|mersi)$/i,
+        /^pa$/i, /^la revedere$/i, /^noapte buna$/i
+    ];
+    const detected = CLOSING_PATTERNS.some(p => p.test(lower));
+
+    // Check if closing coexists with open question or active intent
+    const hasOpenQuestion = /\?/.test(text) ||
+        /cat costa|cât costă|aveti|aveți|se poate|puteti|puteți/i.test(text);
+    const hasActiveIntent = /vreau|doresc|as vrea|aș vrea|ma intereseaza|mă interesează|animator|popcorn|petrecere|eveniment/i.test(text);
+
+    return {
+        detected,
+        signal: detected ? lower.substring(0, 40) : null,
+        hasOpenQuestion,
+        hasActiveIntent,
+        neutralized: detected && (hasOpenQuestion || hasActiveIntent)
+    };
+}
+
+/** Detect customer-paused signals. */
+function isCustomerPaused(text) {
+    const lower = text.toLowerCase().trim().replace(/[!?.]+$/g, '').trim();
+    const PAUSE_PATTERNS = [
+        /^revin eu$/i, /^revin$/i,
+        /^ma mai gandesc$/i, /^mă mai gândesc$/i,
+        /^ok.*revin$/i, /^bine.*revin$/i,
+        /^te anunt eu$/i, /^te anunț eu$/i,
+        /^lasa ca revin$/i, /^lasă că revin$/i,
+        /^stiu eu$/i, /^știu eu$/i,
+        /^va anunt$/i, /^vă anunț$/i,
+        /^mai vorbim$/i
+    ];
+    return lower.length <= 35 && PAUSE_PATTERNS.some(p => p.test(lower));
+}
+
+/** Detect AI commitment pending in last AI reply. */
+function detectAiCommitmentPending(lastAiReply) {
+    if (!lastAiReply) return false;
+    const lower = lastAiReply.toLowerCase();
+    return /revin (cu|imediat|in scurt)|verific.*(si|și) (revin|va anunt)|va (trimit|anunt|contactez)|o sa.*verific/i.test(lower);
 }
 
 /** Detect acknowledgment-only messages. */
 function isAcknowledgment(text) {
     const normalized = text.toLowerCase().trim().replace(/[!?.,,]+$/g, '').trim();
     const ACK_PATTERNS = [
-        'ok', 'okay', 'bine', 'da', 'mhm', 'aha', 'in regula', 'înțeles',
-        'am inteles', 'am înțeles', 'perfect', 'super', 'mersi', 'multumesc',
-        'multumim', 'mulțumesc', 'mulțumim', 'ms', 'merci', 'k', 'good',
-        'sigur', 'desigur', 'da da', 'okk', 'okei', 'oki', 'oky'
+        'ok', 'okay', 'bine', 'da', 'mhm', 'aha', 'in regula',
+        'am inteles', 'perfect', 'super', 'mersi', 'multumesc',
+        'ms', 'merci', 'k', 'good', 'sigur', 'desigur', 'da da', 'okk', 'okei', 'oki'
     ];
-    // Must be short AND match a pattern
     return normalized.length <= 25 && ACK_PATTERNS.some(p => normalized === p || normalized.startsWith(p + ' '));
 }
 
@@ -216,12 +337,9 @@ function isAcknowledgment(text) {
 function isConfusedOrAngry(text) {
     const lower = text.toLowerCase();
     const ANGRY_PATTERNS = [
-        'nu mai inteleg', 'nu mai înțeleg', 'ce se intampla', 'ce se întâmplă',
-        'de ce ati schimbat', 'de ce ați schimbat', 'sunt nemultumit', 'sunt nemulțumit',
-        'sunt suparat', 'sunt supărat', 'vreau sa vorbesc cu cineva', 'doresc sa vorbesc',
-        'nu sunt multumit', 'nu sunt mulțumit', 'e o bataie de joc', 'o bătaie de joc',
-        'sunt dezamagit', 'sunt dezamăgit', 'nu functioneaza', 'nu funcționează',
-        'vreau reclamatie', 'vreau reclamație', 'anulati', 'anulați tot'
+        'nu mai inteleg', 'ce se intampla', 'de ce ati schimbat',
+        'sunt nemultumit', 'sunt suparat', 'vreau sa vorbesc cu cineva',
+        'nu sunt multumit', 'e o bataie de joc', 'vreau reclamatie', 'anulati tot'
     ];
     return ANGRY_PATTERNS.some(p => lower.includes(p));
 }
@@ -239,7 +357,7 @@ function checkSignificantUpdate(mutation, currentNextStep, lastNextStep, lastCli
     }
     if (lastClientMessage) {
         const msg = lastClientMessage.toLowerCase();
-        if (/\d{1,2}\s*(ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|nov|dec|ianuarie|februarie|martie|aprilie|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)/i.test(msg)) {
+        if (/\d{1,2}\s*(ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|nov|dec)/i.test(msg)) {
             return { significant: true, reason: 'new_date_detected' };
         }
         if (/(nu mai|in loc|schimb|mut|anul|confirm|reactiv)/i.test(msg)) {
@@ -247,6 +365,22 @@ function checkSignificantUpdate(mutation, currentNextStep, lastNextStep, lastCli
         }
     }
     return { significant: false, reason: null };
+}
+
+/** Burst detection. */
+async function detectMessageBurst(conversationId) {
+    const windowMs = DEBOUNCE_SEC * 1000;
+    const cutoff = new Date(Date.now() - windowMs).toISOString();
+    const { data: recentMsgs } = await supabase
+        .from('messages')
+        .select('created_at')
+        .eq('conversation_id', conversationId)
+        .eq('sender_type', 'client')
+        .gt('created_at', cutoff)
+        .order('created_at', { ascending: false })
+        .limit(10);
+    const count = recentMsgs?.length || 0;
+    return { inBurst: count >= 3, recentCount: count, windowSec: DEBOUNCE_SEC };
 }
 
 /** Bigram text similarity (Dice coefficient). */

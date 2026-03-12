@@ -4,13 +4,13 @@
  * Determines whether a conversation is eligible for a deferred follow-up
  * after a wait/silence decision.
  *
- * Returns:
- *   eligible: boolean
- *   reason: string
- *   followUpType: 'wait_for_more_messages' | 'wait_for_missing_info' | null
- *   openQuestionDetected: boolean
- *   customerIntentUnanswered: boolean
- *   missingFields: string[]
+ * Guards:
+ * - No follow-up on ack/silence decisions
+ * - No follow-up on closing signals (pure)
+ * - No follow-up on customer paused
+ * - No follow-up on human takeover
+ * - No follow-up on closed/booked/escalated/blocked conversations
+ * - Max 1 follow-up per unresolved customer turn
  */
 
 const QUESTION_PATTERNS = [
@@ -21,7 +21,7 @@ const QUESTION_PATTERNS = [
     /cand/i, /când/i, /unde/i, /cum/i,
     /vreau/i, /doresc/i, /as vrea/i, /aș vrea/i,
     /ma intereseaza/i, /mă interesează/i,
-    /cautam/i, /căutăm/i, /cautati/i,
+    /cautam/i, /căutăm/i,
     /pentru.*petrecere/i, /pentru.*eveniment/i, /pentru.*nunta/i,
     /animator/i, /popcorn/i, /vata.*zahar/i, /ursitoare/i,
     /cifre.*volumetrice/i, /arcada/i, /baloane/i,
@@ -35,13 +35,31 @@ const MISSING_FIELD_CHECKS = [
     { field: 'event_time', patterns: [/ora\s*\d|de la\s*\d|\d{1,2}:\d{2}/i] },
 ];
 
+/**
+ * @param {object} params
+ * @param {string} params.replyDecision
+ * @param {string} params.lastClientMessage
+ * @param {string} params.conversationStage
+ * @param {object} [params.existingDraft]
+ * @param {string} [params.nextStep]
+ * @param {string} [params.conversationStatus]
+ * @param {boolean} [params.closingSignalDetected]
+ * @param {boolean} [params.customerPausedDetected]
+ * @param {boolean} [params.humanTakeoverActive]
+ * @param {boolean} [params.aiCommitmentPending]
+ * @returns {object}
+ */
 export function evaluateFollowUpEligibility({
     replyDecision,
     lastClientMessage,
     conversationStage,
     existingDraft,
     nextStep,
-    conversationStatus
+    conversationStatus,
+    closingSignalDetected = false,
+    customerPausedDetected = false,
+    humanTakeoverActive = false,
+    aiCommitmentPending = false
 }) {
     const result = {
         eligible: false,
@@ -49,21 +67,35 @@ export function evaluateFollowUpEligibility({
         followUpType: null,
         openQuestionDetected: false,
         customerIntentUnanswered: false,
-        missingFields: []
+        missingFields: [],
+        closingSignalDetected,
+        customerPausedDetected,
+        humanTakeoverActive,
+        aiCommitmentPending
     };
 
     // ── Guard: only for wait decisions ──
-    if (!['wait_for_more_messages', 'wait_for_missing_info', 'stay_silent'].includes(replyDecision)) {
+    if (!['wait_for_more_messages', 'wait_for_missing_info'].includes(replyDecision)) {
         return { ...result, reason: 'not_a_wait_decision' };
     }
 
-    // ── Guard: no follow-up on ack/silence decisions ──
-    if (replyDecision === 'stay_silent') {
-        return { ...result, reason: 'stay_silent_no_followup' };
+    // ── Guard: no follow-up on human takeover ──
+    if (humanTakeoverActive) {
+        return { ...result, reason: 'blocked_human_takeover' };
     }
 
-    // ── Guard: no follow-up on closed/booked/escalated conversations ──
-    const BLOCKED_STATUSES = ['closed', 'booked', 'blocked', 'escalated', 'archived'];
+    // ── Guard: no follow-up on customer paused ──
+    if (customerPausedDetected) {
+        return { ...result, reason: 'blocked_customer_paused' };
+    }
+
+    // ── Guard: no follow-up on closing signal (pure, without open question) ──
+    if (closingSignalDetected) {
+        return { ...result, reason: 'blocked_closing_signal' };
+    }
+
+    // ── Guard: no follow-up on blocked conversation states ──
+    const BLOCKED_STATUSES = ['closed', 'booked', 'blocked', 'escalated', 'archived', 'confirmed', 'completed'];
     if (conversationStatus && BLOCKED_STATUSES.includes(conversationStatus)) {
         return { ...result, reason: `blocked_status_${conversationStatus}` };
     }
@@ -86,7 +118,15 @@ export function evaluateFollowUpEligibility({
         }
     }
 
-    // ── Determine follow-up type ──
+    // ── AI commitment pending is also valid for follow-up ──
+    if (aiCommitmentPending) {
+        result.eligible = true;
+        result.followUpType = replyDecision;
+        result.reason = 'eligible_ai_commitment_pending';
+        return result;
+    }
+
+    // ── Determine eligibility ──
     if (replyDecision === 'wait_for_missing_info') {
         result.eligible = true;
         result.followUpType = 'wait_for_missing_info';
@@ -103,36 +143,4 @@ export function evaluateFollowUpEligibility({
     }
 
     return { ...result, reason: 'no_open_question_or_intent' };
-}
-
-/**
- * Detect if the current context warrants wait_for_missing_info
- * instead of the normal reply decision.
- *
- * Called from shouldReplyNow to upgrade wait decisions.
- */
-export function detectMissingInfo({ lastClientMessage, nextStep, existingDraft }) {
-    const msg = (lastClientMessage || '').toLowerCase();
-
-    // Client has real intent but missing critical info
-    const hasIntent = /animator|popcorn|vata|ursitoare|petrecere|eveniment|nunta|botez|serbare/i.test(msg);
-    if (!hasIntent) return { isMissingInfo: false };
-
-    const missingFields = [];
-    for (const check of MISSING_FIELD_CHECKS) {
-        const hasField = check.patterns.some(p => p.test(msg));
-        if (!hasField) missingFields.push(check.field);
-    }
-
-    // If draft already has some fields, don't count those as missing
-    if (existingDraft) {
-        if (existingDraft.event_date) missingFields.splice(missingFields.indexOf('event_date'), 1);
-        if (existingDraft.location) missingFields.splice(missingFields.indexOf('location'), 1);
-    }
-
-    const filtered = missingFields.filter(f => f); // remove -1 artifacts
-    return {
-        isMissingInfo: filtered.length >= 2,
-        missingFields: filtered
-    };
 }

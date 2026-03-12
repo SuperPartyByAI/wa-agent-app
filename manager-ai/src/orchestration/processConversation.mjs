@@ -7,6 +7,8 @@ import { buildBrainSchema } from '../schemas/buildBrainSchema.mjs';
 import { evaluateEligibility } from '../policy/evaluateEligibility.mjs';
 import { evaluateSalesCycle } from '../policy/evaluateSalesCycle.mjs';
 import { composeHumanReply } from '../replies/composeHumanReply.mjs';
+import { evaluateReplyQuality } from '../replies/evaluateReplyQuality.mjs';
+import { buildReplyContext } from '../replies/buildReplyContext.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
 
@@ -229,6 +231,17 @@ export async function processConversation(conversation_id, message_id = null, op
             suggestedReply = composerResult.reply;
         }
 
+        // ── 8.6. Evaluate reply quality ──
+        const replyContext = buildReplyContext({ analysis, entityMemory });
+        const replyQuality = evaluateReplyQuality({
+            reply: suggestedReply,
+            analysis,
+            replyContext,
+            entityMemory,
+            replyStyle: composerResult.replyStyle,
+            composerUsed: composerResult.composerUsed
+        });
+
         // ── 9. Auto-send logic ──
         let replyStatus = 'pending';
         let sentBy = 'pending';
@@ -260,19 +273,36 @@ export async function processConversation(conversation_id, message_id = null, op
             sent_at: sentAt,
             operator_prompt: operator_prompt || null
         };
-        // Try with eligibility columns (may not exist yet)
+        // Try with all columns (eligibility + quality)
         let { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
             ...decisionPayload,
             eligibility_status: eligibility.eligible ? 'eligible' : 'blocked',
             eligibility_reason: eligibility.reason,
             cycle_status: salesCycle.cycle_eligibility,
-            cycle_reason: salesCycle.cycle_reason
+            cycle_reason: salesCycle.cycle_reason,
+            reply_quality_score: replyQuality.reply_quality_score,
+            reply_quality_label: replyQuality.reply_quality_label,
+            reply_quality_flags: replyQuality.reply_quality_flags,
+            reply_style: composerResult.replyStyle,
+            composer_used: composerResult.composerUsed
         });
-        // If eligibility columns don't exist, retry without them
+        // Fallback cascade: if quality columns missing, try without them
         if (errDecision && errDecision.message?.includes('does not exist')) {
-            console.warn('[Pipeline] Eligibility columns not in DB yet. Saving without them.');
-            const { error: e2 } = await supabase.from('ai_reply_decisions').insert(decisionPayload);
+            console.warn('[Pipeline] Quality columns not in schema cache. Trying without quality...');
+            const { error: e2 } = await supabase.from('ai_reply_decisions').insert({
+                ...decisionPayload,
+                eligibility_status: eligibility.eligible ? 'eligible' : 'blocked',
+                eligibility_reason: eligibility.reason,
+                cycle_status: salesCycle.cycle_eligibility,
+                cycle_reason: salesCycle.cycle_reason
+            });
             errDecision = e2;
+        }
+        // Fallback cascade: if eligibility columns also missing, save base only
+        if (errDecision && errDecision.message?.includes('does not exist')) {
+            console.warn('[Pipeline] Eligibility columns also missing. Saving base only.');
+            const { error: e3 } = await supabase.from('ai_reply_decisions').insert(decisionPayload);
+            errDecision = e3;
         }
         if (errDecision) console.error('[Pipeline] DB Error reply_decisions:', errDecision.message);
 
@@ -287,7 +317,8 @@ export async function processConversation(conversation_id, message_id = null, op
             suggestedReply,
             replyStatus,
             eligibility,
-            salesCycle
+            salesCycle,
+            replyQuality
         });
 
         const { error: err4 } = await supabase.from('ai_ui_schemas').insert({
@@ -297,7 +328,7 @@ export async function processConversation(conversation_id, message_id = null, op
         });
         if (err4) console.error('[Pipeline] DB Error schemas:', err4.message);
 
-        console.log(`[Pipeline] Done ${conversation_id}. Services: ${serviceData.selected_services.length}, Entity: ${entityMemory.entity_type}, Reply: ${replyStatus}, Eligibility: ${eligibility.reason}`);
+        console.log(`[Pipeline] Done ${conversation_id}. Services: ${serviceData.selected_services.length}, Entity: ${entityMemory.entity_type}, Reply: ${replyStatus}, Eligibility: ${eligibility.reason}, Quality: ${replyQuality.reply_quality_label}(${replyQuality.reply_quality_score})`);
 
     } catch (error) {
         console.error(`[Pipeline] Critical failure:`, error);

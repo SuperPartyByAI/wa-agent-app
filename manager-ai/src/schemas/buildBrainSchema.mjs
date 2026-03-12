@@ -14,7 +14,8 @@ export function buildBrainSchema({
     suggestedReply,
     replyStatus,
     eligibility,
-    salesCycle
+    salesCycle,
+    replyQuality
 }) {
     const schema = [];
 
@@ -61,6 +62,19 @@ export function buildBrainSchema({
                 { label: "Ciclu", value: cycleLabels[salesCycle.cycle_reason] || salesCycle.cycle_reason },
                 { label: "Status", value: salesCycle.active_cycle_status || 'necunoscut' },
                 { label: "Eveniment", value: salesCycle.same_event_or_new_event || 'necunoscut' }
+            ]
+        });
+    }
+
+    // ── Quality Badge ──
+    if (replyQuality) {
+        const qualityLabels = { good: '✅ Bun', okay: '⚠️ Acceptabil', weak: '❌ Slab' };
+        schema.push({
+            type: "quality_badge",
+            items: [
+                { label: "Calitate Reply", value: qualityLabels[replyQuality.reply_quality_label] || replyQuality.reply_quality_label },
+                { label: "Scor", value: `${replyQuality.reply_quality_score}/100` },
+                { label: "Stil", value: replyQuality.reply_style || 'necunoscut' }
             ]
         });
     }

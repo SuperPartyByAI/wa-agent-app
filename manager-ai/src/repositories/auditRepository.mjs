@@ -12,7 +12,7 @@ export async function getAuditSummary(hoursBack = 24) {
 
     const { data: decisions, error } = await supabase
         .from('ai_reply_decisions')
-        .select('eligibility_status, eligibility_reason, reply_status, sent_by, conversation_stage, confidence_score, can_auto_reply, needs_human_review, cycle_status, cycle_reason')
+        .select('eligibility_status, eligibility_reason, reply_status, sent_by, conversation_stage, confidence_score, can_auto_reply, needs_human_review, cycle_status, cycle_reason, reply_quality_score, reply_quality_label, reply_style, composer_used')
         .gte('created_at', since)
         .order('created_at', { ascending: false });
 
@@ -83,6 +83,14 @@ export async function getAuditSummary(hoursBack = 24) {
         eligibility_reasons: eligibility,
         cycle_distribution: cycleDistribution,
         cycle_reasons: cycleReasons,
+        quality_distribution: (() => {
+            const qd = {};
+            decisions.forEach(d => {
+                const key = d.reply_quality_label || 'unknown';
+                qd[key] = (qd[key] || 0) + 1;
+            });
+            return qd;
+        })(),
         reply_status: replyStatus,
         sent_by: sentBy,
         stage_distribution: stages,

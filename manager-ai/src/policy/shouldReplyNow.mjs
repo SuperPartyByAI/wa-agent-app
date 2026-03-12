@@ -94,6 +94,23 @@ export async function shouldReplyNow({
             console.log(`[ReplyEngine] Wait: message burst detected (${burstState.recentCount} msgs in ${burstState.windowSec}s)`);
             return { ...result, decision: 'wait_for_more_messages', reason: 'blocked_debounce_window', turnState: 'client_burst', details: `${burstState.recentCount} messages in last ${burstState.windowSec}s` };
         }
+        // ── 4b. Wait for missing info (client has intent but incomplete data) ──
+        if (lastClientMessage) {
+            const hasIntent = /animator|popcorn|vata|ursitoare|petrecere|eveniment|nunta|botez|serbare|arcada|baloane|cifre|mos|gheata|parfumerie/i.test(lastClientMessage);
+            if (hasIntent) {
+                const msg = lastClientMessage.toLowerCase();
+                const hasDate = /\d{1,2}\s*(ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|nov|dec)/i.test(msg) || /\d{1,2}[./-]\d{1,2}/i.test(msg);
+                const hasLocation = /bucuresti|sector|strada|adresa|locatie|oras|comuna/i.test(msg);
+                const hasTime = /ora\s*\d|\d{1,2}:\d{2}/i.test(msg);
+                const hasGuests = /\d+\s*(copii|persoane|invitati)/i.test(msg);
+                const missingCount = [hasDate, hasLocation, hasTime, hasGuests].filter(x => !x).length;
+
+                if (missingCount >= 3) {
+                    console.log(`[ReplyEngine] Wait for missing info: intent detected but ${missingCount} fields missing`);
+                    return { ...result, decision: 'wait_for_missing_info', reason: 'incomplete_client_data', turnState: 'missing_info', details: `${missingCount} critical fields missing`, newInformationDetected: true };
+                }
+            }
+        }
 
         // ── 5. Fetch last AI reply for comparison ──
         const { data: lastSentRows } = await supabase

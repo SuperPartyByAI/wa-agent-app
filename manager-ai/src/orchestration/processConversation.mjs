@@ -20,6 +20,8 @@ import { evaluateEscalation } from '../policy/evaluateEscalation.mjs';
 import { evaluateFastPath } from './evaluateFastPath.mjs';
 import { buildFastPathReply } from '../replies/buildFastPathReply.mjs';
 import { shouldReplyNow, acquireConversationLock, releaseConversationLock } from '../policy/shouldReplyNow.mjs';
+import { evaluateFollowUpEligibility } from '../policy/evaluateFollowUpEligibility.mjs';
+import { scheduleFollowUp, clearFollowUp } from '../orchestration/scheduleFollowUp.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -504,13 +506,40 @@ export async function processConversation(conversation_id, message_id = null, op
                     sentBy = 'ai';
                     sentAt = new Date().toISOString();
                 }
+                // Clear any pending follow-up since we just replied
+                await clearFollowUp(conversation_id, 'ai_replied_now');
             } else {
                 replyStatus = 'blocked';
                 sentBy = 'reply_engine';
                 console.log(`[Pipeline] Auto-reply BLOCKED: ${replyDecisionResult.decision} — ${replyDecisionResult.reason} (${replyDecisionResult.details || ''})`);
+
+                // Evaluate follow-up eligibility for wait decisions
+                const followUpElig = evaluateFollowUpEligibility({
+                    replyDecision: replyDecisionResult.decision,
+                    lastClientMessage: lastClientMessageText,
+                    conversationStage: decision.conversation_stage,
+                    existingDraft: existingDraftRow,
+                    nextStep: progression.next_step,
+                    conversationStatus: dbStage
+                });
+
+                if (followUpElig.eligible) {
+                    const schedResult = await scheduleFollowUp({
+                        conversationId: conversation_id,
+                        followUpReason: followUpElig.followUpType,
+                        openQuestionDetected: followUpElig.openQuestionDetected,
+                        customerIntentUnanswered: followUpElig.customerIntentUnanswered,
+                        missingFields: followUpElig.missingFields,
+                        triggerMessageId: message_id,
+                        nextStep: progression.next_step,
+                        lastCustomerMessageAt: new Date().toISOString()
+                    });
+                    console.log(`[Pipeline] Follow-up: ${schedResult.scheduled ? 'SCHEDULED' : 'NOT scheduled'} (${schedResult.reason})`);
+                }
             }
         } else if (decision.escalation_reason) {
             console.log(`[Pipeline] Escalation: ${decision.escalation_reason}`);
+            await clearFollowUp(conversation_id, 'escalated');
         }
 
         // ── 10. Audit trail ──

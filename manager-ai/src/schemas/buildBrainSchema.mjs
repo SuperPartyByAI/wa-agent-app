@@ -1,0 +1,188 @@
+import { CATALOG_MAP } from '../services/postProcessServices.mjs';
+
+/**
+ * Builds the dynamic layout_json for Android Brain Tab.
+ * Generates schema-driven components from AI analysis results.
+ */
+export function buildBrainSchema({
+    decision,
+    clientMemory,
+    eventDraft,
+    convState,
+    entityMemory,
+    serviceData,
+    suggestedReply,
+    replyStatus,
+    eligibility
+}) {
+    const schema = [];
+
+    // ── Status Badge ──
+    const statusItems = [
+        { label: "Incredere AI", value: `${decision.confidence_score}%` },
+        { label: "Etapa", value: decision.conversation_stage }
+    ];
+    if (decision.escalation_reason) {
+        statusItems.push({ label: "Escaladare", value: decision.escalation_reason });
+    }
+    schema.push({ type: "status_badge", items: statusItems });
+
+    // ── Entity Badge (entity_type + eligibility) ──
+    if (entityMemory) {
+        const entityItems = [
+            { label: "Tip Entitate", value: entityMemory.entity_type || "necunoscut" },
+            { label: "Incredere", value: `${entityMemory.entity_confidence || 0}%` }
+        ];
+        if (eligibility) {
+            entityItems.push({
+                label: "Auto-reply",
+                value: eligibility.eligible ? "Eligible" : eligibility.reason
+            });
+        }
+        schema.push({ type: "entity_badge", items: entityItems });
+    }
+
+    // ── Rezumat card ──
+    schema.push({
+        type: "card",
+        title: "Creier AI - Rezumat",
+        items: [
+            { label: "Prioritate", value: clientMemory.priority_level },
+            { label: "Intent", value: convState.current_intent }
+        ]
+    });
+
+    // ── Entity Memory card ──
+    if (entityMemory && entityMemory.entity_type !== 'unknown') {
+        const memoryItems = [];
+        if (entityMemory.usual_locations?.length > 0) {
+            memoryItems.push({
+                label: "Locatii uzuale",
+                value: entityMemory.usual_locations.map(l => l.name).join(', ')
+            });
+        }
+        if (entityMemory.usual_services?.length > 0) {
+            memoryItems.push({
+                label: "Servicii uzuale",
+                value: entityMemory.usual_services.map(s => {
+                    const entry = CATALOG_MAP[s.service_key];
+                    return entry?.display_name || s.service_key;
+                }).join(', ')
+            });
+        }
+        if (entityMemory.behavior_patterns?.length > 0) {
+            memoryItems.push({
+                label: "Tipare",
+                value: entityMemory.behavior_patterns.join(', ')
+            });
+        }
+        if (entityMemory.notes_for_ops?.length > 0) {
+            memoryItems.push({
+                label: "Note",
+                value: entityMemory.notes_for_ops.join(', ')
+            });
+        }
+        if (memoryItems.length > 0) {
+            schema.push({
+                type: "memory_card",
+                title: "Memorie Entitate",
+                items: memoryItems
+            });
+        }
+    }
+
+    // ── Service list ──
+    if (serviceData.selected_services.length > 0) {
+        schema.push({
+            type: "service_list",
+            title: "Servicii Detectate",
+            items: serviceData.selected_services.map(key => {
+                const catalogEntry = serviceData.catalog_map[key];
+                const missing = serviceData.missing_fields_per_service[key] || [];
+                const status = missing.length === 0 ? 'complet' : `${missing.length} lipsa`;
+                return { label: catalogEntry?.display_name || key, value: status };
+            })
+        });
+
+        // Service missing cards
+        for (const key of serviceData.selected_services) {
+            const catalogEntry = serviceData.catalog_map[key];
+            const missing = serviceData.missing_fields_per_service[key] || [];
+            const extracted = {};
+            // Get extracted fields to show completed ones
+            const svcReq = serviceData.service_requirements?.[key];
+            if (svcReq?.extracted_fields) {
+                Object.entries(svcReq.extracted_fields).forEach(([k, v]) => {
+                    if (v && v !== 'null') extracted[k] = v;
+                });
+            }
+
+            if (missing.length > 0) {
+                schema.push({
+                    type: "service_missing_card",
+                    title: `${catalogEntry?.display_name || key} - Lipsuri`,
+                    items: [
+                        ...missing.map(f => ({ label: f, value: "lipsa" })),
+                        ...Object.entries(extracted).map(([k, v]) => ({ label: k, value: String(v) }))
+                    ]
+                });
+            }
+        }
+
+        // Cross-sell card
+        if (serviceData.cross_sell_opportunities.length > 0) {
+            schema.push({
+                type: "cross_sell_card",
+                title: "Sugestii Suplimentare",
+                text: "Servicii complementare pe care le puteti oferi clientului:",
+                items: serviceData.cross_sell_opportunities.map(key => {
+                    const entry = CATALOG_MAP[key];
+                    return { label: entry?.display_name || key, value: entry?.description || '' };
+                })
+            });
+        }
+    }
+
+    // ── Draft Eveniment ──
+    schema.push({
+        type: "card",
+        title: "Draft Eveniment",
+        items: [
+            { label: "Tip", value: eventDraft.structured_data?.event_type || "Nespecificat" },
+            { label: "Locatie", value: eventDraft.structured_data?.location || "Nespecificat" },
+            { label: "Data", value: eventDraft.structured_data?.date || "Nespecificat" }
+        ]
+    });
+
+    // ── Suggested Reply ──
+    schema.push({
+        type: "reply_card",
+        title: replyStatus === 'sent' ? "Raspuns Trimis de AI" : "Raspuns Propus",
+        text: suggestedReply,
+        items: [
+            { label: "Status", value: replyStatus === 'sent' ? "Trimis automat" : "Asteapta confirmare" }
+        ],
+        action: "inject_reply",
+        action_payload: suggestedReply
+    });
+
+    // ── Prompt input ──
+    schema.push({
+        type: "prompt_input",
+        title: "Instructiune Operator",
+        text: "Scrie o instructiune pentru AI (ex: raspunde mai cald, intreaba de numarul de copii)",
+        action: "send_prompt"
+    });
+
+    // ── General missing fields ──
+    const generalMissing = eventDraft.missing_fields || [];
+    if (generalMissing.length > 0) {
+        schema.push({
+            type: "form_card",
+            title: "Trebuie sa aflam:",
+            items: generalMissing.map(f => ({ label: f, value: "" }))
+        });
+    }
+
+    return schema;
+}

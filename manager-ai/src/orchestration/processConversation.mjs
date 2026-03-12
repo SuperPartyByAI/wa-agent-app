@@ -1,0 +1,269 @@
+import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AI_AUTOREPLY_CUTOFF, WHTSUP_API_URL, WHTSUP_API_KEY } from '../config/env.mjs';
+import { callLocalLLM } from '../llm/client.mjs';
+import { postProcessServices } from '../services/postProcessServices.mjs';
+import { buildSystemPrompt } from '../prompts/systemPrompt.mjs';
+import { buildBrainSchema } from '../schemas/buildBrainSchema.mjs';
+import { evaluateEligibility } from '../policy/evaluateEligibility.mjs';
+import { loadClientMemory } from '../memory/loadClientMemory.mjs';
+import { updateClientMemory } from '../memory/updateClientMemory.mjs';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+/**
+ * Send a message to WhatsApp via the whts-up transport API.
+ */
+async function sendViaWhatsApp(conversationId, text) {
+    const { data: conv } = await supabase.from('conversations').select('session_id').eq('id', conversationId).single();
+    if (!conv?.session_id) {
+        console.error('[AutoSend] No session_id for conversation', conversationId);
+        return false;
+    }
+
+    try {
+        const response = await fetch(`${WHTSUP_API_URL}/api/messages/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': WHTSUP_API_KEY },
+            body: JSON.stringify({
+                sessionId: conv.session_id,
+                conversationId: conversationId,
+                text: text,
+                message_type: 'text'
+            })
+        });
+
+        if (!response.ok) {
+            console.error('[AutoSend] API error:', await response.text());
+            return false;
+        }
+        console.log(`[AutoSend] Message sent for ${conversationId}`);
+        return true;
+    } catch (err) {
+        console.error('[AutoSend] Network error:', err.message);
+        return false;
+    }
+}
+
+/**
+ * Main orchestration pipeline.
+ * Called by webhook (new message) or operator prompt (regeneration).
+ */
+export async function processConversation(conversation_id, message_id = null, operator_prompt = null) {
+    if (!conversation_id) return;
+
+    console.log(`[Pipeline] Starting for ${conversation_id}...`);
+
+    try {
+        // ── 1. Load conversation context ──
+        const { data: convData } = await supabase
+            .from('conversations')
+            .select('client_id, created_at')
+            .eq('id', conversation_id)
+            .single();
+
+        const clientId = convData?.client_id;
+        const conversationCreatedAt = convData?.created_at;
+
+        // Fetch messages
+        const { data: messages, error: msgErr } = await supabase
+            .from('messages')
+            .select('content, direction, created_at, sender_type')
+            .eq('conversation_id', conversation_id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (msgErr) throw new Error(`Failed to fetch messages: ${msgErr.message}`);
+        if (!messages || messages.length === 0) return;
+
+        // ── 2. Load entity memory ──
+        const existingMemory = await loadClientMemory(clientId);
+        console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, locations=${existingMemory.usual_locations.length}, services=${existingMemory.usual_services.length}`);
+
+        // ── 3. Check for legacy context (last human agent message) ──
+        const lastHumanMsg = messages.find(m => m.sender_type === 'agent');
+        const lastHumanActivityAt = lastHumanMsg?.created_at || null;
+
+        // Check for existing event draft before cutoff
+        let hasExistingDraft = false;
+        if (AI_AUTOREPLY_CUTOFF) {
+            const { data: draftData } = await supabase
+                .from('ai_event_drafts')
+                .select('created_at')
+                .eq('conversation_id', conversation_id)
+                .maybeSingle();
+            if (draftData && new Date(draftData.created_at) < new Date(AI_AUTOREPLY_CUTOFF)) {
+                hasExistingDraft = true;
+            }
+        }
+
+        // ── 4. Build transcript and call LLM ──
+        const transcript = messages.reverse().map(m =>
+            `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
+        ).join('\n');
+
+        let userMessage = `--- CONVERSATIE ---\n${transcript}`;
+        if (operator_prompt) {
+            userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
+        }
+
+        const systemPrompt = buildSystemPrompt(existingMemory);
+
+        console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
+        let analysis = await callLocalLLM(systemPrompt, userMessage);
+
+        if (!analysis) {
+            console.warn(`[Pipeline] LLM unreachable. Using mock fallback.`);
+            analysis = {
+                client_memory: { priority_level: 'normal', internal_notes_summary: 'LLM nedisponibil' },
+                entity_memory: { entity_type: 'unknown', entity_confidence: 0, usual_locations: [], usual_services: [], preferences: {}, behavior_patterns: [], notes_for_ops: [] },
+                event_draft: { draft_type: 'necunoscut', structured_data: { location: null, date: null, event_type: null }, missing_fields: [] },
+                selected_services: [],
+                service_requirements: {},
+                missing_fields_per_service: {},
+                cross_sell_opportunities: [],
+                conversation_state: { current_intent: 'necunoscut', next_best_action: 'necunoscut' },
+                suggested_reply: 'Buna! Va multumim pentru mesaj. Un coleg va reveni cu detalii in cel mai scurt timp.',
+                decision: { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' }
+            };
+        }
+
+        // ── 5. Post-process ──
+        const serviceData = postProcessServices(analysis);
+        // Attach raw service_requirements for schema builder
+        serviceData.service_requirements = analysis.service_requirements;
+
+        const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
+        const suggestedReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
+        const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: '' };
+        const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: {}, missing_fields: [] };
+        const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
+        const entityMemory = analysis.entity_memory || existingMemory;
+
+        // Force review if catalog says so
+        if (serviceData.should_force_review) {
+            decision.needs_human_review = true;
+            decision.can_auto_reply = false;
+        }
+
+        // ── 6. Get existing conversation stage from DB ──
+        const { data: stateData } = await supabase
+            .from('ai_conversation_state')
+            .select('current_stage')
+            .eq('conversation_id', conversation_id)
+            .maybeSingle();
+        const dbStage = stateData?.current_stage;
+
+        // ── 7. Evaluate eligibility ──
+        const eligibility = evaluateEligibility({
+            decision,
+            conversationStage: dbStage || decision.conversation_stage,
+            conversationCreatedAt,
+            lastHumanActivityAt,
+            hasExistingDraft
+        });
+
+        console.log(`[Pipeline] Services: [${serviceData.selected_services.join(', ')}], Entity: ${entityMemory.entity_type} (${entityMemory.entity_confidence}%), Eligibility: ${eligibility.eligible ? 'ALLOWED' : eligibility.reason}, Decision: confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
+
+        // ── 8. Persist to DB ──
+        // Client memory + entity memory
+        if (clientId) {
+            await updateClientMemory(clientId, entityMemory, existingMemory, clientMemory);
+        }
+
+        // Event drafts
+        const { data: existingDraftRow } = await supabase.from('ai_event_drafts').select('id').eq('conversation_id', conversation_id).maybeSingle();
+        const draftPayload = {
+            client_id: clientId,
+            draft_type: eventDraft.draft_type,
+            structured_data_json: eventDraft.structured_data,
+            missing_fields_json: eventDraft.missing_fields,
+            updated_at: new Date().toISOString()
+        };
+        if (existingDraftRow) {
+            await supabase.from('ai_event_drafts').update(draftPayload).eq('id', existingDraftRow.id);
+        } else {
+            await supabase.from('ai_event_drafts').insert({ conversation_id, ...draftPayload });
+        }
+
+        // Conversation state
+        const statePayload = {
+            conversation_id,
+            current_intent: convState.current_intent,
+            current_stage: decision.conversation_stage,
+            next_best_action: convState.next_best_action,
+            updated_at: new Date().toISOString()
+        };
+        if (message_id) statePayload.last_processed_message_id = message_id;
+        await supabase.from('ai_conversation_state').upsert(statePayload);
+
+        // ── 9. Auto-send logic ──
+        let replyStatus = 'pending';
+        let sentBy = 'pending';
+        let sentAt = null;
+
+        if (eligibility.eligible) {
+            console.log(`[Pipeline] Auto-reply ALLOWED (confidence=${decision.confidence_score}). Sending...`);
+            const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
+            if (sent) {
+                replyStatus = 'sent';
+                sentBy = 'ai';
+                sentAt = new Date().toISOString();
+            }
+        } else if (decision.escalation_reason) {
+            console.log(`[Pipeline] Escalation: ${decision.escalation_reason}`);
+        }
+
+        // ── 10. Audit trail ──
+        const decisionPayload = {
+            conversation_id,
+            suggested_reply: suggestedReply,
+            can_auto_reply: decision.can_auto_reply,
+            needs_human_review: decision.needs_human_review,
+            escalation_reason: decision.escalation_reason || null,
+            confidence_score: decision.confidence_score,
+            conversation_stage: decision.conversation_stage,
+            reply_status: replyStatus,
+            sent_by: sentBy,
+            sent_at: sentAt,
+            operator_prompt: operator_prompt || null
+        };
+        // Try with eligibility columns (may not exist yet)
+        let { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
+            ...decisionPayload,
+            eligibility_status: eligibility.eligible ? 'eligible' : 'blocked',
+            eligibility_reason: eligibility.reason
+        });
+        // If eligibility columns don't exist, retry without them
+        if (errDecision && errDecision.message?.includes('does not exist')) {
+            console.warn('[Pipeline] Eligibility columns not in DB yet. Saving without them.');
+            const { error: e2 } = await supabase.from('ai_reply_decisions').insert(decisionPayload);
+            errDecision = e2;
+        }
+        if (errDecision) console.error('[Pipeline] DB Error reply_decisions:', errDecision.message);
+
+        // ── 11. Build Brain Tab schema ──
+        const dynamicSchema = buildBrainSchema({
+            decision,
+            clientMemory,
+            eventDraft,
+            convState,
+            entityMemory,
+            serviceData,
+            suggestedReply,
+            replyStatus,
+            eligibility
+        });
+
+        const { error: err4 } = await supabase.from('ai_ui_schemas').insert({
+            conversation_id,
+            screen_type: 'brain_tab',
+            layout_json: dynamicSchema
+        });
+        if (err4) console.error('[Pipeline] DB Error schemas:', err4.message);
+
+        console.log(`[Pipeline] Done ${conversation_id}. Services: ${serviceData.selected_services.length}, Entity: ${entityMemory.entity_type}, Reply: ${replyStatus}, Eligibility: ${eligibility.reason}`);
+
+    } catch (error) {
+        console.error(`[Pipeline] Critical failure:`, error);
+    }
+}

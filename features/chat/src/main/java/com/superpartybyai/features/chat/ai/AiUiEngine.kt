@@ -69,6 +69,80 @@ private fun RenderNode(
                 }
             }
         }
+        "entity_badge" -> {
+            // Entity type + eligibility status
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                node.items?.forEach { item ->
+                    val isBlocked = item.value?.startsWith("blocked") == true
+                    val isEligible = item.value == "Eligible"
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = item.value ?: "?",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = when {
+                                isBlocked -> MaterialTheme.colorScheme.error
+                                isEligible -> Color(0xFF4CAF50)
+                                else -> MaterialTheme.colorScheme.tertiary
+                            }
+                        )
+                        Text(
+                            text = item.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        "memory_card" -> {
+            // Entity memory: locations, services, patterns
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = Color(0xFF9C27B0).copy(alpha = 0.06f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    node.title?.let {
+                        Text(
+                            text = "🧠 $it",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    node.items?.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = "${item.label}:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.width(120.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = item.value ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
         "reply_card" -> {
             // Suggested reply with inject + regenerate buttons
             ElevatedCard(

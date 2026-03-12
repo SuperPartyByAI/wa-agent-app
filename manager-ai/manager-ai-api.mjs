@@ -182,7 +182,7 @@ app.post('/api/ai/reply/approve', async (req, res) => {
     }
 });
 
-import { processConversation } from './manager-ai-worker.mjs';
+import { processConversation } from './src/orchestration/processConversation.mjs';
 
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {

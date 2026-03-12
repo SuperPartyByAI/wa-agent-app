@@ -1,4 +1,4 @@
-import { CATALOG, CATALOG_MAP } from '../services/postProcessServices.mjs';
+import { SERVICE_CATALOG, CATALOG_MAP } from '../services/postProcessServices.mjs';
 
 /**
  * Fast Path Router
@@ -106,7 +106,7 @@ function detectServicesInMessage(text) {
     const found = [];
 
     // Direct catalog key matches and display name matches
-    for (const svc of (CATALOG || [])) {
+    for (const svc of (SERVICE_CATALOG?.services || [])) {
         const key = svc.service_key;
         const display = (svc.display_name || '').toLowerCase();
         const aliases = (svc.aliases || []).map(a => a.toLowerCase());

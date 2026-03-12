@@ -17,7 +17,7 @@ app.use(express.json({
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 // Webhook inside from whts-up (WhatsApp transport)
-app.post('/webhook/whts-up', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/webhook/whts-up', async (req, res) => {
     try {
         const signature = req.headers['x-hub-signature'];
         const webhookSecret = process.env.MANAGER_AI_WEBHOOK_SECRET || 'dev-secret-123';
@@ -27,14 +27,15 @@ app.post('/webhook/whts-up', express.raw({ type: 'application/json' }), async (r
             return res.status(401).json({ error: 'Missing signature' });
         }
         
-        const hash = `sha256=${crypto.createHmac('sha256', webhookSecret).update(req.body).digest('hex')}`;
+        const bodyStr = req.rawBody || JSON.stringify(req.body);
+        const hash = `sha256=${crypto.createHmac('sha256', webhookSecret).update(bodyStr).digest('hex')}`;
         
         if (hash !== signature) {
             console.warn('[Webhook security] Invalid signature');
             return res.status(403).json({ error: 'Invalid signature' });
         }
         
-        const payload = JSON.parse(req.body.toString());
+        const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         const { message_id, conversation_id, content, sender_type } = payload;
         console.log(`[Webhook MSG] Received verified msg ${message_id} for conv ${conversation_id} from ${sender_type}`);
         

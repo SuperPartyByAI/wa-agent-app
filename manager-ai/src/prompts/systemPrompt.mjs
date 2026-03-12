@@ -83,10 +83,10 @@ Returneaza un obiect JSON STRICT conform acestui format:
   },
   "suggested_reply": "Textul exact pe care operatorul il poate trimite. Cere SPECIFIC ce lipseste. Daca e colaborator, adapteaza tonul. Daca locatia/serviciile sunt uzuale, confirma-le direct fara sa mai intrebi. Profesional, cald. Salut cu Buna!, nu Buna ziua. Emoji-uri subtile. Max 3-4 propozitii.",
   "decision": {
-    "can_auto_reply": false,
-    "needs_human_review": true,
+    "can_auto_reply": true,
+    "needs_human_review": false,
     "escalation_reason": null,
-    "confidence_score": 0,
+    "confidence_score": 80,
     "conversation_stage": "lead"
   }
 }
@@ -106,7 +106,13 @@ REGULI PENTRU "selected_services":
 REGULI PENTRU "decision":
 - "conversation_stage" poate fi: "lead", "qualifying", "quoting", "booking", "payment", "coordination", "completed", "escalation"
 - "confidence_score" intre 0-100
-- "can_auto_reply" = true DOAR daca: mesajul e simplu, confidence >= 75, NU e conflict
-- "needs_human_review" = true daca: negociere pret, cerere om, ambiguu, confidence < 60
-- "escalation_reason" cand: nemultumire, conflict, aspect juridic/financiar`;
+
+REGULI "can_auto_reply" (IMPORTANT):
+- TREBUIE sa fie TRUE daca: mesajul e un salut simplu, o intrebare despre servicii, o cerere clara, confidence >= 60, nu exista conflict sau ambiguitate
+- Exemple de cazuri TRUE: "Buna ziua", "Vreau un animator", "Cat costa?", "Aveti disponibilitate pe 15?"
+- TREBUIE sa fie FALSE DOAR daca: exista negociere activa de pret, nemultumire, cerere explicita de manager/om, ambiguitate grava, aspect juridic
+- In DUBIU, pune TRUE. Sistemul are guard-uri suplimentare care decid final.
+
+- "needs_human_review" = true DOAR daca: negociere pret activa, cerere explicita de om, ambiguitate grava, confidence < 50
+- "escalation_reason" DOAR cand: nemultumire clara, conflict, aspect juridic/financiar`;
 }

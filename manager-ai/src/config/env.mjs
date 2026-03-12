@@ -19,7 +19,7 @@ export const BLOCKED_STAGES = ['booked', 'confirmed', 'paid', 'completed', 'coor
 export const MIN_AUTOREPLY_CONFIDENCE = parseInt(process.env.MIN_AUTOREPLY_CONFIDENCE || '75', 10);
 
 // ─── WhatsApp transport (whts-up) ───
-export const WHTSUP_API_URL = process.env.WHTSUP_API_URL || 'http://89.167.115.150:3000';
+export const WHTSUP_API_URL = process.env.WHTSUP_API_URL || 'http://5.161.179.132:3000';
 export const WHTSUP_API_KEY = process.env.WHTSUP_API_KEY || process.env.API_KEY;
 
 // ─── Feature flags ───

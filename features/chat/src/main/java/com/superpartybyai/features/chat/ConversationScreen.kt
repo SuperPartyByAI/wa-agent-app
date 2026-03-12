@@ -1132,7 +1132,7 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                             }) { Text("Reîncearcă") }
                         }
                     }
-                } else if (aiSchema != null) {
+                } else if (aiSchema != null && aiSchema!!.isNotEmpty()) {
                     LazyColumn(modifier = Modifier.weight(1f).fillMaxSize().padding(16.dp)) {
                         item {
                             AiSchemaRenderer(
@@ -1141,6 +1141,44 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                                     Toast.makeText(context, "Acțiune: $actionStr trimisă", Toast.LENGTH_SHORT).show()
                                 }
                             )
+                        }
+                    }
+                } else {
+                    // Elegant fallback: AI hasn't analyzed this conversation yet
+                    Box(modifier = Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(48.dp),
+                                strokeWidth = 3.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Analiza AI este în curs...",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "Modelul local procesează conversația.\nSchema UI va apărea automat.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(top = 8.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Button(
+                                onClick = {
+                                    isLoadingSchema = true
+                                    schemaError = null
+                                    coroutineScope.launch {
+                                        try {
+                                            val schema = aiRepository.fetchSchema(contactId)
+                                            if (schema.isNotEmpty()) aiSchema = schema else schemaError = null
+                                        } catch (e: Exception) { schemaError = e.message }
+                                        finally { isLoadingSchema = false }
+                                    }
+                                },
+                                modifier = Modifier.padding(top = 16.dp)
+                            ) { Text("Reîncarcă") }
                         }
                     }
                 }

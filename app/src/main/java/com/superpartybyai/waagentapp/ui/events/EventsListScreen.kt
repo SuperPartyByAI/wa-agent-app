@@ -49,24 +49,17 @@ data class TaskModel(
     val created_at: String
 )
 
-@Serializable
-data class AiActionModel(
-    val id: String,
-    val action_type: String,
-    val status: String,
-    val payload: JsonObject? = null,
-    val created_at: String
-)
+// Legacy AiActionModel removed — AI features now served via ManagerAi schema API
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventModelsListScreen(modifier: Modifier = Modifier, onEventModelClick: (String) -> Unit) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Events", "Tasks", "AI Actions")
+    val tabs = listOf("Events", "Tasks")
 
     var events by remember { mutableStateOf<List<EventModelModel>>(emptyList()) }
     var tasks by remember { mutableStateOf<List<TaskModel>>(emptyList()) }
-    var aiActions by remember { mutableStateOf<List<AiActionModel>>(emptyList()) }
+
     
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
@@ -82,9 +75,7 @@ fun EventModelsListScreen(modifier: Modifier = Modifier, onEventModelClick: (Str
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, title, description, status, created_at"))
                     .decodeList<TaskModel>().sortedByDescending { it.created_at }
 
-                aiActions = SupabaseClient.client.postgrest["ai_actions"]
-                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id, action_type, status, payload, created_at"))
-                    .decodeList<AiActionModel>().sortedByDescending { it.created_at }
+                // Legacy ai_actions query removed — AI features via ManagerAi schema API
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -101,13 +92,13 @@ fun EventModelsListScreen(modifier: Modifier = Modifier, onEventModelClick: (Str
                 val channel = SupabaseClient.client.channel("public-ai-dashboard")
                 val eventsFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") { table = "events" }
                 val tasksFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") { table = "tasks" }
-                val actionsFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") { table = "ai_actions" }
+                // Legacy ai_actions realtime removed
                 
                 channel.subscribe()
                 
                 launch { eventsFlow.collectLatest { loadData() } }
                 launch { tasksFlow.collectLatest { loadData() } }
-                launch { actionsFlow.collectLatest { loadData() } }
+
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -177,22 +168,7 @@ fun EventModelsListScreen(modifier: Modifier = Modifier, onEventModelClick: (Str
                             }
                         }
                     }
-                    2 -> { // AI ACTIONS
-                        if (aiActions.isEmpty()) {
-                            item { Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("No AI Actions flagged.") } }
-                        } else {
-                            items(aiActions.size) { index ->
-                                val action = aiActions[index]
-                                ListItem(
-                                    headlineContent = { Text(action.action_type.uppercase(), fontWeight = FontWeight.Bold) },
-                                    supportingContent = { Text(action.payload?.toString() ?: "Empty Payload") },
-                                    trailingContent = { Text(action.status.uppercase(), style = MaterialTheme.typography.labelSmall) },
-                                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(40.dp)) }
-                                )
-                                Divider()
-                            }
-                        }
-                    }
+                    // Legacy AI Actions tab removed — AI features now in Conversation > Creier AI tab
                 }
             }
         }

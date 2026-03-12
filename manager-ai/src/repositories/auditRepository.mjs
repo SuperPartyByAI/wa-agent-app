@@ -222,8 +222,23 @@ export async function getConversationDiagnostic(conversationId) {
             notes_summary: entityMemory.internal_notes_summary,
             last_updated: entityMemory.updated_at
         } : null,
-        event_draft: draft || null,
+        event_draft: draft ? {
+            ...draft,
+            draft_status: draft.draft_status || 'active',
+            version: draft.version || 1
+        } : null,
         schema_components: schemaComponents,
-        decision_history: history || []
+        decision_history: history || [],
+        mutation_history: await (async () => {
+            try {
+                const { data } = await supabase
+                    .from('ai_event_mutations')
+                    .select('mutation_type, changed_by, delta_json, reason_summary, confidence, created_at')
+                    .eq('conversation_id', conversationId)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                return data || [];
+            } catch { return []; }
+        })()
     };
 }

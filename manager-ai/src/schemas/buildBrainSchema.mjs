@@ -15,7 +15,9 @@ export function buildBrainSchema({
     replyStatus,
     eligibility,
     salesCycle,
-    replyQuality
+    replyQuality,
+    mutation,
+    mutationResult
 }) {
     const schema = [];
 
@@ -77,6 +79,63 @@ export function buildBrainSchema({
                 { label: "Stil", value: replyQuality.reply_style || 'necunoscut' }
             ]
         });
+    }
+
+    // ── Event Status Badge ──
+    if (mutationResult?.applied || mutation) {
+        const statusLabels = {
+            active: '✅ Activ',
+            cancelled: '❌ Anulat',
+            archived: '📦 Arhivat',
+            completed: '✅ Finalizat',
+            confirmed: '✅ Confirmat'
+        };
+        const currentStatus = mutationResult?.afterStatus || 'active';
+        const mutationType = mutation?.mutation_type || 'no_mutation';
+        const mutationLabels = {
+            create_event: 'Eveniment nou creat',
+            update_event: 'Eveniment actualizat',
+            change_date: 'Data schimbata',
+            change_location: 'Locatia schimbata',
+            change_time: 'Ora schimbata',
+            add_service: 'Serviciu adaugat',
+            remove_service: 'Serviciu scos',
+            replace_service: 'Serviciu inlocuit',
+            cancel_event: 'Eveniment anulat',
+            reactivate_event: 'Eveniment reactivat',
+            confirm_event: 'Eveniment confirmat',
+            no_mutation: 'Fara schimbare'
+        };
+
+        const items = [
+            { label: "Status Eveniment", value: statusLabels[currentStatus] || currentStatus },
+            { label: "Ultima Actiune", value: mutationLabels[mutationType] || mutationType }
+        ];
+
+        if (mutation?.mutation_reason) {
+            items.push({ label: "Detaliu", value: mutation.mutation_reason });
+        }
+
+        schema.push({ type: "event_status_badge", items });
+
+        // Delta card (what changed)
+        if (mutationResult?.delta && Object.keys(mutationResult.delta).length > 0) {
+            const deltaItems = [];
+            for (const [key, val] of Object.entries(mutationResult.delta)) {
+                if (key.startsWith('_')) continue; // skip meta fields
+                deltaItems.push({
+                    label: key,
+                    value: `${val.before || '(gol)'} \u2192 ${val.after || '(gol)'}`
+                });
+            }
+            if (deltaItems.length > 0) {
+                schema.push({
+                    type: "mutation_delta_card",
+                    title: "Ce s-a schimbat",
+                    items: deltaItems
+                });
+            }
+        }
     }
 
     // ── Rezumat card ──

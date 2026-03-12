@@ -11,6 +11,8 @@ import { evaluateReplyQuality } from '../replies/evaluateReplyQuality.mjs';
 import { buildReplyContext } from '../replies/buildReplyContext.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
+import { detectEventMutation } from '../events/detectEventMutation.mjs';
+import { applyEventMutation } from '../events/applyEventMutation.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -192,20 +194,43 @@ export async function processConversation(conversation_id, message_id = null, op
             await updateClientMemory(clientId, entityMemory, existingMemory, clientMemory);
         }
 
-        // Event drafts
-        const { data: existingDraftRow } = await supabase.from('ai_event_drafts').select('id').eq('conversation_id', conversation_id).maybeSingle();
-        const draftPayload = {
-            client_id: clientId,
-            draft_type: eventDraft.draft_type,
-            structured_data_json: eventDraft.structured_data,
-            missing_fields_json: eventDraft.missing_fields,
-            updated_at: new Date().toISOString()
-        };
-        if (existingDraftRow) {
-            await supabase.from('ai_event_drafts').update(draftPayload).eq('id', existingDraftRow.id);
+        // Event drafts — mutation-aware
+        const { data: existingDraftRow } = await supabase
+            .from('ai_event_drafts')
+            .select('id, draft_type, structured_data_json, missing_fields_json, draft_status, services, version')
+            .eq('conversation_id', conversation_id)
+            .maybeSingle();
+
+        // Detect mutation
+        const mutation = detectEventMutation(analysis, existingDraftRow);
+        let mutationResult = { applied: false };
+
+        if (mutation.mutation_type !== 'no_mutation') {
+            mutationResult = await applyEventMutation({
+                mutation,
+                existingDraft: existingDraftRow,
+                newDraftData: eventDraft,
+                newServices: serviceData.selected_services,
+                conversationId: conversation_id,
+                clientId
+            });
         } else {
-            await supabase.from('ai_event_drafts').insert({ conversation_id, ...draftPayload });
+            // No mutation detected — simple upsert (backwards compatible)
+            const draftPayload = {
+                client_id: clientId,
+                draft_type: eventDraft.draft_type,
+                structured_data_json: eventDraft.structured_data,
+                missing_fields_json: eventDraft.missing_fields,
+                updated_at: new Date().toISOString()
+            };
+            if (existingDraftRow) {
+                await supabase.from('ai_event_drafts').update(draftPayload).eq('id', existingDraftRow.id);
+            } else {
+                await supabase.from('ai_event_drafts').insert({ conversation_id, ...draftPayload });
+            }
         }
+
+        console.log(`[Pipeline] Mutation: ${mutation.mutation_type} (confidence=${mutation.mutation_confidence}, applied=${mutationResult.applied})`);
 
         // Conversation state
         const statePayload = {
@@ -318,7 +343,9 @@ export async function processConversation(conversation_id, message_id = null, op
             replyStatus,
             eligibility,
             salesCycle,
-            replyQuality
+            replyQuality,
+            mutation,
+            mutationResult
         });
 
         const { error: err4 } = await supabase.from('ai_ui_schemas').insert({

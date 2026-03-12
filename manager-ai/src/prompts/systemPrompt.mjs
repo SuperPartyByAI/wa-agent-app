@@ -93,6 +93,16 @@ Returneaza un obiect JSON STRICT conform acestui format:
     "new_request_detected": true,
     "same_event_or_new_event": "new_event",
     "cycle_notes": "Scurta explicatie de ce e eveniment nou sau acelasi"
+  },
+  "mutation_intent": {
+    "type": "create_event|update_event|change_date|change_location|change_time|add_service|remove_service|replace_service|cancel_event|reactivate_event|confirm_event|no_mutation",
+    "target_field": "date|location|services|time|guest_count|status|null",
+    "old_value": "valoare veche detectata sau null",
+    "new_value": "valoare noua detectata sau null",
+    "added_services": ["service_key_uri adaugate"],
+    "removed_services": ["service_key_uri scoase"],
+    "confidence": 80,
+    "reason": "Explicatie scurta a mutatiei detectate"
   }
 }
 
@@ -130,5 +140,21 @@ REGULI PENTRU "sales_cycle" (IMPORTANT):
   - "no_previous" daca: nu exista conversatie anterioara sau e prima interactiune
 - "cycle_notes": O propozitie scurta care explica de ce ai ales "new_event" / "same_event" / "ambiguous"
 - Exemple de "new_event": "Buna, mai vreau un animator si pentru 20 aprilie", "Mai avem nevoie de ceva pentru alt copil", "Vrem si o petrecere de revelion"
-- Exemple de "same_event": "Am uitat sa intreb ceva despre petrecerea de sambata", "Mai putem adauga vata de zahar la comanda?", "Ce ora vine animatorul?"`;
+- Exemple de "same_event": "Am uitat sa intreb ceva despre petrecerea de sambata", "Mai putem adauga vata de zahar la comanda?", "Ce ora vine animatorul?"
+
+REGULI PENTRU "mutation_intent":
+- Detecteaza ce SCHIMBARE face clientul in mesajul curent
+- "create_event" daca e prima cerere pentru o petrecere noua
+- "change_date" daca schimba data (ex: "mutam pe 27 aprilie")
+- "change_location" daca schimba locatia (ex: "de fapt, la Kiddo Fun")
+- "add_service" daca adauga un serviciu (ex: "mai vreau si popcorn")
+- "remove_service" daca scoate un serviciu (ex: "nu mai vrem ursitoare")
+- "replace_service" daca inlocuieste (ex: "in loc de Spiderman vrem Elsa")
+- "cancel_event" daca anuleaza (ex: "anulam petrecerea", "renuntam")
+- "reactivate_event" daca revine dupa anulare (ex: "totusi revenim, vrem petrecerea")
+- "confirm_event" daca confirma tot (ex: "da, e bine asa, confirmam")
+- "no_mutation" daca e doar o intrebare sau salut, fara schimbare de stare
+- "old_value" si "new_value" = valorile concrete detectate (ex: old="15 aprilie", new="27 aprilie")
+- "added_services" si "removed_services" = liste de service_key din catalog
+- "confidence" intre 0-100`;
 }

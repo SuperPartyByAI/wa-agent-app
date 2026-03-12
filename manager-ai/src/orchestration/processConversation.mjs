@@ -204,6 +204,32 @@ export async function processConversation(conversation_id, message_id = null, op
             });
             if (fpAuditErr) console.warn('[FastPath] Audit insert error:', fpAuditErr.message);
 
+            // Follow-up scheduling for fast path blocked decisions
+            if (replyDecision.decision === 'reply_now') {
+                await clearFollowUp(conversation_id, 'ai_replied_now_fastpath');
+            } else if (['wait_for_more_messages', 'wait_for_missing_info'].includes(replyDecision.decision)) {
+                const fpFollowUpElig = evaluateFollowUpEligibility({
+                    replyDecision: replyDecision.decision,
+                    lastClientMessage: lastClientMessageText,
+                    conversationStage: convStateForFP?.current_stage || 'lead',
+                    nextStep: fastPath.fast_path_type,
+                    conversationStatus: convStateForFP?.current_stage
+                });
+                if (fpFollowUpElig.eligible) {
+                    const schedResult = await scheduleFollowUp({
+                        conversationId: conversation_id,
+                        followUpReason: fpFollowUpElig.followUpType,
+                        openQuestionDetected: fpFollowUpElig.openQuestionDetected,
+                        customerIntentUnanswered: fpFollowUpElig.customerIntentUnanswered,
+                        missingFields: fpFollowUpElig.missingFields,
+                        triggerMessageId: message_id,
+                        nextStep: fastPath.fast_path_type,
+                        lastCustomerMessageAt: new Date().toISOString()
+                    });
+                    console.log(`[FastPath] Follow-up: ${schedResult.scheduled ? 'SCHEDULED' : 'NOT scheduled'} (${schedResult.reason})`);
+                }
+            }
+
             // Update conversation state
             await supabase.from('ai_conversation_state').upsert({
                 conversation_id,

@@ -19,7 +19,7 @@ import { evaluateAutonomy } from '../policy/evaluateAutonomy.mjs';
 import { evaluateEscalation } from '../policy/evaluateEscalation.mjs';
 import { evaluateFastPath } from './evaluateFastPath.mjs';
 import { buildFastPathReply } from '../replies/buildFastPathReply.mjs';
-import { evaluateSpamGuard } from '../policy/evaluateSpamGuard.mjs';
+import { shouldReplyNow, acquireConversationLock, releaseConversationLock } from '../policy/shouldReplyNow.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -66,6 +66,12 @@ export async function processConversation(conversation_id, message_id = null, op
 
     console.log(`[Pipeline] Starting for ${conversation_id}...`);
     const t_pipeline_start = Date.now();
+
+    // ── 0. Conversation lock ──
+    if (!acquireConversationLock(conversation_id)) {
+        console.log(`[Pipeline] Skipped: conversation ${conversation_id} already locked by another pipeline run.`);
+        return;
+    }
 
     try {
         // ── 1. Load conversation context ──
@@ -153,19 +159,19 @@ export async function processConversation(conversation_id, message_id = null, op
                 entityMemory: existingMemory
             });
 
-            // Spam guard even on fast path
-            const spamCheck = await evaluateSpamGuard({
+            // Should Reply check (replaces old spam guard)
+            const replyDecision = await shouldReplyNow({
                 conversationId: conversation_id,
                 newReply: fpReply.reply,
                 nextStep: fastPath.fast_path_type,
-                draftVersion: existingDraftForFP?.version || 0
+                lastClientMessage: lastClientMessageText
             });
 
             let fpReplyStatus = 'pending';
             let fpSentBy = 'pending';
             let fpSentAt = null;
 
-            if (spamCheck.allow_send) {
+            if (replyDecision.decision === 'reply_now') {
                 const sent = await sendViaWhatsApp(conversation_id, fpReply.reply);
                 if (sent) {
                     fpReplyStatus = 'sent';
@@ -174,8 +180,8 @@ export async function processConversation(conversation_id, message_id = null, op
                 }
             } else {
                 fpReplyStatus = 'blocked';
-                fpSentBy = 'spam_guard';
-                console.log(`[FastPath] Blocked by spam guard: ${spamCheck.block_reason}`);
+                fpSentBy = 'reply_engine';
+                console.log(`[FastPath] Blocked by reply engine: ${replyDecision.decision} — ${replyDecision.reason}`);
             }
 
             // Minimal audit
@@ -188,7 +194,11 @@ export async function processConversation(conversation_id, message_id = null, op
                 conversation_stage: convStateForFP?.current_stage || 'lead',
                 reply_status: fpReplyStatus,
                 sent_by: fpSentBy,
-                sent_at: fpSentAt
+                sent_at: fpSentAt,
+                next_step: fastPath.fast_path_type,
+                progression_status: 'fast_path',
+                autonomy_level: 'full',
+                escalation_reason: replyDecision.decision !== 'reply_now' ? replyDecision.reason : null
             });
             if (fpAuditErr) console.warn('[FastPath] Audit insert error:', fpAuditErr.message);
 
@@ -201,7 +211,7 @@ export async function processConversation(conversation_id, message_id = null, op
             });
 
             const fpTotal = Date.now() - t_pipeline_start;
-            console.log(`[Pipeline] FastPath done ${conversation_id}. Type: ${fastPath.fast_path_type}, Reply: ${fpReplyStatus}, SpamGuard: ${spamCheck.block_reason}, Timing: total=${fpTotal}ms`);
+            console.log(`[Pipeline] FastPath done ${conversation_id}. Type: ${fastPath.fast_path_type}, Reply: ${fpReplyStatus}, Decision: ${replyDecision.decision}/${replyDecision.reason}, Timing: total=${fpTotal}ms`);
             return;
         }
 
@@ -428,23 +438,25 @@ export async function processConversation(conversation_id, message_id = null, op
             composerUsed: composerResult.composerUsed
         });
 
-        // ── 9. Auto-send logic (with spam guard) ──
+        // ── 9. Auto-send logic (via shouldReplyNow engine) ──
         let replyStatus = 'pending';
         let sentBy = 'pending';
         let sentAt = null;
-        let spamGuardResult = { allow_send: true, block_reason: 'allowed_no_check' };
+        let replyDecisionResult = { decision: 'blocked_autoreply_off', reason: 'not_checked' };
 
         if (eligibility.eligible) {
-            // Spam guard check before sending
-            spamGuardResult = await evaluateSpamGuard({
+            // Central should-reply decision
+            replyDecisionResult = await shouldReplyNow({
                 conversationId: conversation_id,
                 newReply: suggestedReply,
                 nextStep: progression.next_step,
-                draftVersion: existingDraftRow?.version || 0
+                mutation,
+                lastClientMessage: lastClientMessageText,
+                cooldownSeconds: parseInt(process.env.AI_REPLY_COOLDOWN_SECONDS || '90', 10)
             });
 
-            if (spamGuardResult.allow_send) {
-                console.log(`[Pipeline] Auto-reply ALLOWED (confidence=${decision.confidence_score}, style=${composerResult.replyStyle}). Sending...`);
+            if (replyDecisionResult.decision === 'reply_now') {
+                console.log(`[Pipeline] Auto-reply ALLOWED (confidence=${decision.confidence_score}, style=${composerResult.replyStyle}, reason=${replyDecisionResult.reason}). Sending...`);
                 const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
                 if (sent) {
                     replyStatus = 'sent';
@@ -453,8 +465,8 @@ export async function processConversation(conversation_id, message_id = null, op
                 }
             } else {
                 replyStatus = 'blocked';
-                sentBy = 'spam_guard';
-                console.log(`[Pipeline] Auto-reply BLOCKED by spam guard: ${spamGuardResult.block_reason} (${spamGuardResult.details})`);
+                sentBy = 'reply_engine';
+                console.log(`[Pipeline] Auto-reply BLOCKED: ${replyDecisionResult.decision} — ${replyDecisionResult.reason} (${replyDecisionResult.details || ''})`);
             }
         } else if (decision.escalation_reason) {
             console.log(`[Pipeline] Escalation: ${decision.escalation_reason}`);
@@ -544,5 +556,7 @@ export async function processConversation(conversation_id, message_id = null, op
 
     } catch (error) {
         console.error(`[Pipeline] Critical failure:`, error);
+    } finally {
+        releaseConversationLock(conversation_id);
     }
 }

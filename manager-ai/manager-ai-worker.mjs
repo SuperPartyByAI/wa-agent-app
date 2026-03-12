@@ -52,28 +52,30 @@ async function callLocalLLM(systemPrompt, userMessage) {
     }
 }
 
-const SYSTEM_PROMPT = `You are the Superparty AI Event Manager. 
-Analyze the following WhatsApp conversation between our business (Superparty) and a Client.
-Extract the core details using ONLY the information explicitly stated. Do not hallucinate.
+const SYSTEM_PROMPT = `Ești asistentul AI al Superparty — companie de organizare evenimente și petreceri pentru copii.
+Analizează conversația WhatsApp de mai jos dintre echipa noastră (Superparty) și un Client.
+Extrage detaliile principale folosind DOAR informațiile explicite din conversație. Nu inventa nimic.
 
-Return a STRICT JSON object matching this exact schema:
+IMPORTANT: Toate valorile text din JSON TREBUIE să fie în limba ROMÂNĂ.
+
+Returnează un obiect JSON STRICT conform acestui format exact:
 {
   "client_memory": {
-    "priority_level": "normal|high|urgent",
-    "internal_notes_summary": "A brief 1-2 sentence summary of who the client is and what they generally want."
+    "priority_level": "normal|ridicat|urgent",
+    "internal_notes_summary": "Rezumat scurt 1-2 propoziții despre cine este clientul și ce dorește."
   },
   "event_draft": {
-    "draft_type": "standard_party",
+    "draft_type": "petrecere_standard",
     "structured_data": {
-      "location": "extracted location or null",
-      "date": "extracted date or null",
-      "event_type": "extracted type (e.g., botez, nunta, petrecere copii) or null"
+      "location": "locația extrasă sau null",
+      "date": "data extrasă sau null",
+      "event_type": "tipul extras (ex: botez, nuntă, petrecere copii, aniversare) sau null"
     },
-    "missing_fields": ["list of strings representing what we still need to ask to organize the event"]
+    "missing_fields": ["lista de informații lipsă pe care trebuie să le aflăm de la client"]
   },
   "conversation_state": {
-    "current_intent": "What is the client trying to do right now? (e.g. asking for price, booking confirmed, complaining)",
-    "next_best_action": "What should our human operator reply next?"
+    "current_intent": "Ce dorește clientul în acest moment? (ex: cere preț, confirmă rezervare, se plânge)",
+    "next_best_action": "Ce ar trebui să răspundă operatorul nostru în continuare?"
   }
 }`;
 
@@ -107,9 +109,9 @@ export async function processConversation(conversation_id, message_id = null) {
         if (!analysis) {
             console.warn(`[AI Worker] Local LLM unreachable or failed. Using mock fallback for pipeline continuity.`);
             analysis = {
-                client_memory: { priority_level: "high", internal_notes_summary: "MOCK: Client interested in booking an event." },
-                event_draft: { draft_type: "standard_party", structured_data: { location: "București", date: null, event_type: null }, missing_fields: ["numar_invitati", "buget", "data"] },
-                conversation_state: { current_intent: "MOCK: wants_info", next_best_action: "Provide event packages and pricing." }
+                client_memory: { priority_level: "ridicat", internal_notes_summary: "MOCK: Client interesat de organizarea unui eveniment." },
+                event_draft: { draft_type: "petrecere_standard", structured_data: { location: "București", date: null, event_type: null }, missing_fields: ["număr invitați", "buget", "data evenimentului"] },
+                conversation_state: { current_intent: "MOCK: solicită informații", next_best_action: "Trimite pachetele și prețurile disponibile." }
             };
         }
 
@@ -189,7 +191,7 @@ export async function processConversation(conversation_id, message_id = null) {
             },
             {
                 type: "section",
-                title: "🤖 Next Best Action",
+                title: "🤖 Următoarea Acțiune",
                 items: [
                     { label: "Sugestie AI", value: analysis.conversation_state.next_best_action }
                 ]

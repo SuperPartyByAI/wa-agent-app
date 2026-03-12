@@ -148,6 +148,16 @@ export async function processConversation(conversation_id, message_id = null, op
         serviceData.service_requirements = analysis.service_requirements;
 
         const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
+        
+        // Defensive: ensure confidence_score is always a valid number.
+        // The LLM sometimes omits it despite returning can_auto_reply=true.
+        // If can_auto_reply is true but confidence is missing, default to 80.
+        if (decision.confidence_score === undefined || decision.confidence_score === null) {
+            decision.confidence_score = decision.can_auto_reply ? 80 : 0;
+            console.log(`[Pipeline] Confidence score missing from LLM, defaulting to ${decision.confidence_score} (can_auto_reply=${decision.can_auto_reply})`);
+        }
+        decision.confidence_score = Number(decision.confidence_score) || 0;
+
         let suggestedReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
         const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: '' };
         const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: {}, missing_fields: [] };

@@ -445,14 +445,16 @@ export async function processConversation(conversation_id, message_id = null, op
         let replyDecisionResult = { decision: 'blocked_autoreply_off', reason: 'not_checked' };
 
         if (eligibility.eligible) {
-            // Central should-reply decision
+            // Central should-reply decision (full context)
             replyDecisionResult = await shouldReplyNow({
                 conversationId: conversation_id,
                 newReply: suggestedReply,
                 nextStep: progression.next_step,
                 mutation,
                 lastClientMessage: lastClientMessageText,
-                cooldownSeconds: parseInt(process.env.AI_REPLY_COOLDOWN_SECONDS || '90', 10)
+                escalation,
+                decision,
+                serviceConfidence
             });
 
             if (replyDecisionResult.decision === 'reply_now') {

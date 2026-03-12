@@ -1,4 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -15,16 +18,34 @@ const AI_AUTOREPLY_ENABLED = process.env.AI_AUTOREPLY_ENABLED === 'true';
 const WHTSUP_API_URL = process.env.WHTSUP_API_URL || 'http://5.161.179.132:3000';
 const WHTSUP_API_KEY = process.env.WHTSUP_API_KEY || process.env.API_KEY;
 
+// ─────────────────────────────────────────
+// SERVICE CATALOG — loaded once at startup
+// ─────────────────────────────────────────
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const SERVICE_CATALOG = JSON.parse(readFileSync(join(__dirname, 'service-catalog.json'), 'utf8'));
+
+// Build a concise catalog summary for the LLM prompt
+function buildCatalogPromptBlock() {
+    return SERVICE_CATALOG.services.map(s =>
+        `- ${s.service_key} (${s.display_name}): ${s.description}\n  Campuri obligatorii: ${s.required_fields.join(', ')}\n  Campuri optionale: ${s.optional_fields.join(', ')}`
+    ).join('\n');
+}
+
+const CATALOG_BLOCK = buildCatalogPromptBlock();
+const SERVICE_KEYS = SERVICE_CATALOG.services.map(s => s.service_key);
+
+console.log(`[Service Catalog] Loaded ${SERVICE_CATALOG.services.length} services (v${SERVICE_CATALOG.version}): ${SERVICE_KEYS.join(', ')}`);
+
 /**
  * Calls the local Ollama server via the OpenAI-compatible /v1/chat/completions endpoint.
- * Returns parsed JSON or null on failure.
  */
 async function callLocalLLM(systemPrompt, userMessage) {
     const url = `${LLM_BASE_URL}/v1/chat/completions`;
     
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 120000); // 2min timeout for CPU inference
+        const timeout = setTimeout(() => controller.abort(), 180000); // 3min for bigger prompt with catalog
         
         const response = await fetch(url, {
             method: 'POST',
@@ -59,32 +80,58 @@ async function callLocalLLM(systemPrompt, userMessage) {
     }
 }
 
-const SYSTEM_PROMPT = `Ești asistentul AI al Superparty — companie de organizare evenimente și petreceri pentru copii.
-Analizează conversația WhatsApp de mai jos dintre echipa noastră (Superparty) și un Client.
-Extrage detaliile principale folosind DOAR informațiile explicite din conversație. Nu inventa nimic.
+// ─────────────────────────────────────────
+// SYSTEM PROMPT — service-aware
+// ─────────────────────────────────────────
+const SYSTEM_PROMPT = `Esti asistentul AI al Superparty — companie de organizare evenimente si petreceri.
+Analizeaza conversatia WhatsApp de mai jos dintre echipa noastra (Superparty) si un Client.
+Extrage detaliile principale folosind DOAR informatiile explicite din conversatie. Nu inventa nimic.
 
-IMPORTANT: Toate valorile text din JSON TREBUIE să fie în limba ROMÂNĂ.
+IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.
 
-Returnează un obiect JSON STRICT conform acestui format exact:
+=== CATALOGUL NOSTRU DE SERVICII ===
+${CATALOG_BLOCK}
+=== SFARSIT CATALOG ===
+
+SARCINA TA:
+1. Identifica ce SERVICII din catalogul nostru sunt cerute sau mentionate in conversatie.
+2. Pentru fiecare serviciu detectat, extrage campurile obligatorii completate sau pune null daca lipsesc.
+3. Calculeaza ce campuri lipsesc PER SERVICIU.
+4. Sugereaza cross-sell bazat pe serviciile detectate.
+5. Genereaza un raspuns sugerat care cere fix informatiile lipsa pentru serviciile detectate.
+
+Returneaza un obiect JSON STRICT conform acestui format:
 {
   "client_memory": {
     "priority_level": "normal|ridicat|urgent",
-    "internal_notes_summary": "Rezumat scurt 1-2 propoziții despre cine este clientul și ce dorește."
+    "internal_notes_summary": "Rezumat scurt 1-2 propozitii"
   },
   "event_draft": {
     "draft_type": "petrecere_standard",
     "structured_data": {
-      "location": "locația extrasă sau null",
-      "date": "data extrasă sau null",
-      "event_type": "tipul extras (ex: botez, nuntă, petrecere copii, aniversare) sau null"
+      "location": "locatia extrasa sau null",
+      "date": "data extrasa sau null",
+      "event_type": "tipul extras sau null"
     },
-    "missing_fields": ["lista de informații lipsă pe care trebuie să le aflăm de la client"]
+    "missing_fields": ["lista generala de informatii lipsa"]
   },
+  "selected_services": ["service_key_1", "service_key_2"],
+  "service_requirements": {
+    "service_key_1": {
+      "extracted_fields": {"camp1": "valoare", "camp2": null},
+      "missing_fields": ["camp2"],
+      "status": "complet|partial|necunoscut"
+    }
+  },
+  "missing_fields_per_service": {
+    "service_key_1": ["camp2"]
+  },
+  "cross_sell_opportunities": ["service_key_3"],
   "conversation_state": {
-    "current_intent": "Ce dorește clientul în acest moment? (ex: cere preț, confirmă rezervare, se plânge)",
-    "next_best_action": "Ce ar trebui să răspundă operatorul nostru în continuare?"
+    "current_intent": "Ce doreste clientul in acest moment?",
+    "next_best_action": "Ce ar trebui sa raspunda operatorul?"
   },
-  "suggested_reply": "Textul exact pe care operatorul îl poate trimite clientului. Scrie ca și cum ești operatorul Superparty: profesional, cald, prietenos. Salut cu Bună!, nu cu Bună ziua. Folosește emoji-uri subtile. Max 3-4 propoziții.",
+  "suggested_reply": "Textul exact pe care operatorul il poate trimite clientului. Cere SPECIFIC informatiile lipsa pentru serviciile detectate. Scrie ca si cum esti operatorul Superparty: profesional, cald, prietenos. Salut cu Buna!, nu cu Buna ziua. Foloseste emoji-uri subtile. Max 3-4 propozitii.",
   "decision": {
     "can_auto_reply": false,
     "needs_human_review": true,
@@ -94,30 +141,25 @@ Returnează un obiect JSON STRICT conform acestui format exact:
   }
 }
 
+REGULI IMPORTANTE:
+- "selected_services" contine DOAR service_key-uri din catalogul de mai sus
+- Daca nu detectezi niciun serviciu concret, pune "selected_services": []
+- "service_requirements" contine cate un obiect pentru fiecare serviciu din selected_services
+- "missing_fields" per serviciu = campurile obligatorii din catalog care NU au fost completate
+- "cross_sell_opportunities" = servicii complementare din catalog care nu au fost cerute dar merg bine cu cele selectate
+- "suggested_reply" trebuie sa ceara fix informatiile lipsa per serviciu, nu generic
+
 REGULI PENTRU "decision":
 - "conversation_stage" poate fi: "lead", "qualifying", "quoting", "booking", "payment", "coordination", "completed", "escalation"
-- "confidence_score" între 0-100: cât de sigur ești că suggested_reply este potrivit
-- "can_auto_reply" = true DOAR dacă:
-  * mesajul este simplu (salut, cerere info generală, confirmare simplă, cerere date eveniment)
-  * confidence_score >= 75
-  * NU există conflict, reclamație sau negociere de preț
-- "needs_human_review" = true dacă:
-  * negociere de preț
-  * cerere explicită de a vorbi cu un om
-  * situație ambiguă
-  * confidence_score < 60
-- "escalation_reason" se completează când:
-  * clientul este nemulțumit sau iritat
-  * apare conflict sau reclamație
-  * aspect juridic sau financiar sensibil
-  * contradicții în datele evenimentului
-  * clientul devine confuz sau agresiv`;
+- "confidence_score" intre 0-100
+- "can_auto_reply" = true DOAR daca: mesajul este simplu, confidence >= 75, NU exista conflict
+- "needs_human_review" = true daca: negociere pret, cerere om, situatie ambigua, confidence < 60
+- "escalation_reason" se completeaza cand: nemultumire, conflict, aspect juridic/financiar sensibil`;
 
 /**
  * Send a message to WhatsApp via the whts-up transport API.
  */
 async function sendViaWhatsApp(conversationId, text) {
-    // Get session_id for this conversation
     const { data: conv } = await supabase.from('conversations').select('session_id').eq('id', conversationId).single();
     if (!conv?.session_id) {
         console.error('[AI AutoSend] No session_id found for conversation', conversationId);
@@ -145,7 +187,7 @@ async function sendViaWhatsApp(conversationId, text) {
             return false;
         }
 
-        console.log(`[AI AutoSend] ✅ Message sent successfully for conversation ${conversationId}`);
+        console.log(`[AI AutoSend] Message sent for conversation ${conversationId}`);
         return true;
     } catch (err) {
         console.error('[AI AutoSend] Network error:', err.message);
@@ -153,13 +195,73 @@ async function sendViaWhatsApp(conversationId, text) {
     }
 }
 
+// ─────────────────────────────────────────
+// POST-PROCESSING: validate & enrich service data using catalog
+// ─────────────────────────────────────────
+function postProcessServices(analysis) {
+    const catalogMap = {};
+    SERVICE_CATALOG.services.forEach(s => { catalogMap[s.service_key] = s; });
+
+    // Validate selected_services against catalog
+    const rawSelected = analysis.selected_services || [];
+    const validSelected = rawSelected.filter(key => catalogMap[key]);
+    
+    // Build precise missing_fields_per_service from catalog
+    const missingPerService = {};
+    const serviceReqs = analysis.service_requirements || {};
+    
+    for (const key of validSelected) {
+        const catalogEntry = catalogMap[key];
+        const extracted = serviceReqs[key]?.extracted_fields || {};
+        
+        // Missing = required fields from catalog that are null/undefined/empty in extracted
+        const missing = catalogEntry.required_fields.filter(field => {
+            const val = extracted[field];
+            return val === null || val === undefined || val === '' || val === 'null';
+        });
+        
+        missingPerService[key] = missing;
+    }
+    
+    // Build cross-sell from catalog (services not selected but linked)
+    const crossSell = new Set();
+    for (const key of validSelected) {
+        const catalogEntry = catalogMap[key];
+        for (const linked of (catalogEntry.cross_sell_services || [])) {
+            if (!validSelected.includes(linked) && catalogMap[linked]) {
+                crossSell.add(linked);
+            }
+        }
+    }
+    
+    // Check human_review_triggers
+    let shouldForceReview = false;
+    for (const key of validSelected) {
+        const catalogEntry = catalogMap[key];
+        if (!catalogEntry.autonomy_allowed) {
+            shouldForceReview = true;
+        }
+    }
+    
+    return {
+        selected_services: validSelected,
+        missing_fields_per_service: missingPerService,
+        cross_sell_opportunities: [...crossSell],
+        should_force_review: shouldForceReview,
+        catalog_map: catalogMap
+    };
+}
+
+// ─────────────────────────────────────────
+// MAIN: processConversation
+// ─────────────────────────────────────────
 export async function processConversation(conversation_id, message_id = null, operator_prompt = null) {
     if (!conversation_id) return;
     
     console.log(`[AI Worker] Starting text-understanding pipeline for ${conversation_id}...`);
 
     try {
-        // 1. Fetch conversation history (last 50 messages for context window)
+        // 1. Fetch conversation history
         const { data: messages, error: msgErr } = await supabase
             .from('messages')
             .select('content, direction, created_at, sender_type')
@@ -170,48 +272,64 @@ export async function processConversation(conversation_id, message_id = null, op
         if (msgErr) throw new Error(`Failed to fetch messages: ${msgErr.message}`);
         if (!messages || messages.length === 0) return;
 
-        // Reverse to chronological order for LLM
         const transcript = messages.reverse().map(m => 
             `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
         ).join('\n');
 
         // Build user message with optional operator prompt
-        let userMessage = `--- CONVERSAȚIE ---\n${transcript}`;
+        let userMessage = `--- CONVERSATIE ---\n${transcript}`;
         if (operator_prompt) {
-            userMessage += `\n\n--- INSTRUCȚIUNE OPERATOR ---\n${operator_prompt}\nAplicăm instrucțiunea de mai sus la generarea răspunsului sugerat.`;
+            userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
         }
 
-        // 2. Call local LLM for structured extraction
+        // 2. Call local LLM
         console.log(`[AI Worker] Calling local LLM (${LLM_MODEL}) with transcript (${transcript.length} chars)${operator_prompt ? ' + operator prompt' : ''}...`);
         
         let analysis = await callLocalLLM(SYSTEM_PROMPT, userMessage);
         
         if (!analysis) {
-            console.warn(`[AI Worker] Local LLM unreachable or failed. Using mock fallback for pipeline continuity.`);
+            console.warn(`[AI Worker] Local LLM unreachable. Using mock fallback.`);
             analysis = {
-                client_memory: { priority_level: "ridicat", internal_notes_summary: "MOCK: Client interesat de organizarea unui eveniment." },
-                event_draft: { draft_type: "petrecere_standard", structured_data: { location: "București", date: null, event_type: null }, missing_fields: ["număr invitați", "buget", "data evenimentului"] },
-                conversation_state: { current_intent: "MOCK: solicită informații", next_best_action: "Trimite pachetele și prețurile disponibile." },
-                suggested_reply: "Bună! 😊 Mulțumim pentru interesul acordat! Vă putem oferi mai multe detalii despre pachetele noastre. Ce tip de eveniment planificați?",
+                client_memory: { priority_level: "normal", internal_notes_summary: "MOCK: Client interesat de organizare eveniment." },
+                event_draft: { draft_type: "petrecere_standard", structured_data: { location: null, date: null, event_type: null }, missing_fields: ["toate detaliile"] },
+                selected_services: [],
+                service_requirements: {},
+                missing_fields_per_service: {},
+                cross_sell_opportunities: [],
+                conversation_state: { current_intent: "MOCK: solicita informatii", next_best_action: "Trimite pachetele disponibile." },
+                suggested_reply: "Buna! Multumim pentru interesul acordat! Va putem oferi mai multe detalii despre pachetele noastre. Ce tip de eveniment planificati?",
                 decision: { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: "lead" }
             };
         }
 
-        // Ensure decision object exists with defaults
+        // 3. Post-process services using catalog
+        const serviceData = postProcessServices(analysis);
+        
         const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
-        const suggestedReply = analysis.suggested_reply || analysis.conversation_state?.next_best_action || 'Nu am putut genera un răspuns.';
+        const suggestedReply = analysis.suggested_reply || analysis.conversation_state?.next_best_action || 'Nu am putut genera un raspuns.';
+        
+        // Ensure sub-objects exist with defaults
+        const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: 'Nu s-a putut analiza.' };
+        const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: { location: null, date: null, event_type: null }, missing_fields: [] };
+        const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
 
-        console.log(`[AI Worker] Analysis complete (source: ${analysis.client_memory?.internal_notes_summary?.startsWith('MOCK') ? 'MOCK' : 'LOCAL_LLM'}). Decision: auto=${decision.can_auto_reply}, review=${decision.needs_human_review}, confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
+        // Force human review if catalog says so
+        if (serviceData.should_force_review) {
+            decision.needs_human_review = true;
+            decision.can_auto_reply = false;
+        }
 
-        // 3. Upsert State into AI Core Tables
+        console.log(`[AI Worker] Analysis complete. Services: [${serviceData.selected_services.join(', ')}], Missing per service: ${JSON.stringify(serviceData.missing_fields_per_service)}, Cross-sell: [${serviceData.cross_sell_opportunities.join(', ')}], Decision: auto=${decision.can_auto_reply}, review=${decision.needs_human_review}, confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
+
+        // 4. Upsert State into AI Core Tables
         const { data: conv } = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
         const clientId = conv?.client_id;
 
         if (clientId) {
             const { error: err1 } = await supabase.from('ai_client_memory').upsert({
                 client_id: clientId,
-                priority_level: analysis.client_memory.priority_level,
-                internal_notes_summary: analysis.client_memory.internal_notes_summary,
+                priority_level: clientMemory.priority_level,
+                internal_notes_summary: clientMemory.internal_notes_summary,
                 updated_at: new Date().toISOString()
             });
             if (err1) console.error("[AI Worker] DB Error memory:", err1.message);
@@ -223,9 +341,9 @@ export async function processConversation(conversation_id, message_id = null, op
         if (existingDraft) {
              const { error } = await supabase.from('ai_event_drafts').update({
                 client_id: clientId,
-                draft_type: analysis.event_draft.draft_type,
-                structured_data_json: analysis.event_draft.structured_data,
-                missing_fields_json: analysis.event_draft.missing_fields,
+                draft_type: eventDraft.draft_type,
+                structured_data_json: eventDraft.structured_data,
+                missing_fields_json: eventDraft.missing_fields,
                 updated_at: new Date().toISOString()
             }).eq('id', existingDraft.id);
             err2 = error;
@@ -233,9 +351,9 @@ export async function processConversation(conversation_id, message_id = null, op
              const { error } = await supabase.from('ai_event_drafts').insert({
                 conversation_id: conversation_id,
                 client_id: clientId,
-                draft_type: analysis.event_draft.draft_type,
-                structured_data_json: analysis.event_draft.structured_data,
-                missing_fields_json: analysis.event_draft.missing_fields,
+                draft_type: eventDraft.draft_type,
+                structured_data_json: eventDraft.structured_data,
+                missing_fields_json: eventDraft.missing_fields,
                 updated_at: new Date().toISOString()
             });
             err2 = error;
@@ -244,8 +362,8 @@ export async function processConversation(conversation_id, message_id = null, op
 
         const statePayload = {
             conversation_id: conversation_id,
-            current_intent: analysis.conversation_state.current_intent,
-            next_best_action: analysis.conversation_state.next_best_action,
+            current_intent: convState.current_intent,
+            next_best_action: convState.next_best_action,
             updated_at: new Date().toISOString()
         };
         
@@ -256,24 +374,21 @@ export async function processConversation(conversation_id, message_id = null, op
         const { error: err3 } = await supabase.from('ai_conversation_state').upsert(statePayload);
         if (err3) console.error("[AI Worker] DB Error state:", err3.message);
 
-        // 4. Save AI reply decision (audit trail)
+        // 5. Save AI reply decision (audit trail)
         let replyStatus = 'pending';
         let sentBy = 'pending';
         let sentAt = null;
 
-        // Auto-send logic with safety switch
         if (AI_AUTOREPLY_ENABLED && decision.can_auto_reply && !decision.needs_human_review && decision.confidence_score >= 75) {
-            console.log(`[AI Worker] 🤖 Auto-reply conditions met (confidence=${decision.confidence_score}, stage=${decision.conversation_stage}). Sending...`);
+            console.log(`[AI Worker] Auto-reply conditions met (confidence=${decision.confidence_score}). Sending...`);
             const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
             if (sent) {
                 replyStatus = 'sent';
                 sentBy = 'ai';
                 sentAt = new Date().toISOString();
-            } else {
-                console.warn('[AI Worker] Auto-send failed, marking as pending for operator.');
             }
         } else if (decision.escalation_reason) {
-            console.log(`[AI Worker] ⚠️ Escalation: ${decision.escalation_reason}`);
+            console.log(`[AI Worker] Escalation: ${decision.escalation_reason}`);
         }
 
         const { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
@@ -291,63 +406,117 @@ export async function processConversation(conversation_id, message_id = null, op
         });
         if (errDecision) console.error("[AI Worker] DB Error reply_decisions:", errDecision.message);
 
-        // 5. Generate the dynamic layout JSON for Android Renderer
-        const escalationBadge = decision.escalation_reason ? `⚠️ Escaladare: ${decision.escalation_reason}` : null;
+        // 6. Generate service-aware dynamic layout JSON for Android
+        const escalationBadge = decision.escalation_reason ? `Escaladare: ${decision.escalation_reason}` : null;
         
         const dynamicSchema = [
-            // Status badge — confidence, stage, escalation
+            // Status badge
             {
                 type: "status_badge",
                 items: [
-                    { label: "Încredere AI", value: `${decision.confidence_score}%` },
-                    { label: "Etapă", value: decision.conversation_stage },
-                    ...(escalationBadge ? [{ label: "⚠️ Escaladare", value: decision.escalation_reason }] : [])
+                    { label: "Incredere AI", value: `${decision.confidence_score}%` },
+                    { label: "Etapa", value: decision.conversation_stage },
+                    ...(escalationBadge ? [{ label: "Escaladare", value: decision.escalation_reason }] : [])
                 ]
             },
             // Rezumat card
             {
                 type: "card",
-                title: "🧠 Creier AI - Rezumat",
+                title: "Creier AI - Rezumat",
                 items: [
-                    { label: "Prioritate", value: analysis.client_memory.priority_level },
-                    { label: "Intent", value: analysis.conversation_state.current_intent }
+                    { label: "Prioritate", value: clientMemory.priority_level },
+                    { label: "Intent", value: convState.current_intent }
                 ]
-            },
-            // Draft Eveniment card
-            {
-                type: "card",
-                title: "📝 Draft Eveniment",
-                items: [
-                    { label: "Tip", value: analysis.event_draft.structured_data.event_type || "Nespecificat" },
-                    { label: "Locație", value: analysis.event_draft.structured_data.location || "Nespecificat" },
-                    { label: "Dată", value: analysis.event_draft.structured_data.date || "Nespecificat" }
-                ]
-            },
-            // Suggested Reply card — the key new component
-            {
-                type: "reply_card",
-                title: replyStatus === 'sent' ? "✅ Răspuns Trimis de AI" : "💬 Răspuns Propus",
-                text: suggestedReply,
-                items: [
-                    { label: "Status", value: replyStatus === 'sent' ? "Trimis automat" : "Așteaptă confirmare" }
-                ],
-                action: "inject_reply",
-                action_payload: suggestedReply
-            },
-            // Prompt input — operator can give instructions
-            {
-                type: "prompt_input",
-                title: "🎯 Instrucțiune Operator",
-                text: "Scrie o instructiune pentru AI (ex: raspunde mai cald, intreaba de numarul de copii)",
-                action: "send_prompt"
-            },
-            // Missing fields
-            {
-                type: "form_card",
-                title: "Trebuie să aflăm:",
-                items: (analysis.event_draft.missing_fields || []).map(f => ({ label: f, value: "" }))
             }
         ];
+
+        // Service list — chips with detected services
+        if (serviceData.selected_services.length > 0) {
+            dynamicSchema.push({
+                type: "service_list",
+                title: "Servicii Detectate",
+                items: serviceData.selected_services.map(key => {
+                    const catalogEntry = serviceData.catalog_map[key];
+                    const missing = serviceData.missing_fields_per_service[key] || [];
+                    const status = missing.length === 0 ? 'complet' : `${missing.length} lipsa`;
+                    return { label: catalogEntry?.display_name || key, value: status };
+                })
+            });
+
+            // Service missing cards — one per service with missing fields
+            for (const key of serviceData.selected_services) {
+                const catalogEntry = serviceData.catalog_map[key];
+                const missing = serviceData.missing_fields_per_service[key] || [];
+                const extracted = analysis.service_requirements?.[key]?.extracted_fields || {};
+                
+                if (missing.length > 0) {
+                    dynamicSchema.push({
+                        type: "service_missing_card",
+                        title: `${catalogEntry?.display_name || key} - Lipsuri`,
+                        items: [
+                            ...missing.map(f => ({ label: f, value: "lipsa" })),
+                            ...Object.entries(extracted)
+                                .filter(([, v]) => v && v !== 'null')
+                                .map(([k, v]) => ({ label: k, value: String(v) }))
+                        ]
+                    });
+                }
+            }
+
+            // Cross-sell card
+            if (serviceData.cross_sell_opportunities.length > 0) {
+                dynamicSchema.push({
+                    type: "cross_sell_card",
+                    title: "Sugestii Suplimentare",
+                    text: "Servicii complementare pe care le puteti oferi clientului:",
+                    items: serviceData.cross_sell_opportunities.map(key => {
+                        const entry = serviceData.catalog_map[key];
+                        return { label: entry?.display_name || key, value: entry?.description || '' };
+                    })
+                });
+            }
+        }
+
+        // Draft Eveniment card (general)
+        dynamicSchema.push({
+            type: "card",
+            title: "Draft Eveniment",
+            items: [
+                { label: "Tip", value: eventDraft.structured_data?.event_type || "Nespecificat" },
+                { label: "Locatie", value: eventDraft.structured_data?.location || "Nespecificat" },
+                { label: "Data", value: eventDraft.structured_data?.date || "Nespecificat" }
+            ]
+        });
+
+        // Suggested Reply card
+        dynamicSchema.push({
+            type: "reply_card",
+            title: replyStatus === 'sent' ? "Raspuns Trimis de AI" : "Raspuns Propus",
+            text: suggestedReply,
+            items: [
+                { label: "Status", value: replyStatus === 'sent' ? "Trimis automat" : "Asteapta confirmare" }
+            ],
+            action: "inject_reply",
+            action_payload: suggestedReply
+        });
+
+        // Prompt input
+        dynamicSchema.push({
+            type: "prompt_input",
+            title: "Instructiune Operator",
+            text: "Scrie o instructiune pentru AI (ex: raspunde mai cald, intreaba de numarul de copii)",
+            action: "send_prompt"
+        });
+
+        // General missing fields
+        const generalMissing = eventDraft.missing_fields || [];
+        if (generalMissing.length > 0) {
+            dynamicSchema.push({
+                type: "form_card",
+                title: "Trebuie sa aflam:",
+                items: generalMissing.map(f => ({ label: f, value: "" }))
+            });
+        }
 
         const { error: err4 } = await supabase.from('ai_ui_schemas').insert({
             conversation_id: conversation_id,
@@ -356,9 +525,9 @@ export async function processConversation(conversation_id, message_id = null, op
         });
         if (err4) console.error("[AI Worker] DB Error schemas:", err4.message);
 
-        console.log(`[AI Worker] ✅ Successfully processed conversation ${conversation_id}. Reply: ${replyStatus}, Confidence: ${decision.confidence_score}%`);
+        console.log(`[AI Worker] Successfully processed ${conversation_id}. Services: ${serviceData.selected_services.length}, Reply: ${replyStatus}, Confidence: ${decision.confidence_score}%`);
 
     } catch (error) {
-        console.error(`[AI Worker] Critical failure during processing:`, error);
+        console.error(`[AI Worker] Critical failure:`, error);
     }
 }

@@ -210,6 +210,151 @@ private fun RenderNode(
                 }
             }
         }
+        "service_list" -> {
+            // Chips/tags showing detected services with status
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    node.title?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    // Wrap chips in a FlowRow-like layout
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        node.items?.forEach { item ->
+                            val isComplete = item.value == "complet"
+                            SuggestionChip(
+                                onClick = { },
+                                label = {
+                                    Text(
+                                        text = "${item.label} (${item.value})",
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                },
+                                colors = SuggestionChipDefaults.suggestionChipColors(
+                                    containerColor = if (isComplete)
+                                        Color(0xFF4CAF50).copy(alpha = 0.15f)
+                                    else
+                                        Color(0xFFFF9800).copy(alpha = 0.15f)
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        "service_missing_card" -> {
+            // Card showing missing fields for a specific service
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    node.title?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                    }
+                    node.items?.forEach { item ->
+                        val isMissing = item.value == "lipsa"
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (isMissing) "❌" else "✅",
+                                modifier = Modifier.width(24.dp)
+                            )
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isMissing) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isMissing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(0.5f)
+                            )
+                            if (!isMissing) {
+                                Text(
+                                    text = item.value ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(0.5f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        "cross_sell_card" -> {
+            // Upsell / cross-sell suggestions
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = Color(0xFF2196F3).copy(alpha = 0.08f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    node.title?.let {
+                        Text(
+                            text = "💡 $it",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    node.text?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    node.items?.forEach { item ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 1.dp
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = item.label,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                item.value?.let {
+                                    Text(
+                                        text = it,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         "section" -> {
             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 node.title?.let {

@@ -14,6 +14,9 @@ import { loadClientMemory } from '../memory/loadClientMemory.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
 import { detectEventMutation } from '../events/detectEventMutation.mjs';
 import { applyEventMutation } from '../events/applyEventMutation.mjs';
+import { evaluateNextStep } from './evaluateNextStep.mjs';
+import { evaluateAutonomy } from '../policy/evaluateAutonomy.mjs';
+import { evaluateEscalation } from '../policy/evaluateEscalation.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -270,7 +273,46 @@ export async function processConversation(conversation_id, message_id = null, op
         });
         console.log(`[Pipeline] Service Detection: status=${serviceConfidence.service_detection_status}, confirmation=${serviceConfidence.service_confirmation_allowed}, confirmed=[${serviceConfidence.confirmed_services.join(',')}], ambiguous=[${serviceConfidence.ambiguous_services.join(',')}]`);
 
-        // ── 8.6. Compose humanized reply ──
+        // ── 8.6. Conversation Progression Engine ──
+        const replyContext = buildReplyContext({ analysis, entityMemory, serviceConfidence });
+        const progression = evaluateNextStep({
+            replyContext,
+            draft: existingDraftRow,
+            mutation,
+            mutationResult,
+            decision,
+            analysis,
+            serviceConfidence
+        });
+        console.log(`[Pipeline] Progression: next_step=${progression.next_step}, status=${progression.progression_status}, missing=${progression.missing_critical_count}, autonomous=${progression.can_continue_autonomously}`);
+
+        // ── 8.7. Autonomy Policy ──
+        const autonomy = evaluateAutonomy({
+            action: progression.next_step,
+            decision,
+            mutation,
+            progression,
+            serviceConfidence,
+            conversationStage: dbStage || decision.conversation_stage
+        });
+        console.log(`[Pipeline] Autonomy: level=${autonomy.autonomy_level}, allowed=${autonomy.action_autonomy_allowed}, action=${autonomy.effective_action}`);
+
+        // ── 8.8. Escalation Engine ──
+        const escalation = evaluateEscalation({
+            decision,
+            mutation,
+            autonomy,
+            progression,
+            serviceConfidence,
+            analysis,
+            conversationStage: dbStage || decision.conversation_stage,
+            lastClientMessage: lastClientMessageText
+        });
+        if (escalation.needs_escalation) {
+            console.log(`[Pipeline] Escalation: type=${escalation.escalation_type}, reason=${escalation.escalation_reason}`);
+        }
+
+        // ── 8.9. Compose humanized reply (with progression context) ──
         let composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, serviceDetectionStatus: 'unknown' };
         let t_composer_ms = 0;
         if (eligibility.eligible || !decision.needs_human_review) {
@@ -281,15 +323,15 @@ export async function processConversation(conversation_id, message_id = null, op
                 salesCycle,
                 conversationStage: dbStage || decision.conversation_stage,
                 conversationText: userMessage,
-                serviceConfidence
+                serviceConfidence,
+                progression
             });
             suggestedReply = composerResult.reply;
             t_composer_ms = Date.now() - t_comp_start;
             console.log(`[Pipeline] Composer completed in ${t_composer_ms}ms`);
         }
 
-        // ── 8.7. Evaluate reply quality ──
-        const replyContext = buildReplyContext({ analysis, entityMemory, serviceConfidence });
+        // ── 8.10. Evaluate reply quality ──
         const replyQuality = evaluateReplyQuality({
             reply: suggestedReply,
             analysis,
@@ -341,7 +383,12 @@ export async function processConversation(conversation_id, message_id = null, op
             reply_quality_label: replyQuality.reply_quality_label,
             reply_quality_flags: replyQuality.reply_quality_flags,
             reply_style: composerResult.replyStyle,
-            composer_used: composerResult.composerUsed
+            composer_used: composerResult.composerUsed,
+            next_step: progression.next_step,
+            progression_status: progression.progression_status,
+            autonomy_level: autonomy.autonomy_level,
+            escalation_type: escalation.escalation_type,
+            escalation_reason: escalation.needs_escalation ? escalation.escalation_reason : null
         });
         // Fallback cascade: if quality columns missing, try without them
         if (errDecision && errDecision.message?.includes('does not exist')) {
@@ -377,7 +424,10 @@ export async function processConversation(conversation_id, message_id = null, op
             salesCycle,
             replyQuality,
             mutation,
-            mutationResult
+            mutationResult,
+            progression,
+            autonomy,
+            escalation
         });
 
         const { error: err4 } = await supabase.from('ai_ui_schemas').insert({

@@ -17,7 +17,10 @@ export function buildBrainSchema({
     salesCycle,
     replyQuality,
     mutation,
-    mutationResult
+    mutationResult,
+    progression,
+    autonomy,
+    escalation
 }) {
     const schema = [];
 
@@ -269,6 +272,53 @@ export function buildBrainSchema({
         text: "Scrie o instructiune pentru AI (ex: raspunde mai cald, intreaba de numarul de copii)",
         action: "send_prompt"
     });
+
+    // ── Autonomy Badge ──
+    if (autonomy) {
+        const autonomyEmoji = autonomy.autonomy_level === 'full' ? '🟢' : autonomy.autonomy_level === 'supervised' ? '🟡' : '🔴';
+        schema.push({
+            type: "status_badge",
+            title: `${autonomyEmoji} Autonomie Agent`,
+            items: [
+                { label: "Nivel", value: autonomy.autonomy_level || 'necunoscut' },
+                { label: "Actiune", value: autonomy.effective_action || '-' },
+                { label: "Permis", value: autonomy.action_autonomy_allowed ? 'Da' : 'Nu' },
+                { label: "Motiv", value: (autonomy.autonomy_decision_reason || '').substring(0, 80) }
+            ]
+        });
+    }
+
+    // ── Next Step Card ──
+    if (progression) {
+        const progressItems = [
+            { label: "Pas urmator", value: progression.next_step || '-' },
+            { label: "Motiv", value: (progression.next_step_reason || '').substring(0, 80) },
+            { label: "Status", value: progression.progression_status || '-' },
+            { label: "Campuri lipsa", value: `${progression.missing_critical_count}/${progression.total_fields_needed}` },
+            { label: "Completate", value: progression.completed_fields?.join(', ') || 'niciunul' }
+        ];
+        if (progression.next_question_field) {
+            progressItems.push({ label: "Intrebare", value: progression.next_question_field });
+        }
+        schema.push({
+            type: "section",
+            title: "📋 Progres Conversatie",
+            items: progressItems
+        });
+    }
+
+    // ── Escalation Badge ──
+    if (escalation && escalation.needs_escalation) {
+        schema.push({
+            type: "status_badge",
+            title: "⚠️ Escaladare",
+            items: [
+                { label: "Tip", value: escalation.escalation_type || '-' },
+                { label: "Motiv", value: (escalation.escalation_reason || '').substring(0, 120) },
+                { label: "Actiune recomandata", value: (escalation.recommended_operator_action || '').substring(0, 100) }
+            ]
+        });
+    }
 
     // ── General missing fields ──
     const generalMissing = eventDraft.missing_fields || [];

@@ -12,7 +12,7 @@
  * @param {string} params.draftReply    - analysis draft (reference only)
  * @returns {string} composer prompt
  */
-export function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycle, replyStyle, draftReply }) {
+export function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycle, replyStyle, draftReply, progression }) {
 
     // ── Style-specific personality ──
     const styleInstructions = {
@@ -127,9 +127,27 @@ Maxim 1-2 propozitii.`
    (prea robotic — lista de cerinte)`;
     }
 
+    // Progression context
+    let progressionBlock = '';
+    if (progression) {
+        progressionBlock = `\n\n=== STADIU CONVERSATIE ===`;
+        progressionBlock += `\nPas curent: ${progression.next_step}`;
+        progressionBlock += `\nMotiv: ${progression.next_step_reason}`;
+        progressionBlock += `\nStatus: ${progression.progression_status}`;
+        progressionBlock += `\nCampuri completate: ${progression.completed_fields.join(', ') || 'niciunul'}`;
+        progressionBlock += `\nCampuri lipsa: ${progression.missing_critical_count}`;
+        if (progression.progression_status === 'ready_for_quote') {
+            progressionBlock += `\n→ IMPORTANT: Toate informatiile sunt complete. Confirma cu clientul si anunta ca un coleg va reveni cu oferta.`;
+        }
+        if (progression.progression_status === 'confirming') {
+            progressionBlock += `\n→ IMPORTANT: Tocmai s-a facut o modificare. Confirma schimbarea cu clientul.`;
+        }
+    }
+
     return `${style}
 ${cycleContext}
 ${contextBlock}
+${progressionBlock}
 
 DRAFT INTERN (doar referinta, NU copia):
 "${draftReply}"

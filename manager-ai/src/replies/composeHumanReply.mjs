@@ -17,7 +17,8 @@ export async function composeHumanReply({
     salesCycle,
     conversationStage,
     conversationText,
-    serviceConfidence
+    serviceConfidence,
+    progression
 }) {
     const draftReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
 
@@ -37,7 +38,8 @@ export async function composeHumanReply({
         entityMemory,
         salesCycle,
         replyStyle,
-        draftReply
+        draftReply,
+        progression
     });
 
     try {

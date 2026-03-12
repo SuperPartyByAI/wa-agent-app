@@ -59,6 +59,7 @@ export async function processConversation(conversation_id, message_id = null, op
     if (!conversation_id) return;
 
     console.log(`[Pipeline] Starting for ${conversation_id}...`);
+    const t_pipeline_start = Date.now();
 
     try {
         // ── 1. Load conversation context ──
@@ -124,7 +125,10 @@ export async function processConversation(conversation_id, message_id = null, op
         const systemPrompt = buildSystemPrompt(existingMemory);
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
+        const t_llm_start = Date.now();
         let analysis = await callLocalLLM(systemPrompt, userMessage);
+        const t_llm_ms = Date.now() - t_llm_start;
+        console.log(`[Pipeline] LLM analysis completed in ${t_llm_ms}ms`);
 
         if (!analysis) {
             console.warn(`[Pipeline] LLM unreachable. Using mock fallback.`);
@@ -268,7 +272,9 @@ export async function processConversation(conversation_id, message_id = null, op
 
         // ── 8.6. Compose humanized reply ──
         let composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, serviceDetectionStatus: 'unknown' };
+        let t_composer_ms = 0;
         if (eligibility.eligible || !decision.needs_human_review) {
+            const t_comp_start = Date.now();
             composerResult = await composeHumanReply({
                 analysis,
                 entityMemory,
@@ -278,6 +284,8 @@ export async function processConversation(conversation_id, message_id = null, op
                 serviceConfidence
             });
             suggestedReply = composerResult.reply;
+            t_composer_ms = Date.now() - t_comp_start;
+            console.log(`[Pipeline] Composer completed in ${t_composer_ms}ms`);
         }
 
         // ── 8.7. Evaluate reply quality ──
@@ -379,7 +387,8 @@ export async function processConversation(conversation_id, message_id = null, op
         });
         if (err4) console.error('[Pipeline] DB Error schemas:', err4.message);
 
-        console.log(`[Pipeline] Done ${conversation_id}. Services: ${serviceData.selected_services.length}, Entity: ${entityMemory.entity_type}, Reply: ${replyStatus}, Eligibility: ${eligibility.reason}, Quality: ${replyQuality.reply_quality_label}(${replyQuality.reply_quality_score}), SvcDetection: ${serviceConfidence.service_detection_status}`);
+        const t_total_ms = Date.now() - t_pipeline_start;
+        console.log(`[Pipeline] Done ${conversation_id}. Services: ${serviceData.selected_services.length}, Entity: ${entityMemory.entity_type}, Reply: ${replyStatus}, Eligibility: ${eligibility.reason}, Quality: ${replyQuality.reply_quality_label}(${replyQuality.reply_quality_score}), SvcDetection: ${serviceConfidence.service_detection_status}, Timing: analysis=${t_llm_ms}ms composer=${t_composer_ms}ms total=${t_total_ms}ms`);
 
     } catch (error) {
         console.error(`[Pipeline] Critical failure:`, error);

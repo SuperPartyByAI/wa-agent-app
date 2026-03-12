@@ -79,9 +79,13 @@ export async function processConversation(conversation_id, message_id = null, op
         const existingMemory = await loadClientMemory(clientId);
         console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, locations=${existingMemory.usual_locations.length}, services=${existingMemory.usual_services.length}`);
 
-        // ── 3. Check for legacy context (last human agent message) ──
+        // ── 3. Check for legacy context + last inbound ──
         const lastHumanMsg = messages.find(m => m.sender_type === 'agent');
         const lastHumanActivityAt = lastHumanMsg?.created_at || null;
+
+        // Find last inbound (client) message for cutoff reactivation check
+        const lastInboundMsg = messages.find(m => m.sender_type !== 'agent');
+        const lastInboundMessageAt = lastInboundMsg?.created_at || null;
 
         // Check for existing event draft before cutoff
         let hasExistingDraft = false;
@@ -159,7 +163,8 @@ export async function processConversation(conversation_id, message_id = null, op
             conversationStage: dbStage || decision.conversation_stage,
             conversationCreatedAt,
             lastHumanActivityAt,
-            hasExistingDraft
+            hasExistingDraft,
+            lastInboundMessageAt
         });
 
         console.log(`[Pipeline] Services: [${serviceData.selected_services.join(', ')}], Entity: ${entityMemory.entity_type} (${entityMemory.entity_confidence}%), Eligibility: ${eligibility.eligible ? 'ALLOWED' : eligibility.reason}, Decision: confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);

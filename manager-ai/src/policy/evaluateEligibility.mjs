@@ -10,24 +10,34 @@ import { AI_AUTOREPLY_ENABLED, AI_AUTOREPLY_CUTOFF, BLOCKED_STAGES, MIN_AUTOREPL
  * @param {string} params.conversationCreatedAt - when conversation was created (ISO string)
  * @param {string|null} params.lastHumanActivityAt - last human agent message timestamp
  * @param {boolean} params.hasExistingDraft   - whether an event draft already existed before cutoff
+ * @param {string|null} params.lastInboundMessageAt - timestamp of the most recent inbound (client) message
  */
 export function evaluateEligibility({
     decision,
     conversationStage,
     conversationCreatedAt,
     lastHumanActivityAt,
-    hasExistingDraft
+    hasExistingDraft,
+    lastInboundMessageAt
 }) {
     // 1. Global kill switch
     if (!AI_AUTOREPLY_ENABLED) {
         return { eligible: false, reason: 'global_switch_off' };
     }
 
-    // 2. Activation cutoff — only conversations created after cutoff are eligible
+    // 2. Activation cutoff
+    //    - Primary: conversation created after cutoff → eligible
+    //    - Secondary: last inbound message after cutoff → conversation reactivated, eligible
+    //    This handles transports (whts-up) that reuse old conversation IDs for returning numbers.
     if (AI_AUTOREPLY_CUTOFF) {
         const cutoffDate = new Date(AI_AUTOREPLY_CUTOFF);
         const convDate = new Date(conversationCreatedAt);
-        if (convDate < cutoffDate) {
+        const inboundDate = lastInboundMessageAt ? new Date(lastInboundMessageAt) : null;
+
+        const convAfterCutoff = convDate >= cutoffDate;
+        const inboundAfterCutoff = inboundDate && inboundDate >= cutoffDate;
+
+        if (!convAfterCutoff && !inboundAfterCutoff) {
             return { eligible: false, reason: 'blocked_below_cutoff' };
         }
     }

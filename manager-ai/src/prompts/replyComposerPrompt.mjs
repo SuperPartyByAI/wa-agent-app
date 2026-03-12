@@ -1,7 +1,8 @@
 /**
  * Builds the reply composer prompt for humanized WhatsApp replies.
- * Uses concrete reply context (services, missing fields, next question)
- * to produce specific, service-aware replies instead of generic ones.
+ * Now respects the Service Detection Confidence Guard:
+ * - clear: confirm services concretely
+ * - ambiguous/unknown: ask open service discovery question, NO assumptions
  *
  * @param {object} params
  * @param {object} params.replyContext   - from buildReplyContext()
@@ -30,12 +31,33 @@ Maxim 1-2 propozitii.`
     // ── Build concrete context block ──
     let contextBlock = '';
 
-    // Services
-    if (replyContext.hasServices) {
-        contextBlock += `\nSERVICII CONFIRMATE: ${replyContext.confirmedServicesText}`;
-        contextBlock += `\n→ OBLIGATORIU: Mentioneaza aceste servicii in reply cand confirmi ce ai inteles.`;
+    // ── SERVICE DETECTION CONFIDENCE GUARD ──
+    const svcStatus = replyContext.serviceDetectionStatus || 'clear';
+
+    if (svcStatus === 'unknown' || svcStatus === 'ambiguous') {
+        // DISCOVERY MODE — no services confirmed, must ask
+        contextBlock += `\nSERVICII: NEDETECTATE SAU AMBIGUE.`;
+        contextBlock += `\n→ INTERZIS: Nu mentiona NICIUN serviciu concret (nici animator, nici altceva).`;
+        contextBlock += `\n→ INTERZIS: Nu presupune ce vrea clientul.`;
+        contextBlock += `\n→ OBLIGATORIU: Pune o intrebare deschisa si naturala de tipul:`;
+        contextBlock += `\n   "Ce servicii va intereseaza?" sau "Cu ce va putem ajuta?"`;
+        contextBlock += `\n→ Poti ghida usor: "Avem animator, ursitoare, vata de zahar, popcorn, arcada baloane..."`;
+        contextBlock += `\n→ Dar NU presupune ca vrea vreunul din ele.`;
+    } else if (svcStatus === 'partial') {
+        // Some confirmed, some ambiguous
+        if (replyContext.hasServices) {
+            contextBlock += `\nSERVICII CONFIRMATE: ${replyContext.confirmedServicesText}`;
+            contextBlock += `\n→ Mentioneaza DOAR aceste servicii confirmate.`;
+            contextBlock += `\n→ INTERZIS: Nu adauga alte servicii neconfirmate.`;
+        }
     } else {
-        contextBlock += `\nSERVICII: niciuna detectata clar. Intreaba ce doreste clientul.`;
+        // CLEAR — all good
+        if (replyContext.hasServices) {
+            contextBlock += `\nSERVICII CONFIRMATE: ${replyContext.confirmedServicesText}`;
+            contextBlock += `\n→ OBLIGATORIU: Mentioneaza aceste servicii in reply cand confirmi ce ai inteles.`;
+        } else {
+            contextBlock += `\nSERVICII: niciuna detectata clar. Intreaba ce doreste clientul.`;
+        }
     }
 
     // Next question
@@ -70,33 +92,24 @@ Maxim 1-2 propozitii.`
         cycleContext = '\nACESTA E UN CLIENT CARE REVINE. Saluta-l familiar, nu ca pe un strain.';
     }
 
-    return `${style}
-${cycleContext}
-${contextBlock}
+    // ── Discovery-specific examples ──
+    let exampleBlock;
+    if (svcStatus === 'unknown' || svcStatus === 'ambiguous') {
+        exampleBlock = `=== EXEMPLE BUNE (DISCOVERY — fara presupuneri) ===
 
-DRAFT INTERN (doar referinta, NU copia):
-"${draftReply}"
+✅ "Buna! Sigur, va ajutam cu drag 😊 Ce servicii va intereseaza pentru petrecere?"
+✅ "Salut! Cu placere! Ce anume cautati — animator, ursitoare, vata de zahar, popcorn, arcada baloane? 😊"
+✅ "Buna! Ne bucuram ca ne scrieti 😊 Spuneti-ne ce va intereseaza si va ajutam cu informatii!"
+✅ "Hey! Spuneti-ne cu ce va putem ajuta si revenim cu detalii 😊"
 
-=== REGULI STRICTE ===
+=== EXEMPLE PROASTE (INTERZISE in modul discovery) ===
 
-1. CONFIRMA CONCRET ce ai inteles
-   - NU "va putem ajuta cu ce aveti in minte"
-   - DA "va putem ajuta cu animator si vata de zahar"
-   - Daca stii serviciile, spune-le pe nume!
-
-2. INTREABA DOAR 1 lucru
-   - pune DOAR intrebarea urmatoare din contextul de mai sus
-   - nu mai pune altceva
-   - restul se afla in mesajele urmatoare
-
-3. SCURT — max 2-3 propozitii. Punct.
-
-4. EMOJI subtile — max 1 emoji per mesaj (😊 sau 🎉)
-
-5. VARIAZA deschiderile. NU incepe mereu cu "Buna! Sigur".
-   Optiuni: "Buna!", "Salut!", "Hey!", "Da,", "Sigur,", "Cu placere,"
-
-=== EXEMPLE BUNE (uman + concret) ===
+❌ "Sigur, va putem ajuta cu animator..." (presupune animator)
+❌ "Avem disponibilitate pentru animator pe..." (presupune animator)
+❌ "Va putem oferi animator si vata de zahar..." (inventeaza servicii)
+❌ "Pentru un animator, avem nevoie de data si locatie..." (presupune si cere detalii)`;
+    } else {
+        exampleBlock = `=== EXEMPLE BUNE (uman + concret) ===
 
 ✅ "Buna! Sigur, va putem ajuta cu animator 😊 Pentru ce data aveti petrecerea?"
 ✅ "Salut! Da, avem animator si vata de zahar. Cam pe ce data va ganditi? 😊"
@@ -111,11 +124,39 @@ DRAFT INTERN (doar referinta, NU copia):
 ❌ "Buna! Spuneti-ne mai multe detalii."
    (inutila — nu arata ca a inteles ceva)
 ❌ "Buna! Pentru animator si vata de zahar avem nevoie de data, locatia, ora si numarul de copii."
-   (prea robotic — lista de cerinte)
-❌ "Va rugam sa ne comunicati urmatoarele informatii necesare procesarii."
-   (corporate — complet nefiresc pe WhatsApp)
-❌ "Buna! Ce mai faceti? Suntem la dispozitie sa va ajutam cu orice aveti nevoie."
-   (fals familiarizant si vag)
+   (prea robotic — lista de cerinte)`;
+    }
+
+    return `${style}
+${cycleContext}
+${contextBlock}
+
+DRAFT INTERN (doar referinta, NU copia):
+"${draftReply}"
+
+=== REGULI STRICTE ===
+
+1. CONFIRMA CONCRET ce ai inteles — dar DOAR daca serviciile sunt CONFIRMATE in context
+   - NU "va putem ajuta cu ce aveti in minte"
+   - DA "va putem ajuta cu animator si vata de zahar" (doar daca CONFIRMATE mai sus)
+   - Daca serviciile NU SUNT confirmate, NU le mentiona. Intreaba deschis.
+
+2. INTERZIS: Nu presupune NICIODATA "animator" ca fallback/default.
+   Daca clientul nu a cerut explicit un serviciu, NU il mentiona.
+
+3. INTREABA DOAR 1 lucru
+   - pune DOAR intrebarea urmatoare din contextul de mai sus
+   - nu mai pune altceva
+   - restul se afla in mesajele urmatoare
+
+4. SCURT — max 2-3 propozitii. Punct.
+
+5. EMOJI subtile — max 1 emoji per mesaj (😊 sau 🎉)
+
+6. VARIAZA deschiderile. NU incepe mereu cu "Buna! Sigur".
+   Optiuni: "Buna!", "Salut!", "Hey!", "Da,", "Sigur,", "Cu placere,"
+
+${exampleBlock}
 
 === EXEMPLE COLAB/RECURENT (variante) ===
 

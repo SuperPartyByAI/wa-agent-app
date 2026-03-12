@@ -9,14 +9,15 @@ import { buildReplyContext } from './buildReplyContext.mjs';
  * Falls back to the analysis draft if the composer LLM call fails.
  *
  * @param {object} params
- * @returns {object} { reply, replyStyle, composerUsed, specificity }
+ * @returns {object} { reply, replyStyle, composerUsed, specificity, serviceDetectionStatus }
  */
 export async function composeHumanReply({
     analysis,
     entityMemory,
     salesCycle,
     conversationStage,
-    conversationText
+    conversationText,
+    serviceConfidence
 }) {
     const draftReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
 
@@ -27,8 +28,8 @@ export async function composeHumanReply({
         conversationStage
     });
 
-    // Build concrete reply context
-    const replyContext = buildReplyContext({ analysis, entityMemory });
+    // Build concrete reply context (now with service confidence guard)
+    const replyContext = buildReplyContext({ analysis, entityMemory, serviceConfidence });
 
     // Build composer prompt with concrete context
     const composerPrompt = buildReplyComposerPrompt({
@@ -65,20 +66,22 @@ export async function composeHumanReply({
 
         // Validate
         if (finalReply && finalReply.length > 5 && finalReply.length < 500) {
-            console.log(`[Composer] Humanized reply (${replyStyle}, ${replyContext.specificity}): ${finalReply.substring(0, 80)}...`);
+            console.log(`[Composer] Humanized reply (${replyStyle}, ${replyContext.specificity}, svc_detection=${replyContext.serviceDetectionStatus}): ${finalReply.substring(0, 80)}...`);
             return {
                 reply: finalReply,
                 replyStyle,
                 composerUsed: true,
-                specificity: replyContext.specificity
+                specificity: replyContext.specificity,
+                serviceDetectionStatus: replyContext.serviceDetectionStatus
             };
         }
 
         console.warn('[Composer] Output invalid, falling back to analysis draft.');
-        return { reply: draftReply, replyStyle, composerUsed: false, specificity: 'generic' };
+        return { reply: draftReply, replyStyle, composerUsed: false, specificity: 'generic', serviceDetectionStatus: 'unknown' };
 
     } catch (err) {
         console.warn('[Composer] LLM call failed, falling back to analysis draft:', err.message);
-        return { reply: draftReply, replyStyle, composerUsed: false, specificity: 'generic' };
+        return { reply: draftReply, replyStyle, composerUsed: false, specificity: 'generic', serviceDetectionStatus: 'unknown' };
     }
 }
+

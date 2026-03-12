@@ -66,6 +66,7 @@ Returneaza un obiect JSON STRICT conform acestui format:
     "missing_fields": ["lista generala de informatii lipsa"]
   },
   "selected_services": ["service_key_1"],
+  "service_detection_confidence": 80,
   "service_requirements": {
     "service_key_1": {
       "extracted_fields": {"camp1": "valoare"},
@@ -116,7 +117,17 @@ REGULI PENTRU "entity_memory":
 
 REGULI PENTRU "selected_services":
 - Contine DOAR service_key-uri din CATALOGUL DE SERVICII de mai sus
+- DOAR servicii cerute EXPLICIT de client. NU presupune servicii nementionate.
+- Daca clientul scrie "vreau ceva pentru petrecere" fara sa numeasca un serviciu, selected_services TREBUIE sa fie LISTA GOALA [].
+- NU pune "animator" ca default. Animator se pune DOAR daca clientul il cere explicit.
 - "missing_fields" per serviciu = campurile obligatorii din catalog care NU au fost completate
+
+REGULI PENTRU "service_detection_confidence":
+- 0-100: cat de sigur esti ca serviciile detectate sunt cele cerute real de client
+- 90-100: clientul a numit serviciile explicit (ex: "vreau animator si popcorn")
+- 60-89: clientul a sugerat indirect dar destul de clar (ex: "vreau pe cineva sa faca baloane")
+- 0-59: clientul nu a specificat servicii clare (ex: "vreau ceva pentru petrecere", "buna, ma intereseaza")
+- Daca selected_services este gol, pune 0
 
 REGULI PENTRU "decision":
 - "conversation_stage" poate fi: "lead", "qualifying", "quoting", "booking", "payment", "coordination", "completed", "escalation"

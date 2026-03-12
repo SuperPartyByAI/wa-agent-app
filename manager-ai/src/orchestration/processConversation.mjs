@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AI_AUTOREPLY_CUTOFF, WHTSUP_API_URL, WHTSUP_API_KEY } from '../config/env.mjs';
 import { callLocalLLM } from '../llm/client.mjs';
 import { postProcessServices } from '../services/postProcessServices.mjs';
+import { evaluateServiceConfidence } from '../services/evaluateServiceConfidence.mjs';
 import { buildSystemPrompt } from '../prompts/systemPrompt.mjs';
 import { buildBrainSchema } from '../schemas/buildBrainSchema.mjs';
 import { evaluateEligibility } from '../policy/evaluateEligibility.mjs';
@@ -110,6 +111,10 @@ export async function processConversation(conversation_id, message_id = null, op
         const transcript = messages.reverse().map(m =>
             `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
         ).join('\n');
+
+        // Extract last client message for service confidence guard
+        const lastClientMsg = [...messages].reverse().find(m => m.sender_type === 'client');
+        const lastClientMessageText = lastClientMsg?.content || '';
 
         let userMessage = `--- CONVERSATIE ---\n${transcript}`;
         if (operator_prompt) {
@@ -243,21 +248,30 @@ export async function processConversation(conversation_id, message_id = null, op
         if (message_id) statePayload.last_processed_message_id = message_id;
         await supabase.from('ai_conversation_state').upsert(statePayload);
 
-        // ── 8.5. Compose humanized reply ──
-        let composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false };
+        // ── 8.5. Service Detection Confidence Guard ──
+        const serviceConfidence = evaluateServiceConfidence({
+            analysis,
+            selectedServices: serviceData.selected_services,
+            lastClientMessage: lastClientMessageText
+        });
+        console.log(`[Pipeline] Service Detection: status=${serviceConfidence.service_detection_status}, confirmation=${serviceConfidence.service_confirmation_allowed}, confirmed=[${serviceConfidence.confirmed_services.join(',')}], ambiguous=[${serviceConfidence.ambiguous_services.join(',')}]`);
+
+        // ── 8.6. Compose humanized reply ──
+        let composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, serviceDetectionStatus: 'unknown' };
         if (eligibility.eligible || !decision.needs_human_review) {
             composerResult = await composeHumanReply({
                 analysis,
                 entityMemory,
                 salesCycle,
                 conversationStage: dbStage || decision.conversation_stage,
-                conversationText: userMessage
+                conversationText: userMessage,
+                serviceConfidence
             });
             suggestedReply = composerResult.reply;
         }
 
-        // ── 8.6. Evaluate reply quality ──
-        const replyContext = buildReplyContext({ analysis, entityMemory });
+        // ── 8.7. Evaluate reply quality ──
+        const replyContext = buildReplyContext({ analysis, entityMemory, serviceConfidence });
         const replyQuality = evaluateReplyQuality({
             reply: suggestedReply,
             analysis,
@@ -355,7 +369,7 @@ export async function processConversation(conversation_id, message_id = null, op
         });
         if (err4) console.error('[Pipeline] DB Error schemas:', err4.message);
 
-        console.log(`[Pipeline] Done ${conversation_id}. Services: ${serviceData.selected_services.length}, Entity: ${entityMemory.entity_type}, Reply: ${replyStatus}, Eligibility: ${eligibility.reason}, Quality: ${replyQuality.reply_quality_label}(${replyQuality.reply_quality_score})`);
+        console.log(`[Pipeline] Done ${conversation_id}. Services: ${serviceData.selected_services.length}, Entity: ${entityMemory.entity_type}, Reply: ${replyStatus}, Eligibility: ${eligibility.reason}, Quality: ${replyQuality.reply_quality_label}(${replyQuality.reply_quality_score}), SvcDetection: ${serviceConfidence.service_detection_status}`);
 
     } catch (error) {
         console.error(`[Pipeline] Critical failure:`, error);

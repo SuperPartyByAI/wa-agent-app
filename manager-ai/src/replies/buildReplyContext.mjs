@@ -2,20 +2,32 @@ import { CATALOG_MAP } from '../services/postProcessServices.mjs';
 
 /**
  * Builds a concrete reply context from analysis data.
- * Extracts: confirmed services (with display names), missing fields,
- * known info from memory, and prioritized next question.
+ * Now uses the Service Detection Confidence Guard to determine
+ * which services can be confirmed in the reply.
  *
  * @param {object} params
- * @param {object} params.analysis      - LLM analysis output
- * @param {object} params.entityMemory  - entity memory
+ * @param {object} params.analysis          - LLM analysis output
+ * @param {object} params.entityMemory      - entity memory
+ * @param {object} [params.serviceConfidence] - from evaluateServiceConfidence()
  * @returns {object} replyContext
  */
-export function buildReplyContext({ analysis, entityMemory }) {
+export function buildReplyContext({ analysis, entityMemory, serviceConfidence }) {
     const services = analysis.selected_services || [];
     const missingPerService = analysis.missing_fields_per_service || {};
 
+    // ── Service Detection Confidence Guard ──
+    // Only confirm services that passed the confidence check
+    const allowConfirmation = serviceConfidence?.service_confirmation_allowed ?? true;
+    const confirmedKeys = allowConfirmation
+        ? (serviceConfidence?.confirmed_services?.length > 0
+            ? serviceConfidence.confirmed_services
+            : services)
+        : [];
+
+    const serviceDetectionStatus = serviceConfidence?.service_detection_status || 'clear';
+
     // ── Confirmed services with display names ──
-    const confirmedServices = services.map(key => {
+    const confirmedServices = confirmedKeys.map(key => {
         const entry = CATALOG_MAP[key];
         return entry?.display_name || key;
     });
@@ -23,7 +35,7 @@ export function buildReplyContext({ analysis, entityMemory }) {
     // ── All missing fields, flattened + deduplicated ──
     const allMissing = [];
     const seen = new Set();
-    for (const svc of services) {
+    for (const svc of confirmedKeys) {
         for (const field of (missingPerService[svc] || [])) {
             const normalized = field.toLowerCase().trim();
             if (!seen.has(normalized)) {
@@ -60,7 +72,6 @@ export function buildReplyContext({ analysis, entityMemory }) {
     const trulyMissing = allMissing.filter(f => !knownFields.has(f.toLowerCase()));
 
     // ── Prioritized next question ──
-    // Priority order: data > locatie > numar_copii > ora > rest
     const fieldPriority = [
         'data', 'data_eveniment', 'date',
         'locatie', 'locatia', 'location',
@@ -72,22 +83,27 @@ export function buildReplyContext({ analysis, entityMemory }) {
     let nextQuestion = null;
     let nextQuestionField = null;
 
-    for (const priority of fieldPriority) {
-        const match = trulyMissing.find(f =>
-            f.toLowerCase().includes(priority) ||
-            priority.includes(f.toLowerCase())
-        );
-        if (match) {
-            nextQuestion = match;
-            nextQuestionField = match;
-            break;
+    // If service detection is ambiguous/unknown, the next question IS the service discovery
+    if (serviceDetectionStatus === 'unknown' || serviceDetectionStatus === 'ambiguous') {
+        nextQuestion = 'servicii_dorite';
+        nextQuestionField = 'servicii_dorite';
+    } else {
+        for (const priority of fieldPriority) {
+            const match = trulyMissing.find(f =>
+                f.toLowerCase().includes(priority) ||
+                priority.includes(f.toLowerCase())
+            );
+            if (match) {
+                nextQuestion = match;
+                nextQuestionField = match;
+                break;
+            }
         }
-    }
-
-    // Fallback: first truly missing field
-    if (!nextQuestion && trulyMissing.length > 0) {
-        nextQuestion = trulyMissing[0];
-        nextQuestionField = trulyMissing[0];
+        // Fallback: first truly missing field
+        if (!nextQuestion && trulyMissing.length > 0) {
+            nextQuestion = trulyMissing[0];
+            nextQuestionField = trulyMissing[0];
+        }
     }
 
     // ── Question phrasing suggestions ──
@@ -103,7 +119,8 @@ export function buildReplyContext({ analysis, entityMemory }) {
         ora: 'La ce oră ar începe?',
         ora_start: 'La ce oră ar începe?',
         tip_eveniment: 'Despre ce tip de eveniment este vorba?',
-        varsta_copil: 'Ce vârstă are copilul?'
+        varsta_copil: 'Ce vârstă are copilul?',
+        servicii_dorite: 'Ce servicii vă interesează? Avem animator, ursitoare, vată de zahăr, popcorn, arcadă baloane și multe altele 😊'
     };
 
     let suggestedQuestionPhrase = null;
@@ -121,7 +138,9 @@ export function buildReplyContext({ analysis, entityMemory }) {
 
     // ── Specificity level ──
     let specificity = 'generic';
-    if (confirmedServices.length > 0 && nextQuestion) {
+    if (serviceDetectionStatus === 'unknown' || serviceDetectionStatus === 'ambiguous') {
+        specificity = 'discovery';
+    } else if (confirmedServices.length > 0 && nextQuestion) {
         specificity = 'specific';
     } else if (confirmedServices.length > 0 || nextQuestion) {
         specificity = 'semi_specific';
@@ -137,6 +156,9 @@ export function buildReplyContext({ analysis, entityMemory }) {
         knownFromMemory,
         specificity,
         hasServices: confirmedServices.length > 0,
-        hasMissing: trulyMissing.length > 0
+        hasMissing: trulyMissing.length > 0,
+        serviceDetectionStatus,
+        serviceConfirmationAllowed: allowConfirmation
     };
 }
+

@@ -1,44 +1,58 @@
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 dotenv.config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// If developer hasn't put the key yet, gracefully warn and exit
-const ai = process.env.GEMINI_API_KEY 
-    ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) 
-    : null;
+// Local LLM config — Ollama (self-hosted, zero external API cost)
+const LLM_BASE_URL = process.env.LOCAL_LLM_BASE_URL || 'http://localhost:11434';
+const LLM_MODEL = process.env.LOCAL_LLM_MODEL || 'qwen2.5:7b';
 
-export async function processConversation(conversation_id, message_id = null) {
-    if (!conversation_id) return;
+/**
+ * Calls the local Ollama server via the OpenAI-compatible /v1/chat/completions endpoint.
+ * Returns parsed JSON or null on failure.
+ */
+async function callLocalLLM(systemPrompt, userMessage) {
+    const url = `${LLM_BASE_URL}/v1/chat/completions`;
     
-    console.log(`[AI Worker] Starting real text-understanding pipeline for ${conversation_id}...`);
-    
-    if (!ai) {
-        console.warn(`[AI Worker] WARNING: GEMINI_API_KEY missing in .env. Using mock analysis for pipeline validation.`);
-    }
-
     try {
-        // 1. Fetch conversation history (last 50 messages for context window)
-        const { data: messages, error: msgErr } = await supabase
-            .from('messages')
-            .select('content, direction, created_at, sender_type')
-            .eq('conversation_id', conversation_id)
-            .order('created_at', { ascending: false })
-            .limit(50);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 120000); // 2min timeout for CPU inference
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: LLM_MODEL,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                temperature: 0.1,
+                response_format: { type: 'json_object' }
+            }),
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeout);
+        
+        if (!response.ok) {
+            throw new Error(`LLM HTTP ${response.status}: ${await response.text()}`);
+        }
+        
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        
+        if (!content) throw new Error('Empty LLM response');
+        
+        return JSON.parse(content);
+    } catch (err) {
+        console.error(`[AI Worker] Local LLM call failed:`, err.message);
+        return null;
+    }
+}
 
-        if (msgErr) throw new Error(`Failed to fetch messages: ${msgErr.message}`);
-        if (!messages || messages.length === 0) return;
-
-        // Reverse to chronological order for LLM
-        const transcript = messages.reverse().map(m => 
-            `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
-        ).join('\n');
-
-        // 2. Query Gemini for structured extraction (V1 baseline)
-        const systemPrompt = `
-You are the Superparty AI Event Manager. 
+const SYSTEM_PROMPT = `You are the Superparty AI Event Manager. 
 Analyze the following WhatsApp conversation between our business (Superparty) and a Client.
 Extract the core details using ONLY the information explicitly stated. Do not hallucinate.
 
@@ -63,41 +77,45 @@ Return a STRICT JSON object matching this exact schema:
   }
 }`;
 
-        console.log(`[AI Worker] Asking Gemini to parse transcript (${transcript.length} chars)...`);
+export async function processConversation(conversation_id, message_id = null) {
+    if (!conversation_id) return;
+    
+    console.log(`[AI Worker] Starting text-understanding pipeline for ${conversation_id}...`);
+
+    try {
+        // 1. Fetch conversation history (last 50 messages for context window)
+        const { data: messages, error: msgErr } = await supabase
+            .from('messages')
+            .select('content, direction, created_at, sender_type')
+            .eq('conversation_id', conversation_id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (msgErr) throw new Error(`Failed to fetch messages: ${msgErr.message}`);
+        if (!messages || messages.length === 0) return;
+
+        // Reverse to chronological order for LLM
+        const transcript = messages.reverse().map(m => 
+            `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
+        ).join('\n');
+
+        // 2. Call local LLM for structured extraction
+        console.log(`[AI Worker] Calling local LLM (${LLM_MODEL}) with transcript (${transcript.length} chars)...`);
         
-        let jsonRaw = "";
-        let analysis = null;
-        if (ai) {
-            try {
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: [
-                        { role: 'user', parts: [{ text: `${systemPrompt}\n\n--- CONVERSATION ---\n${transcript}` }] }
-                    ],
-                    config: {
-                        responseMimeType: "application/json",
-                    }
-                });
-                jsonRaw = response.text;
-                analysis = JSON.parse(jsonRaw);
-            } catch (geminiErr) {
-                console.error(`[AI Worker] Gemini generation or JSON parse failed:`, geminiErr.message);
-                return; // Abort processing to avoid polluting DB with bad state
-            }
-        } else {
-             // Mock fallback for pipeline validation
-             analysis = {
-                client_memory: { priority_level: "high", internal_notes_summary: "MOCKED: Client interested in booking an event." },
-                event_draft: { draft_type: "standard_party", structured_data: { location: "Bucuresti", date: "2024-12-01", event_type: "Nunta" }, missing_fields: ["numar_invitati", "buget"] },
-                conversation_state: { current_intent: "MOCKED: wants_price", next_best_action: "Provide price packages." }
-             };
+        let analysis = await callLocalLLM(SYSTEM_PROMPT, `--- CONVERSATION ---\n${transcript}`);
+        
+        if (!analysis) {
+            console.warn(`[AI Worker] Local LLM unreachable or failed. Using mock fallback for pipeline continuity.`);
+            analysis = {
+                client_memory: { priority_level: "high", internal_notes_summary: "MOCK: Client interested in booking an event." },
+                event_draft: { draft_type: "standard_party", structured_data: { location: "București", date: null, event_type: null }, missing_fields: ["numar_invitati", "buget", "data"] },
+                conversation_state: { current_intent: "MOCK: wants_info", next_best_action: "Provide event packages and pricing." }
+            };
         }
 
-        console.log(`[AI Worker] Gemini analysis complete. Updating database state...`);
+        console.log(`[AI Worker] Analysis complete (source: ${analysis.client_memory?.internal_notes_summary?.startsWith('MOCK') ? 'MOCK' : 'LOCAL_LLM'}). Updating DB...`);
 
         // 3. Upsert State into AI Core Tables
-        
-        // Fetch client_id for the memory update
         const { data: conv } = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
         const clientId = conv?.client_id;
 
@@ -111,8 +129,6 @@ Return a STRICT JSON object matching this exact schema:
             if (err1) console.error("[AI Worker] DB Error memory:", err1.message);
         }
 
-        // Since conversation_id is not inherently unique in 002 schema, standard upsert fails.
-        // We will perform a manual update string or delete-insert strategy to emulate upsert gracefully.
         const { data: existingDraft } = await supabase.from('ai_event_drafts').select('id').eq('conversation_id', conversation_id).maybeSingle();
         
         let err2 = null;

@@ -10,7 +10,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@google/genai": "^1.44.0",
     "@supabase/supabase-js": "^2.99.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

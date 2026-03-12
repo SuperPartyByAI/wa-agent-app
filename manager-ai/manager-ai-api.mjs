@@ -7,6 +7,10 @@ import crypto from 'crypto';
 dotenv.config();
 
 const app = express();
+
+// ── Debounce state: per-conversation timer to coalesce rapid messages ──
+const DEBOUNCE_MS = parseInt(process.env.AI_DEBOUNCE_MS || '15000', 10);
+const debounceTimers = new Map(); // conversation_id → { timer, latestMessageId, count }
 app.use(cors());
 app.use(express.json({
     verify: (req, res, buf) => {
@@ -58,8 +62,23 @@ app.post('/webhook/whts-up', async (req, res) => {
         // Return 200 immediately to not block WhatsApp
         res.status(200).json({ status: 'queued' });
         
-        // Process conversation with message_id tracking
-        processConversation(conversation_id, message_id).catch(console.error);
+        // ── Debounce: coalesce rapid messages into one pipeline run ──
+        const existing = debounceTimers.get(conversation_id);
+        if (existing) {
+            clearTimeout(existing.timer);
+            existing.latestMessageId = message_id;
+            existing.count += 1;
+            console.log(`[Debounce] Reset timer for ${conversation_id} (${existing.count} msgs coalesced)`);
+        }
+        
+        const entry = existing || { latestMessageId: message_id, count: 1 };
+        entry.timer = setTimeout(() => {
+            debounceTimers.delete(conversation_id);
+            console.log(`[Debounce] Firing pipeline for ${conversation_id} (coalesced ${entry.count} msgs)`);
+            processConversation(conversation_id, entry.latestMessageId).catch(console.error);
+        }, DEBOUNCE_MS);
+        
+        if (!existing) debounceTimers.set(conversation_id, entry);
     } catch (e) {
         console.error('[Webhook error]', e.message);
         res.status(500).json({ error: 'Internal server error' });

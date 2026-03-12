@@ -17,6 +17,9 @@ import { applyEventMutation } from '../events/applyEventMutation.mjs';
 import { evaluateNextStep } from './evaluateNextStep.mjs';
 import { evaluateAutonomy } from '../policy/evaluateAutonomy.mjs';
 import { evaluateEscalation } from '../policy/evaluateEscalation.mjs';
+import { evaluateFastPath } from './evaluateFastPath.mjs';
+import { buildFastPathReply } from '../replies/buildFastPathReply.mjs';
+import { evaluateSpamGuard } from '../policy/evaluateSpamGuard.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -119,6 +122,95 @@ export async function processConversation(conversation_id, message_id = null, op
         // Extract last client message for service confidence guard
         const lastClientMsg = [...messages].reverse().find(m => m.sender_type === 'client');
         const lastClientMessageText = lastClientMsg?.content || '';
+
+        // ── 3.5. Fast Path Check ──
+        // Skip entire LLM pipeline for simple greetings/discovery
+        const { data: existingDraftForFP } = await supabase
+            .from('ai_event_drafts')
+            .select('id, services, draft_status')
+            .eq('conversation_id', conversation_id)
+            .maybeSingle();
+
+        const { data: convStateForFP } = await supabase
+            .from('ai_conversation_state')
+            .select('current_stage')
+            .eq('conversation_id', conversation_id)
+            .maybeSingle();
+
+        const fastPath = evaluateFastPath({
+            messageText: lastClientMessageText,
+            existingDraft: existingDraftForFP,
+            conversationStage: convStateForFP?.current_stage || 'lead',
+            messageCount: messages.length
+        });
+
+        if (fastPath.use_fast_path && !operator_prompt) {
+            console.log(`[FastPath] Using fast path: type=${fastPath.fast_path_type}, reason=${fastPath.fast_path_reason}`);
+            const fpReply = buildFastPathReply({
+                fastPathType: fastPath.fast_path_type,
+                detectedServices: fastPath.detected_services,
+                nextStep: 'ask_event_date',
+                entityMemory: existingMemory
+            });
+
+            // Spam guard even on fast path
+            const spamCheck = await evaluateSpamGuard({
+                conversationId: conversation_id,
+                newReply: fpReply.reply,
+                nextStep: fastPath.fast_path_type,
+                draftVersion: existingDraftForFP?.version || 0
+            });
+
+            let fpReplyStatus = 'pending';
+            let fpSentBy = 'pending';
+            let fpSentAt = null;
+
+            if (spamCheck.allow_send) {
+                const sent = await sendViaWhatsApp(conversation_id, fpReply.reply);
+                if (sent) {
+                    fpReplyStatus = 'sent';
+                    fpSentBy = 'ai';
+                    fpSentAt = new Date().toISOString();
+                }
+            } else {
+                fpReplyStatus = 'blocked';
+                fpSentBy = 'spam_guard';
+                console.log(`[FastPath] Blocked by spam guard: ${spamCheck.block_reason}`);
+            }
+
+            // Minimal audit
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: fpReply.reply,
+                can_auto_reply: true,
+                needs_human_review: false,
+                confidence_score: 90,
+                conversation_stage: convStateForFP?.current_stage || 'lead',
+                reply_status: fpReplyStatus,
+                sent_by: fpSentBy,
+                sent_at: fpSentAt,
+                reply_style: fpReply.replyStyle,
+                composer_used: false,
+                next_step: fastPath.fast_path_type,
+                progression_status: 'fast_path',
+                autonomy_level: 'full',
+                escalation_reason: spamCheck.allow_send ? null : spamCheck.block_reason
+            }).catch(err => console.warn('[FastPath] Audit insert error:', err.message));
+
+            // Update conversation state
+            await supabase.from('ai_conversation_state').upsert({
+                conversation_id,
+                current_stage: convStateForFP?.current_stage || 'lead',
+                updated_at: new Date().toISOString(),
+                ...(message_id ? { last_processed_message_id: message_id } : {})
+            });
+
+            const fpTotal = Date.now() - t_pipeline_start;
+            console.log(`[Pipeline] FastPath done ${conversation_id}. Type: ${fastPath.fast_path_type}, Reply: ${fpReplyStatus}, SpamGuard: ${spamCheck.block_reason}, Timing: total=${fpTotal}ms`);
+            return;
+        }
+
+        console.log(`[Pipeline] Full pipeline (no fast path: ${fastPath.fast_path_reason})`);
 
         let userMessage = `--- CONVERSATIE ---\n${transcript}`;
         if (operator_prompt) {
@@ -341,18 +433,33 @@ export async function processConversation(conversation_id, message_id = null, op
             composerUsed: composerResult.composerUsed
         });
 
-        // ── 9. Auto-send logic ──
+        // ── 9. Auto-send logic (with spam guard) ──
         let replyStatus = 'pending';
         let sentBy = 'pending';
         let sentAt = null;
+        let spamGuardResult = { allow_send: true, block_reason: 'allowed_no_check' };
 
         if (eligibility.eligible) {
-            console.log(`[Pipeline] Auto-reply ALLOWED (confidence=${decision.confidence_score}, style=${composerResult.replyStyle}). Sending...`);
-            const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
-            if (sent) {
-                replyStatus = 'sent';
-                sentBy = 'ai';
-                sentAt = new Date().toISOString();
+            // Spam guard check before sending
+            spamGuardResult = await evaluateSpamGuard({
+                conversationId: conversation_id,
+                newReply: suggestedReply,
+                nextStep: progression.next_step,
+                draftVersion: existingDraftRow?.version || 0
+            });
+
+            if (spamGuardResult.allow_send) {
+                console.log(`[Pipeline] Auto-reply ALLOWED (confidence=${decision.confidence_score}, style=${composerResult.replyStyle}). Sending...`);
+                const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
+                if (sent) {
+                    replyStatus = 'sent';
+                    sentBy = 'ai';
+                    sentAt = new Date().toISOString();
+                }
+            } else {
+                replyStatus = 'blocked';
+                sentBy = 'spam_guard';
+                console.log(`[Pipeline] Auto-reply BLOCKED by spam guard: ${spamGuardResult.block_reason} (${spamGuardResult.details})`);
             }
         } else if (decision.escalation_reason) {
             console.log(`[Pipeline] Escalation: ${decision.escalation_reason}`);

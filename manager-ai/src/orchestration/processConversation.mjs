@@ -217,6 +217,45 @@ export async function processConversation(conversation_id, message_id = null, op
 
         console.log(`[Pipeline] Full pipeline (no fast path: ${fastPath.fast_path_reason})`);
 
+        // ── 3.6. Pre-LLM early exits ──
+        const ACK_WORDS = ['ok','okay','bine','da','mhm','aha','in regula','am inteles','perfect','super','mersi','multumesc','ms','merci','k','sigur','desigur','da da','okk','okei'];
+        const normalizedMsg = lastClientMessageText.toLowerCase().trim().replace(/[!?.]+$/g, '').trim();
+        const isAck = normalizedMsg.length <= 25 && ACK_WORDS.some(p => normalizedMsg === p);
+
+        if (isAck) {
+            console.log(`[Pipeline] Early exit: ack "${normalizedMsg}" -> stay_silent`);
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: '[stay_silent - acknowledgment]',
+                can_auto_reply: false, needs_human_review: false, confidence_score: 100,
+                conversation_stage: convStateForFP?.current_stage || 'lead',
+                reply_status: 'blocked', sent_by: 'reply_engine',
+                next_step: 'stay_silent', progression_status: 'acknowledgment',
+                escalation_reason: 'blocked_acknowledgment_only'
+            });
+            console.log(`[Pipeline] AckExit done ${conversation_id}. ${Date.now() - t_pipeline_start}ms`);
+            return;
+        }
+
+        const ANGRY_KW = ['nu mai inteleg','de ce ati schimbat','sunt nemultumit','sunt suparat','vreau sa vorbesc cu cineva','e o bataie de joc','vreau reclamatie','anulati tot'];
+        const lowerMsg = lastClientMessageText.toLowerCase();
+        const isAngry = ANGRY_KW.some(p => lowerMsg.includes(p));
+
+        if (isAngry) {
+            console.log(`[Pipeline] Early exit: angry/confused -> escalate`);
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: '[escalated - client sentiment]',
+                can_auto_reply: false, needs_human_review: true, confidence_score: 0,
+                conversation_stage: convStateForFP?.current_stage || 'lead',
+                reply_status: 'blocked', sent_by: 'reply_engine',
+                next_step: 'escalate', progression_status: 'escalated',
+                escalation_reason: 'escalated_client_sentiment'
+            });
+            console.log(`[Pipeline] EscalateExit done ${conversation_id}. ${Date.now() - t_pipeline_start}ms`);
+            return;
+        }
+
         let userMessage = `--- CONVERSATIE ---\n${transcript}`;
         if (operator_prompt) {
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;

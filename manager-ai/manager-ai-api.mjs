@@ -10,11 +10,15 @@ const app = express();
 app.use(cors());
 app.use(express.json({
     verify: (req, res, buf) => {
-        req.rawBody = buf.toString(); // For body parser if needed elsewhere, but we handled it in the route
+        req.rawBody = buf.toString();
     }
 }));
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+// whts-up transport config for operator-approved send
+const WHTSUP_API_URL = process.env.WHTSUP_API_URL || 'http://5.161.179.132:3000';
+const WHTSUP_API_KEY = process.env.WHTSUP_API_KEY || process.env.API_KEY;
 
 // Webhook inside from whts-up (WhatsApp transport)
 app.post('/webhook/whts-up', async (req, res) => {
@@ -54,7 +58,7 @@ app.post('/webhook/whts-up', async (req, res) => {
         // Return 200 immediately to not block WhatsApp
         res.status(200).json({ status: 'queued' });
         
-        // Abstracting to Worker logic with message_id to track last processed
+        // Process conversation with message_id tracking
         processConversation(conversation_id, message_id).catch(console.error);
     } catch (e) {
         console.error('[Webhook error]', e.message);
@@ -100,22 +104,82 @@ app.get('/api/ai/conversation/:conversation_id/schema', async (req, res) => {
 });
 
 // Endpoint for Android app to send an operator note/prompt
+// This triggers re-processing with the operator's instruction
 app.post('/api/ai/prompt', async (req, res) => {
     const { conversation_id, prompt_text, created_by } = req.body;
     
+    if (!conversation_id || !prompt_text) {
+        return res.status(400).json({ error: 'conversation_id and prompt_text are required' });
+    }
+
+    // Save operator prompt
     const { error } = await supabase.from('ai_operator_prompts').insert({
         conversation_id,
         prompt_text,
-        prompt_type: 'note',
+        prompt_type: 'instruction',
         created_by: created_by || 'operator'
     });
     
     if (error) return res.status(500).json({ error: error.message });
     
-    res.status(200).json({ status: 'ok' });
+    res.status(200).json({ status: 'regenerating' });
     
-    // Trigger re-processing
-    processConversation(conversation_id).catch(console.error);
+    // Trigger re-processing WITH the operator's prompt
+    processConversation(conversation_id, null, prompt_text).catch(console.error);
+});
+
+// Endpoint for operator to approve and send a suggested reply
+app.post('/api/ai/reply/approve', async (req, res) => {
+    const { conversation_id, reply_text, decision_id } = req.body;
+
+    if (!conversation_id || !reply_text) {
+        return res.status(400).json({ error: 'conversation_id and reply_text are required' });
+    }
+
+    // Get session_id for sending
+    const { data: conv } = await supabase.from('conversations').select('session_id').eq('id', conversation_id).single();
+    if (!conv?.session_id) {
+        return res.status(400).json({ error: 'No session found for this conversation' });
+    }
+
+    try {
+        // Send via whts-up transport
+        const response = await fetch(`${WHTSUP_API_URL}/api/messages/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': WHTSUP_API_KEY
+            },
+            body: JSON.stringify({
+                sessionId: conv.session_id,
+                conversationId: conversation_id,
+                text: reply_text,
+                message_type: 'text'
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            console.error('[Reply Approve] Send failed:', err);
+            return res.status(500).json({ error: 'Failed to send message', details: err });
+        }
+
+        // Update audit trail if decision_id provided
+        if (decision_id) {
+            await supabase.from('ai_reply_decisions').update({
+                reply_status: 'sent',
+                sent_by: 'operator',
+                sent_at: new Date().toISOString(),
+                operator_edit: reply_text
+            }).eq('id', decision_id);
+        }
+
+        console.log(`[Reply Approve] ✅ Operator-approved reply sent for ${conversation_id}`);
+        res.status(200).json({ status: 'sent' });
+    } catch (err) {
+        console.error('[Reply Approve] Error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 import { processConversation } from './manager-ai-worker.mjs';
@@ -123,4 +187,5 @@ import { processConversation } from './manager-ai-worker.mjs';
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 ManagerAi API is running on port ${PORT}`);
+    console.log(`   AI_AUTOREPLY_ENABLED: ${process.env.AI_AUTOREPLY_ENABLED === 'true' ? '✅ ON' : '❌ OFF (safe mode)'}`);
 });

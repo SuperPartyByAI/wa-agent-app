@@ -1,5 +1,6 @@
 package com.superpartybyai.features.chat
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -1138,7 +1139,54 @@ fun ConversationScreen(contactId: String, onBack: () -> Unit) {
                             AiSchemaRenderer(
                                 components = aiSchema!!,
                                 onAction = { actionStr, payload ->
-                                    Toast.makeText(context, "Acțiune: $actionStr trimisă", Toast.LENGTH_SHORT).show()
+                                    when (actionStr) {
+                                        "inject_reply" -> {
+                                            // Put suggested reply text into composer and switch to Chat tab
+                                            val text = payload["text"] as? String ?: ""
+                                            inputMessage = text
+                                            selectedTab = 0 // Switch to Chat tab
+                                            Toast.makeText(context, "✅ Textul a fost pus în composer", Toast.LENGTH_SHORT).show()
+                                        }
+                                        "send_prompt" -> {
+                                            // Send operator instruction to AI for re-processing
+                                            val promptText = payload["prompt_text"] as? String ?: ""
+                                            if (promptText.isNotBlank()) {
+                                                Toast.makeText(context, "🔄 Se regenerează analiza...", Toast.LENGTH_SHORT).show()
+                                                coroutineScope.launch {
+                                                    try {
+                                                        val success = aiRepository.sendPrompt(contactId, promptText)
+                                                        if (success) {
+                                                            // Wait a moment for LLM to process, then refresh schema
+                                                            kotlinx.coroutines.delay(3000)
+                                                            val newSchema = aiRepository.fetchSchema(contactId)
+                                                            if (newSchema.isNotEmpty()) aiSchema = newSchema
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        Log.e("ConvScreen", "Prompt error: ${e.message}")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        "regenerate" -> {
+                                            // Regenerate analysis + suggested reply
+                                            Toast.makeText(context, "🔄 Se regenerează...", Toast.LENGTH_SHORT).show()
+                                            coroutineScope.launch {
+                                                try {
+                                                    val success = aiRepository.sendPrompt(contactId, "Regenerează răspunsul sugerat. Menține același ton și context.")
+                                                    if (success) {
+                                                        kotlinx.coroutines.delay(3000)
+                                                        val newSchema = aiRepository.fetchSchema(contactId)
+                                                        if (newSchema.isNotEmpty()) aiSchema = newSchema
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Log.e("ConvScreen", "Regenerate error: ${e.message}")
+                                                }
+                                            }
+                                        }
+                                        else -> {
+                                            Toast.makeText(context, "Acțiune: $actionStr", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
                             )
                         }

@@ -35,6 +35,34 @@ async function sendViaWhatsApp(conversationId, text) {
         return false;
     }
 
+    // ── HARD ANTI-DUPLICATE: check messages table for recent outbound ──
+    const recentCutoff = new Date(Date.now() - 120_000).toISOString(); // last 2 min
+    const { data: recentOut } = await supabase
+        .from('messages')
+        .select('content, created_at')
+        .eq('conversation_id', conversationId)
+        .eq('direction', 'outbound')
+        .gt('created_at', recentCutoff)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+    if (recentOut && recentOut.length > 0) {
+        // Check if any recent outbound is same/similar text
+        const normNew = text.toLowerCase().replace(/[^\w\sîăâșț]/g, '').trim();
+        for (const msg of recentOut) {
+            const normOld = (msg.content || '').toLowerCase().replace(/[^\w\sîăâșț]/g, '').trim();
+            if (normNew === normOld || (normNew.length > 20 && normOld.includes(normNew.substring(0, 20)))) {
+                console.log(`[AutoSend] BLOCKED DUPLICATE: same message sent ${Math.round((Date.now() - new Date(msg.created_at).getTime())/1000)}s ago`);
+                return false;
+            }
+        }
+        // Also block if >1 outbound in last 2 min (anti-spam)
+        if (recentOut.length >= 2) {
+            console.log(`[AutoSend] BLOCKED SPAM: ${recentOut.length} outbound messages in last 2 min`);
+            return false;
+        }
+    }
+
     try {
         const response = await fetch(`${WHTSUP_API_URL}/api/messages/send`, {
             method: 'POST',

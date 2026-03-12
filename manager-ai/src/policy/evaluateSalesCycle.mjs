@@ -119,10 +119,10 @@ export async function evaluateSalesCycle({
         return result;
     }
 
-    // Case G: Active cycle + ambiguous → blocked
+    // Case G: Active cycle + ambiguous → allow (client is actively messaging, let shouldReplyNow handle safety)
     if (result.active_cycle_status === 'active') {
-        result.cycle_eligibility = 'blocked';
-        result.cycle_reason = 'active_cycle_ambiguous';
+        result.cycle_eligibility = 'eligible';
+        result.cycle_reason = 'active_cycle_client_messaging';
         return result;
     }
 

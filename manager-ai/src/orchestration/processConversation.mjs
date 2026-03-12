@@ -353,6 +353,59 @@ export async function processConversation(conversation_id, message_id = null, op
             return;
         }
 
+        // ── 3.7. Knowledge Base fast-path — check BEFORE LLM ──
+        const { searchKnowledgeBase } = await import('../knowledge/knowledgeBase.mjs');
+        const kbMatch = await searchKnowledgeBase(lastClientMessageText);
+
+        if (kbMatch && kbMatch.score >= 0.6) {
+            console.log(`[Pipeline] KB MATCH: score=${kbMatch.score.toFixed(2)}, category=${kbMatch.category}`);
+
+            // Use KB answer directly — no LLM needed!
+            const kbReply = kbMatch.answer;
+
+            // Run shouldReplyNow checks
+            const kbReplyDecision = await shouldReplyNow({
+                conversationId: conversation_id,
+                lastClientMessage: lastClientMessageText,
+                replyText: kbReply,
+                conversationStage: convStateForFP?.current_stage || 'lead',
+                supabase
+            });
+
+            let kbStatus = 'pending';
+            let kbSentBy = 'reply_engine';
+            let kbSentAt = null;
+
+            if (kbReplyDecision.decision === 'reply_now') {
+                const sent = await sendViaWhatsApp(conversation_id, kbReply);
+                if (sent) {
+                    kbStatus = 'sent';
+                    kbSentBy = 'ai';
+                    kbSentAt = new Date().toISOString();
+                }
+                await clearFollowUp(conversation_id, 'kb_replied');
+            }
+
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: kbReply,
+                can_auto_reply: true,
+                needs_human_review: false,
+                confidence_score: Math.round(kbMatch.score * 100),
+                conversation_stage: convStateForFP?.current_stage || 'lead',
+                reply_status: kbStatus,
+                sent_by: kbSentBy,
+                sent_at: kbSentAt,
+                next_step: 'kb_answer',
+                progression_status: 'kb_fast_path',
+                escalation_reason: kbStatus === 'sent' ? null : `kb_blocked_${kbReplyDecision.decision}`
+            });
+
+            console.log(`[Pipeline] KB done ${conversation_id}. Score: ${kbMatch.score.toFixed(2)}, Reply: ${kbStatus}, Decision: ${kbReplyDecision.decision}. ${Date.now() - t_pipeline_start}ms`);
+            return;
+        }
+
+        // ── 3.8. No KB match — full LLM pipeline ──
         let userMessage = `--- CONVERSATIE ---\n${transcript}`;
         if (operator_prompt) {
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;

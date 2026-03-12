@@ -164,7 +164,7 @@ async function rebaseRouteAliases(sessionId, newLabel, newBrandKey, newAliasPref
             if (!client.public_alias) continue;
 
             // Only rebase if it's currently a technical fallback alias or on a different brand
-            if (client.public_alias.startsWith('QR-') || client.public_alias.startsWith('Unknown') || client.brand_key !== newBrandKey) {
+            if (client.public_alias.startsWith('QR-') || client.public_alias.startsWith('Unknown') || client.brand_key === 'UNKNOWN' || client.brand_key !== newBrandKey) {
                 currentMaxIndex++;
                 const newAlias = `${newAliasPrefix}-${currentMaxIndex.toString().padStart(2, '0')}`;
                 

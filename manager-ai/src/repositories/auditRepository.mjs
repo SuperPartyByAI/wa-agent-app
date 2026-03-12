@@ -12,7 +12,7 @@ export async function getAuditSummary(hoursBack = 24) {
 
     const { data: decisions, error } = await supabase
         .from('ai_reply_decisions')
-        .select('eligibility_status, eligibility_reason, reply_status, sent_by, conversation_stage, confidence_score, can_auto_reply, needs_human_review')
+        .select('eligibility_status, eligibility_reason, reply_status, sent_by, conversation_stage, confidence_score, can_auto_reply, needs_human_review, cycle_status, cycle_reason')
         .gte('created_at', since)
         .order('created_at', { ascending: false });
 
@@ -61,12 +61,28 @@ export async function getAuditSummary(hoursBack = 24) {
     const eligible = decisions.filter(d => d.eligibility_status === 'eligible').length;
     const blocked = decisions.filter(d => d.eligibility_status === 'blocked').length;
 
+    // Cycle status distribution
+    const cycleDistribution = {};
+    decisions.forEach(d => {
+        const key = d.cycle_status || 'unknown';
+        cycleDistribution[key] = (cycleDistribution[key] || 0) + 1;
+    });
+
+    // Cycle reason distribution
+    const cycleReasons = {};
+    decisions.forEach(d => {
+        const key = d.cycle_reason || 'unknown';
+        cycleReasons[key] = (cycleReasons[key] || 0) + 1;
+    });
+
     return {
         total: decisions.length,
         period_hours: hoursBack,
         since,
         eligibility_summary: { eligible, blocked },
         eligibility_reasons: eligibility,
+        cycle_distribution: cycleDistribution,
+        cycle_reasons: cycleReasons,
         reply_status: replyStatus,
         sent_by: sentBy,
         stage_distribution: stages,
@@ -87,6 +103,7 @@ export async function getRecentDecisions(limit = 20) {
             confidence_score, conversation_stage,
             reply_status, sent_by, sent_at,
             suggested_reply, operator_prompt, operator_edit,
+            cycle_status, cycle_reason,
             created_at
         `)
         .order('created_at', { ascending: false })
@@ -155,7 +172,7 @@ export async function getConversationDiagnostic(conversationId) {
     // Decision history (last 5)
     const { data: history } = await supabase
         .from('ai_reply_decisions')
-        .select('eligibility_status, eligibility_reason, confidence_score, reply_status, sent_by, created_at')
+        .select('eligibility_status, eligibility_reason, confidence_score, reply_status, sent_by, cycle_status, cycle_reason, created_at')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
         .limit(5);
@@ -176,6 +193,8 @@ export async function getConversationDiagnostic(conversationId) {
             suggested_reply: decision.suggested_reply,
             operator_prompt: decision.operator_prompt,
             operator_edit: decision.operator_edit,
+            cycle_status: decision.cycle_status,
+            cycle_reason: decision.cycle_reason,
             created_at: decision.created_at
         } : null,
         conversation_state: state ? {

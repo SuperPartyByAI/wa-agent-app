@@ -5,6 +5,7 @@ import { postProcessServices } from '../services/postProcessServices.mjs';
 import { buildSystemPrompt } from '../prompts/systemPrompt.mjs';
 import { buildBrainSchema } from '../schemas/buildBrainSchema.mjs';
 import { evaluateEligibility } from '../policy/evaluateEligibility.mjs';
+import { evaluateSalesCycle } from '../policy/evaluateSalesCycle.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
 
@@ -157,17 +158,30 @@ export async function processConversation(conversation_id, message_id = null, op
             .maybeSingle();
         const dbStage = stateData?.current_stage;
 
-        // ── 7. Evaluate eligibility ──
+        // ── 6.5. Evaluate sales cycle ──
+        const llmSalesCycle = analysis.sales_cycle || { new_request_detected: false, same_event_or_new_event: 'no_previous', cycle_notes: '' };
+        const existingDraftData = hasExistingDraft ? { updated_at: new Date().toISOString() } : null;
+        const salesCycle = await evaluateSalesCycle({
+            conversationId: conversation_id,
+            currentStage: dbStage || decision.conversation_stage,
+            llmSalesCycle,
+            eventDraft: existingDraftData,
+            lastHumanActivityAt,
+            conversationCreatedAt
+        });
+
+        // ── 7. Evaluate eligibility (cycle-aware) ──
         const eligibility = evaluateEligibility({
             decision,
             conversationStage: dbStage || decision.conversation_stage,
             conversationCreatedAt,
             lastHumanActivityAt,
             hasExistingDraft,
-            lastInboundMessageAt
+            lastInboundMessageAt,
+            salesCycle
         });
 
-        console.log(`[Pipeline] Services: [${serviceData.selected_services.join(', ')}], Entity: ${entityMemory.entity_type} (${entityMemory.entity_confidence}%), Eligibility: ${eligibility.eligible ? 'ALLOWED' : eligibility.reason}, Decision: confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
+        console.log(`[Pipeline] Services: [${serviceData.selected_services.join(', ')}], Entity: ${entityMemory.entity_type} (${entityMemory.entity_confidence}%), Eligibility: ${eligibility.eligible ? 'ALLOWED' : eligibility.reason}, Cycle: ${salesCycle.cycle_eligibility}/${salesCycle.cycle_reason}, Decision: confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
 
         // ── 8. Persist to DB ──
         // Client memory + entity memory
@@ -236,7 +250,9 @@ export async function processConversation(conversation_id, message_id = null, op
         let { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
             ...decisionPayload,
             eligibility_status: eligibility.eligible ? 'eligible' : 'blocked',
-            eligibility_reason: eligibility.reason
+            eligibility_reason: eligibility.reason,
+            cycle_status: salesCycle.cycle_eligibility,
+            cycle_reason: salesCycle.cycle_reason
         });
         // If eligibility columns don't exist, retry without them
         if (errDecision && errDecision.message?.includes('does not exist')) {
@@ -256,7 +272,8 @@ export async function processConversation(conversation_id, message_id = null, op
             serviceData,
             suggestedReply,
             replyStatus,
-            eligibility
+            eligibility,
+            salesCycle
         });
 
         const { error: err4 } = await supabase.from('ai_ui_schemas').insert({

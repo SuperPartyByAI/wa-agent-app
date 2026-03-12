@@ -88,6 +88,11 @@ Returneaza un obiect JSON STRICT conform acestui format:
     "escalation_reason": null,
     "confidence_score": 80,
     "conversation_stage": "lead"
+  },
+  "sales_cycle": {
+    "new_request_detected": true,
+    "same_event_or_new_event": "new_event",
+    "cycle_notes": "Scurta explicatie de ce e eveniment nou sau acelasi"
   }
 }
 
@@ -114,5 +119,16 @@ REGULI "can_auto_reply" (IMPORTANT):
 - In DUBIU, pune TRUE. Sistemul are guard-uri suplimentare care decid final.
 
 - "needs_human_review" = true DOAR daca: negociere pret activa, cerere explicita de om, ambiguitate grava, confidence < 50
-- "escalation_reason" DOAR cand: nemultumire clara, conflict, aspect juridic/financiar`;
+- "escalation_reason" DOAR cand: nemultumire clara, conflict, aspect juridic/financiar
+
+REGULI PENTRU "sales_cycle" (IMPORTANT):
+- "new_request_detected": true daca clientul pare sa ceara ceva NOU fata de conversatia anterioara
+- "same_event_or_new_event": poate fi:
+  - "new_event" daca: alta data, alt tip de eveniment, alt set de servicii, formulari ca "mai vreau", "pentru alta petrecere", "acum am nevoie si de..."
+  - "same_event" daca: discuta despre aceeasi petrecere/eveniment deja mentionat anterior
+  - "ambiguous" daca: nu e clar daca e eveniment nou sau continuare
+  - "no_previous" daca: nu exista conversatie anterioara sau e prima interactiune
+- "cycle_notes": O propozitie scurta care explica de ce ai ales "new_event" / "same_event" / "ambiguous"
+- Exemple de "new_event": "Buna, mai vreau un animator si pentru 20 aprilie", "Mai avem nevoie de ceva pentru alt copil", "Vrem si o petrecere de revelion"
+- Exemple de "same_event": "Am uitat sa intreb ceva despre petrecerea de sambata", "Mai putem adauga vata de zahar la comanda?", "Ce ora vine animatorul?"`;
 }

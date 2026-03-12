@@ -13,7 +13,8 @@ export function buildBrainSchema({
     serviceData,
     suggestedReply,
     replyStatus,
-    eligibility
+    eligibility,
+    salesCycle
 }) {
     const schema = [];
 
@@ -40,6 +41,28 @@ export function buildBrainSchema({
             });
         }
         schema.push({ type: "entity_badge", items: entityItems });
+    }
+
+    // ── Cycle Badge ──
+    if (salesCycle) {
+        const cycleLabels = {
+            'no_previous_cycle': 'Conversatie noua',
+            'closed_cycle_new_event': 'Ciclu nou detectat',
+            'closed_cycle_new_request': 'Cerere noua detectata',
+            'closed_cycle_no_new_request': 'Ciclu vechi, fara cerere noua',
+            'active_cycle_same_event': 'Eveniment activ in lucru',
+            'active_cycle_new_event_needs_review': 'Eveniment nou + ciclu activ',
+            'active_cycle_ambiguous': 'Ciclu activ, ambiguu',
+            'ambiguous_cycle_detection': 'Ambiguu'
+        };
+        schema.push({
+            type: "cycle_badge",
+            items: [
+                { label: "Ciclu", value: cycleLabels[salesCycle.cycle_reason] || salesCycle.cycle_reason },
+                { label: "Status", value: salesCycle.active_cycle_status || 'necunoscut' },
+                { label: "Eveniment", value: salesCycle.same_event_or_new_event || 'necunoscut' }
+            ]
+        });
     }
 
     // ── Rezumat card ──

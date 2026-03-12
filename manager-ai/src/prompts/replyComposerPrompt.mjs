@@ -1,142 +1,145 @@
 /**
  * Builds the reply composer prompt for humanized WhatsApp replies.
- * Takes structured analysis output and produces a natural, warm reply.
+ * Uses concrete reply context (services, missing fields, next question)
+ * to produce specific, service-aware replies instead of generic ones.
  *
  * @param {object} params
- * @param {object} params.analysis      - full LLM analysis output
- * @param {object} params.entityMemory  - entity memory (type, usual_locations, etc.)
+ * @param {object} params.replyContext   - from buildReplyContext()
+ * @param {object} params.entityMemory  - entity memory
  * @param {object} params.salesCycle    - cycle reasoning result
  * @param {string} params.replyStyle    - detected style mode
+ * @param {string} params.draftReply    - analysis draft (reference only)
  * @returns {string} composer prompt
  */
-export function buildReplyComposerPrompt({ analysis, entityMemory, salesCycle, replyStyle }) {
-    const draft = analysis.suggested_reply || '';
-    const missing = [];
-    const confirmed = [];
+export function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycle, replyStyle, draftReply }) {
 
-    // Extract missing fields and confirmed services
-    const services = analysis.selected_services || [];
-    const missingPerService = analysis.missing_fields_per_service || {};
-    const serviceReqs = analysis.service_requirements || {};
+    // ── Style-specific personality ──
+    const styleInstructions = {
+        warm_sales: `Esti operator Superparty pe WhatsApp. Esti cald, prietenos, sigur pe tine.
+Vorbesti ca un om real care iubeste ce face, nu ca un robot.`,
+        returning_client: `Clientul te cunoaste deja. Fii familiar si direct.
+Nu te prezinta din nou. Confirma ce stii deja si muta conversatia mai departe.`,
+        collaborator: `Vorbesti cu un colaborator/partener. Profesionist dar eficient.
+Mai putin "cald", mai mult "operativ rapid". Direct la subiect.`,
+        ops_followup: `Follow-up operativ. Confirma scurt si muta conversatia inainte.
+Maxim 1-2 propozitii.`
+    };
 
-    for (const svc of services) {
-        const svcMissing = missingPerService[svc] || [];
-        if (svcMissing.length > 0) {
-            missing.push(...svcMissing.map(f => `${svc}: ${f}`));
-        }
-        confirmed.push(svc);
+    const style = styleInstructions[replyStyle] || styleInstructions.warm_sales;
+
+    // ── Build concrete context block ──
+    let contextBlock = '';
+
+    // Services
+    if (replyContext.hasServices) {
+        contextBlock += `\nSERVICII CONFIRMATE: ${replyContext.confirmedServicesText}`;
+        contextBlock += `\n→ OBLIGATORIU: Mentioneaza aceste servicii in reply cand confirmi ce ai inteles.`;
+    } else {
+        contextBlock += `\nSERVICII: niciuna detectata clar. Intreaba ce doreste clientul.`;
     }
 
-    // Memory context
-    let memoryContext = '';
-    if (entityMemory && entityMemory.entity_type !== 'unknown') {
-        memoryContext = `\nCLIENTUL ESTE CUNOSCUT:
-- Tip: ${entityMemory.entity_type} (${entityMemory.entity_confidence}%)
-${entityMemory.usual_locations?.length > 0 ? '- Locatii preferate: ' + entityMemory.usual_locations.map(l => l.name).join(', ') : ''}
-${entityMemory.usual_services?.length > 0 ? '- Servicii uzuale: ' + entityMemory.usual_services.map(s => s.service_key).join(', ') : ''}
-IMPORTANT: Nu intreba din nou ce stii deja. Confirma si continua.`;
+    // Next question
+    if (replyContext.memoryAwareQuestion) {
+        contextBlock += `\n\nINTREBAREA URMATOARE (memory-aware):`;
+        contextBlock += `\n→ "${replyContext.memoryAwareQuestion}"`;
+        contextBlock += `\nFoloseste aceasta formulare sau una similara natural.`;
+    } else if (replyContext.suggestedQuestionPhrase) {
+        contextBlock += `\n\nINTREBAREA URMATOARE (cea mai importanta):`;
+        contextBlock += `\n→ "${replyContext.suggestedQuestionPhrase}"`;
+        contextBlock += `\nIntreaba DOAR asta acum. Restul le afli in mesajele urmatoare.`;
+    }
+
+    // Known from memory
+    if (replyContext.knownFromMemory.length > 0) {
+        contextBlock += `\n\nINFORMATII DEJA CUNOSCUTE (NU LE INTREBA DIN NOU):`;
+        for (const k of replyContext.knownFromMemory) {
+            contextBlock += `\n- ${k.field}: ${k.value}`;
+        }
+    }
+
+    // Remaining missing (for awareness, not to dump in reply)
+    if (replyContext.trulyMissing.length > 1) {
+        contextBlock += `\n\nALTE INFORMATII LIPSA (dar NU le cere pe toate acum):`;
+        contextBlock += `\n${replyContext.trulyMissing.slice(1).join(', ')}`;
+        contextBlock += `\nAcestea se cer in mesajele urmatoare, NU acum.`;
     }
 
     // Cycle context
     let cycleContext = '';
-    if (salesCycle) {
-        if (salesCycle.cycle_reason === 'closed_cycle_new_event' || salesCycle.cycle_reason === 'closed_cycle_new_request') {
-            cycleContext = '\nACESTA E UN CLIENT CARE REVINE. Saluta-l ca pe cineva cunoscut, nu ca pe un client nou.';
-        }
+    if (salesCycle?.cycle_reason?.includes('closed_cycle')) {
+        cycleContext = '\nACESTA E UN CLIENT CARE REVINE. Saluta-l familiar, nu ca pe un strain.';
     }
 
-    // Style instructions
-    const styleInstructions = {
-        warm_sales: `Esti operator Superparty pe WhatsApp. Esti cald, prietenos, sigur pe tine.
-Vorbesti ca un om real care iubeste ce face, nu ca un robot sau un formular.`,
-        returning_client: `Clientul te cunoaste deja. Fii direct, familiar, mai putin formal.
-Nu te prezenta din nou. Nu repeta informatii pe care le stiti deja amandoi.`,
-        collaborator: `Vorbesti cu un colaborator/partener. Fii profesionist dar eficient.
-Mai putin "cald", mai mult "operativ rapid". Fara emoji excesive. Direct la subiect.`,
-        ops_followup: `Acesta e un follow-up operativ. Confirma scurt si muta conversatia inainte.
-Maxim 1-2 propozitii. Nu repeta ce s-a discutat.`
-    };
-
-    const styleBlock = styleInstructions[replyStyle] || styleInstructions.warm_sales;
-
-    return `${styleBlock}
-${memoryContext}
+    return `${style}
 ${cycleContext}
+${contextBlock}
 
-DRAFT INTERN (doar ca referinta, NU il copia):
-"${draft}"
+DRAFT INTERN (doar referinta, NU copia):
+"${draftReply}"
 
-SERVICII DETECTATE: ${confirmed.length > 0 ? confirmed.join(', ') : 'niciuna inca'}
-INFORMATII LIPSA: ${missing.length > 0 ? missing.join(', ') : 'nimic'}
-INTENTUL CLIENTULUI: ${analysis.conversation_state?.current_intent || 'necunoscut'}
+=== REGULI STRICTE ===
 
-=== REGULI OBLIGATORII ===
+1. CONFIRMA CONCRET ce ai inteles
+   - NU "va putem ajuta cu ce aveti in minte"
+   - DA "va putem ajuta cu animator si vata de zahar"
+   - Daca stii serviciile, spune-le pe nume!
 
-1. CONFIRMA INTAI ce ai inteles, APOI intreaba
-   - nu pune 4 intrebari dintr-un foc
-   - intreaba maxim 1-2 lucruri, cele mai importante
-   - restul le ceri in mesajele urmatoare
+2. INTREABA DOAR 1 lucru
+   - pune DOAR intrebarea urmatoare din contextul de mai sus
+   - nu mai pune altceva
+   - restul se afla in mesajele urmatoare
 
-2. SCURT si NATURAL
-   - max 2-3 propozitii
-   - fara enumerari seci
-   - fara formatare de email sau formular
-   - fara "avem nevoie de urmatoarele informatii"
+3. SCURT — max 2-3 propozitii. Punct.
 
-3. EMOJI subtile
-   - max 1-2 emoji per mesaj, doar daca e natural
-   - 😊 🎉 sunt ok, nu folosi emoji obscure
+4. EMOJI subtile — max 1 emoji per mesaj (😊 sau 🎉)
 
-4. CALD dar NU FALS
-   - "Sigur, va ajutam cu drag!" e bine
-   - "Ne face o mare placere sa va servim cu profesionalism!" e prea mult
-   - "Buna!" e mai bine decat "Buna ziua!"
+5. VARIAZA deschiderile. NU incepe mereu cu "Buna! Sigur".
+   Optiuni: "Buna!", "Salut!", "Hey!", "Da,", "Sigur,", "Cu placere,"
 
-5. NU SUNA CA UN BOT
-   - nu repeta mereu aceeasi structura
-   - nu incepe mereu cu "Buna! Sigur"
-   - variaza deschiderile
+=== EXEMPLE BUNE (uman + concret) ===
 
-=== EXEMPLE DE REPLY-URI PROASTE (NU LE IMITA) ===
+✅ "Buna! Sigur, va putem ajuta cu animator 😊 Pentru ce data aveti petrecerea?"
+✅ "Salut! Da, avem animator si vata de zahar. Cam pe ce data va ganditi? 😊"
+✅ "Buna! Ne ocupam cu drag de animator 🎉 Pentru ce data ar fi evenimentul?"
+✅ "Hey! Avem disponibilitate pentru ursitoare si arcada baloane. Ce data aveti? 😊"
+✅ "Sigur, ne ocupam! Petrecerea e tot la [locatie] sau de data asta in alta parte?"
 
-❌ "Buna! Pentru animator si vata de zahar avem nevoie de data evenimentului, locatia, intervalul orar si numarul de copii."
-❌ "Buna ziua! Va rugam sa ne comunicati urmatoarele informatii pentru a putea procesa cererea dumneavoastra."
-❌ "Multumim pentru mesaj. Va putem oferi urmatoarele servicii: animator, vata de zahar. Pentru a continua, avem nevoie de..."
-❌ "Buna! Ce mai faceti? Suntem aici sa va ajutam. Avem o gama larga de servicii."
+=== EXEMPLE PROASTE (de evitat) ===
 
-=== EXEMPLE DE REPLY-URI BUNE (IMITA TONUL) ===
+❌ "Buna! Va multumim pentru mesaj. Sigur, va putem ajuta cu ce aveti in minte astazi? 😊"
+   (prea generic — nu confirma nimic concret)
+❌ "Buna! Spuneti-ne mai multe detalii."
+   (inutila — nu arata ca a inteles ceva)
+❌ "Buna! Pentru animator si vata de zahar avem nevoie de data, locatia, ora si numarul de copii."
+   (prea robotic — lista de cerinte)
+❌ "Va rugam sa ne comunicati urmatoarele informatii necesare procesarii."
+   (corporate — complet nefiresc pe WhatsApp)
+❌ "Buna! Ce mai faceti? Suntem la dispozitie sa va ajutam cu orice aveti nevoie."
+   (fals familiarizant si vag)
 
-✅ "Buna! Sigur, va putem ajuta cu animator si vata de zahar 😊 Pentru ce data aveti petrecerea?"
-✅ "Hey! Animator si vata — avem 😊 Cam pe ce data va ganditi?"
-✅ "Buna! Ne ocupam cu drag. Pe ce data ar fi petrecerea? 🎉"
-✅ "Salut! Da, avem disponibilitate. La ce data va ganditi?"
-✅ "Buna! Sigur, ne-ar face placere 😊 Spuneti-ne data si va confirmam imediat."
+=== EXEMPLE COLAB/RECURENT (variante) ===
+
+Colaborator: "Salut! Da, putem acoperi animatorul pentru weekend. Ce data exact?"
+Recurent: "Buna! Ne bucuram ca reveniti 😊 Petrecerea e tot la Kiddo Fun? Ce data?"
 
 === REPLY FINAL ===
 
 Scrie DOAR mesajul final, fara explicatii, fara ghilimele, fara prefixuri.
-Raspunde in ROMANA.`;
+Raspunde in ROMANA. MAX 2-3 propozitii.`;
 }
 
 /**
  * Detects the appropriate reply style based on context.
  */
 export function detectReplyStyle({ entityMemory, salesCycle, conversationStage }) {
-    // Returning client with closed cycle
     if (salesCycle?.cycle_reason?.includes('closed_cycle')) {
         return 'returning_client';
     }
-
-    // Collaborator / partner
     if (entityMemory?.entity_type === 'collaborator' || entityMemory?.entity_type === 'partner') {
         return 'collaborator';
     }
-
-    // Active follow-up on existing event
     if (conversationStage === 'coordination' || conversationStage === 'booking') {
         return 'ops_followup';
     }
-
-    // Default: warm sales for new leads
     return 'warm_sales';
 }

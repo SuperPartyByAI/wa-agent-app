@@ -1,19 +1,15 @@
 import { callLocalLLMText } from '../llm/client.mjs';
 import { buildReplyComposerPrompt, detectReplyStyle } from '../prompts/replyComposerPrompt.mjs';
+import { buildReplyContext } from './buildReplyContext.mjs';
 
 /**
- * Composes a humanized WhatsApp reply from structured analysis data.
- * Uses a dedicated LLM call with a composer-specific prompt.
+ * Composes a humanized, service-aware WhatsApp reply.
+ * Uses buildReplyContext for concrete context, then a dedicated LLM call.
  *
  * Falls back to the analysis draft if the composer LLM call fails.
  *
  * @param {object} params
- * @param {object} params.analysis      - full LLM analysis output
- * @param {object} params.entityMemory  - entity memory context
- * @param {object} params.salesCycle    - cycle reasoning
- * @param {string} params.conversationStage - current stage
- * @param {string} params.conversationText  - original conversation text for context
- * @returns {object} { reply: string, replyStyle: string, composerUsed: boolean }
+ * @returns {object} { reply, replyStyle, composerUsed, specificity }
  */
 export async function composeHumanReply({
     analysis,
@@ -31,51 +27,58 @@ export async function composeHumanReply({
         conversationStage
     });
 
-    // Build composer prompt
+    // Build concrete reply context
+    const replyContext = buildReplyContext({ analysis, entityMemory });
+
+    // Build composer prompt with concrete context
     const composerPrompt = buildReplyComposerPrompt({
-        analysis,
+        replyContext,
         entityMemory,
         salesCycle,
-        replyStyle
+        replyStyle,
+        draftReply
     });
 
     try {
-        // Use a shorter, focused LLM call just for reply composition
         const composedReply = await callLocalLLMText(
             composerPrompt,
             conversationText
         );
 
-        // The composer should return just text, not JSON
-        // Clean up any potential JSON wrapping or extra formatting
+        // Clean up response
         let finalReply = composedReply;
 
         if (typeof composedReply === 'object') {
-            // If LLM returned JSON instead of plain text, extract the reply
             finalReply = composedReply.reply || composedReply.suggested_reply || composedReply.text || JSON.stringify(composedReply);
         }
 
-        // Remove any surrounding quotes
         if (typeof finalReply === 'string') {
             finalReply = finalReply.trim();
+            // Remove surrounding quotes
             if ((finalReply.startsWith('"') && finalReply.endsWith('"')) ||
                 (finalReply.startsWith("'") && finalReply.endsWith("'"))) {
                 finalReply = finalReply.slice(1, -1);
             }
+            // Remove any "Reply:" or "Mesaj:" prefixes
+            finalReply = finalReply.replace(/^(Reply|Mesaj|Răspuns|Response)\s*:\s*/i, '');
         }
 
-        // Validate — must be actual text, not empty or too short
+        // Validate
         if (finalReply && finalReply.length > 5 && finalReply.length < 500) {
-            console.log(`[Composer] Humanized reply (${replyStyle}): ${finalReply.substring(0, 80)}...`);
-            return { reply: finalReply, replyStyle, composerUsed: true };
+            console.log(`[Composer] Humanized reply (${replyStyle}, ${replyContext.specificity}): ${finalReply.substring(0, 80)}...`);
+            return {
+                reply: finalReply,
+                replyStyle,
+                composerUsed: true,
+                specificity: replyContext.specificity
+            };
         }
 
-        // Fallback to draft if composer output is bad
         console.warn('[Composer] Output invalid, falling back to analysis draft.');
-        return { reply: draftReply, replyStyle, composerUsed: false };
+        return { reply: draftReply, replyStyle, composerUsed: false, specificity: 'generic' };
 
     } catch (err) {
         console.warn('[Composer] LLM call failed, falling back to analysis draft:', err.message);
-        return { reply: draftReply, replyStyle, composerUsed: false };
+        return { reply: draftReply, replyStyle, composerUsed: false, specificity: 'generic' };
     }
 }

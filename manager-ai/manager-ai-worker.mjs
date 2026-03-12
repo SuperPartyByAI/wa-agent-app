@@ -338,7 +338,7 @@ export async function processConversation(conversation_id, message_id = null, op
             {
                 type: "prompt_input",
                 title: "🎯 Instrucțiune Operator",
-                text: "Scrie o instrucțiune pentru AI (ex: „răspunde mai cald", „întreabă de numărul de copii")",
+                text: "Scrie o instructiune pentru AI (ex: raspunde mai cald, intreaba de numarul de copii)",
                 action: "send_prompt"
             },
             // Missing fields

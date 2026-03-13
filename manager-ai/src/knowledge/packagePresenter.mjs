@@ -146,28 +146,28 @@ export function formatPackageReply(kbMatch, intent, conversationId) {
 }
 
 // ── SUMMARY MODE ──
+const NUM_EMOJI = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣'];
+
 function formatSummary(packages, transportNote) {
     // Pick 4 representative packages across price range
     const representatives = selectRepresentatives(packages);
 
     const lines = ['Avem mai multe variante de animație 🎉\n'];
 
-    const prices = packages.map(p => p.price);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    lines.push(`Prețuri de la ${minPrice} lei până la ${maxPrice} lei.\n`);
-
-    for (const pkg of representatives) {
-        const title = pkg.subtitle ? `${pkg.title}: ${pkg.subtitle}` : pkg.title;
-        let line = `• ${title} — ${pkg.price} lei`;
-        if (pkg.weekday_only) line += ' (L–V)';
+    representatives.forEach((pkg, i) => {
+        const extras = getExtraFeatures(pkg);
+        let line = `${NUM_EMOJI[i]} *Pachet ${i + 1}* — ${pkg.price} lei`;
+        if (pkg.weekday_only) line += ' _(doar L–V)_';
+        line += `\n${pkg.title}`;
+        if (pkg.subtitle) line += ` — ${pkg.subtitle}`;
+        if (extras) line += `\n✨ ${extras}`;
         lines.push(line);
-    }
+    });
 
     lines.push(`\n${transportNote}.`);
-    lines.push('\nDacă vrei, îți recomand imediat varianta potrivită în funcție de vârsta copilului, numărul de invitați și data evenimentului! 😊');
+    lines.push('\nSpune-mi care te interesează și îți dau toate detaliile! 😊');
 
-    return lines.join('\n');
+    return lines.join('\n\n');
 }
 
 // ── DETAIL MODE ──
@@ -202,18 +202,19 @@ function formatDetail(packages, intent, transportNote) {
         lines.push(`La ${intent.priceFilter} lei avem ${matched.length} variante:\n`);
     }
 
-    for (const pkg of matched) {
-        const title = pkg.subtitle ? `${pkg.title}: ${pkg.subtitle}` : pkg.title;
-        lines.push(`📦 ${title} — ${pkg.price} lei`);
-        if (pkg.weekday_only) lines.push('⚠️ Disponibil doar L–V');
+    matched.forEach((pkg, i) => {
+        const num = matched.length > 1 ? `${NUM_EMOJI[i]} *Pachet ${i + 1}*` : '📦';
+        const title = pkg.subtitle ? `${pkg.title} — ${pkg.subtitle}` : pkg.title;
+        lines.push(`${num} *${title}* — ${pkg.price} lei`);
+        if (pkg.weekday_only) lines.push('⚠️ _Disponibil doar L–V_');
         lines.push('');
         lines.push('Include:');
         for (const inc of (pkg.includes || [])) {
             lines.push(`  ✓ ${inc}`);
         }
-        lines.push('');
-    }
+    });
 
+    lines.push('');
     lines.push(transportNote + '.');
     lines.push('\nVrei să rezervi sau ai nevoie de alte detalii? 😊');
 

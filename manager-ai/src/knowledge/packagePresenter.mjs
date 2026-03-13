@@ -285,7 +285,7 @@ function formatSummary(packages, transportNote) {
 
     lines.push(`\n${transportNote}.`);
     lines.push('\n⏰ Oră extra: *+170 lei/oră*');
-    lines.push('\nSpune-mi numărul pachetului și pe câte ore ai nevoie, și îți fac calculul exact! 😊');
+    lines.push('\nScrie-mi numărul pachetului care te interesează și pe câte ore ai nevoie, și îți fac calculul 😊');
 
     return lines.join('\n\n');
 }
@@ -313,7 +313,7 @@ function formatDurationPricing(packages, hours, transportNote) {
 
     lines.push(`\n${transportNote}.`);
     lines.push('\nInclude: jocuri, baloane modelate, pictură pe față, dansuri, diplome magnetice, boxă portabilă.');
-    lines.push('\nVrei să rezervi sau ai nevoie de alte detalii? 😊');
+    lines.push('\nDacă te pot ajuta cu altceva, sunt aici! Iar când vrei să rezervi, am nevoie de câteva detalii 😊');
 
     return lines.join('\n');
 }
@@ -343,7 +343,7 @@ function formatPackageDurationPricing(packages, pkgNum, hours, transportNote) {
     }
 
     lines.push(`\n${transportNote}.`);
-    lines.push('\nVrei să rezervi? Spune-mi data și numărul de copii! 😊');
+    lines.push('\nDacă te pot ajuta cu altceva, sunt aici! Iar când vrei să rezervi, am nevoie de câteva detalii 😊');
 
     return lines.join('\n');
 }
@@ -404,7 +404,7 @@ function formatDetail(packages, intent, transportNote) {
 
     lines.push('');
     lines.push(transportNote + '.');
-    lines.push('\nVrei să rezervi sau ai nevoie de alte detalii? 😊');
+    lines.push('\nDacă te pot ajuta cu altceva, sunt aici! Iar când vrei să rezervi, am nevoie de câteva detalii 😊');
 
     return lines.join('\n');
 }

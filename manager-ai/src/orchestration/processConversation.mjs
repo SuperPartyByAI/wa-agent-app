@@ -636,17 +636,23 @@ export async function processConversation(conversation_id, message_id = null, op
         // ── 8.5.1. KB Grounded Composer context ──
         // If KB matched in grounded mode, inject structured grounding payload
         let kbGroundingContext = null;
+        let hybridPackageReply = null; // Set when hybrid package composer is used
+
         if (kbMatch && (effectiveKbMode === 'kb_grounded_composer' || effectiveKbMode === 'kb_strict_grounded')) {
             kbGroundingContext = buildGroundingPayload(kbMatch);
 
-            // For packages: inject pre-formatted package text so composer can present them contextually
-            if (kbMatch.category === 'packages') {
-                const { detectPackageIntent, formatPackageReply, hasStructuredPackages } = await import('../knowledge/packagePresenter.mjs');
+            // For packages: use dedicated hybrid composer (LLM intro/outro + KB template prices)
+            if (kbMatch.category === 'packages' && kbMatch.score >= 0.75) {
+                const { detectPackageIntent, formatPackageReply, hasStructuredPackages, composeContextualPackageReply } = await import('../knowledge/packagePresenter.mjs');
                 if (hasStructuredPackages(kbMatch)) {
                     const intent = detectPackageIntent(kbMatchedMessage);
                     const formattedPkgs = formatPackageReply(kbMatch, intent, conversation_id);
                     kbGroundingContext.formattedPackages = formattedPkgs;
-                    console.log(`[Pipeline] Package grounding: mode=${intent.mode}, formatted ${formattedPkgs.length} chars`);
+                    console.log(`[Pipeline] Package presenter: mode=${intent.mode}, formatted ${formattedPkgs.length} chars`);
+
+                    // Hybrid compose: LLM writes intro/outro, template provides prices
+                    hybridPackageReply = await composeContextualPackageReply(formattedPkgs, userMessage, conversation_id);
+                    console.log(`[Pipeline] Hybrid package reply: ${hybridPackageReply.length} chars`);
                 }
             }
 
@@ -706,7 +712,13 @@ export async function processConversation(conversation_id, message_id = null, op
         // ── 8.9. Compose humanized reply (with progression + KB grounding context) ──
         let composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, serviceDetectionStatus: 'unknown' };
         let t_composer_ms = 0;
-        if (eligibility.eligible || !decision.needs_human_review) {
+
+        // Hybrid package composer bypass — prices from KB template, context from LLM
+        if (hybridPackageReply) {
+            suggestedReply = hybridPackageReply;
+            composerResult = { reply: hybridPackageReply, replyStyle: 'warm_sales', composerUsed: true, specificity: 'kb_packages', serviceDetectionStatus: 'confirmed' };
+            console.log(`[Pipeline] Using hybrid package reply (${hybridPackageReply.length} chars), skipping general composer`);
+        } else if (eligibility.eligible || !decision.needs_human_review) {
             const t_comp_start = Date.now();
 
             // If KB grounded mode, use KB answer as base truth

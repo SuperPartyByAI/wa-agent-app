@@ -498,31 +498,66 @@ export async function processConversation(conversation_id, message_id = null, op
         }
 
         if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility)) {
-            // Package presenter — detect intent + format reply (summary/detail/compare/pricing)
+            // Package presenter — detect intent + format reply (summary/detail/compare/pricing/duration)
             const { detectPackageIntent, formatPackageReply, hasStructuredPackages } = await import('../knowledge/packagePresenter.mjs');
             let kbReply;
+            let usedKbMatch = kbMatch;
 
-            if (hasStructuredPackages(kbMatch)) {
+            // Duration pricing routing: if pricing_general matched a duration query, use packages KB
+            const isDurationQuery = kbMatch.category === 'pricing' && /\d+\s*ore/i.test(lastClientMessageText);
+            if (isDurationQuery) {
+                const { matchKnowledge: matchKB } = await import('../knowledge/knowledgeMatcher.mjs');
+                const pkgKB = await matchKB('Ce pachete de animatie aveti?', { detectedServices: serviceData.selected_services || ['animator'] });
+                if (pkgKB && pkgKB.knowledgeKey === 'animator_packages') {
+                    usedKbMatch = pkgKB;
+                    console.log(`[Pipeline] Duration pricing: routed to animator_packages`);
+                }
+            }
+
+            if (hasStructuredPackages(usedKbMatch)) {
                 const intent = detectPackageIntent(lastClientMessageText);
-                kbReply = formatPackageReply(kbMatch, intent, conversation_id);
-                console.log(`[Pipeline] Package presenter: mode=${intent.mode}, feature=${intent.feature}, price=${intent.priceFilter}`);
+                kbReply = formatPackageReply(usedKbMatch, intent, conversation_id);
+                console.log(`[Pipeline] Package presenter: mode=${intent.mode}${intent.hours ? ', hours=' + intent.hours : ''}, feature=${intent.feature}`);
             } else {
                 kbReply = kbMatch.answer;
             }
 
-            // Run shouldReplyNow — respects ALL guards
-            const kbReplyDecision = await shouldReplyNow({
-                conversationId: conversation_id,
-                newReply: kbReply,
-                nextStep: 'kb_direct_answer',
-                lastClientMessage: lastClientMessageText
-            });
+            // For high-score KB matches (≥0.88): send directly, skip shouldReplyNow
+            // Client asked a direct question → they get a direct answer
+            let kbShouldSend = false;
+            let kbReplyDecision = { decision: 'reply_now', reason: 'kb_high_score_bypass' };
+
+            if (kbMatch.score >= 0.88) {
+                // Anti-duplicate guard
+                const { data: recentOut } = await supabase
+                    .from('messages').select('id')
+                    .eq('conversation_id', conversation_id)
+                    .eq('direction', 'outbound')
+                    .gt('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString())
+                    .limit(1);
+                if (recentOut && recentOut.length > 0) {
+                    kbReplyDecision = { decision: 'blocked_duplicate', reason: 'recent_outbound_exists' };
+                    console.log(`[Pipeline] KB direct: anti-duplicate blocked`);
+                } else {
+                    kbShouldSend = true;
+                    console.log(`[Pipeline] KB direct: high score (${kbMatch.score.toFixed(2)}) → sending directly`);
+                }
+            } else {
+                // Lower score: use shouldReplyNow guards
+                kbReplyDecision = await shouldReplyNow({
+                    conversationId: conversation_id,
+                    newReply: kbReply,
+                    nextStep: 'kb_direct_answer',
+                    lastClientMessage: lastClientMessageText
+                });
+                kbShouldSend = kbReplyDecision.decision === 'reply_now';
+            }
 
             let kbStatus = 'pending';
             let kbSentBy = 'reply_engine';
             let kbSentAt = null;
 
-            if (kbReplyDecision.decision === 'reply_now') {
+            if (kbShouldSend) {
                 const sent = await sendViaWhatsApp(conversation_id, kbReply);
                 if (sent) {
                     kbStatus = 'sent';

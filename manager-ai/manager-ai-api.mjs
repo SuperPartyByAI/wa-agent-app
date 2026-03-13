@@ -204,6 +204,10 @@ app.post('/api/ai/reply/approve', async (req, res) => {
 import { processConversation } from './src/orchestration/processConversation.mjs';
 import { getAuditSummary, getRecentDecisions, getConversationDiagnostic } from './src/repositories/auditRepository.mjs';
 import { saveOperatorFeedback, getOperatorFeedbackStats } from './src/feedback/operatorFeedback.mjs';
+import { computeShadowAnalytics } from './src/analytics/shadowAnalytics.mjs';
+import { evaluateFullGate, checkSchemaReady } from './src/rollout/rolloutGate.mjs';
+import { getCurrentRolloutState, transitionRolloutState, autoEvaluateRollout, getRolloutHistory } from './src/rollout/rolloutStateMachine.mjs';
+import { getOperatorReviewData } from './src/feedback/operatorReviewData.mjs';
 
 // ─── Audit Endpoints for Controlled Activation Pilot ───
 
@@ -281,6 +285,88 @@ app.get('/api/ai/shadow/queue', async (req, res) => {
             .limit(limit);
         if (error) throw error;
         res.json({ queue: data, count: data?.length || 0 });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── Phase 3: Shadow Analytics + Rollout Gate ───
+app.get('/api/ai/analytics/shadow', async (req, res) => {
+    try {
+        const hours = parseInt(req.query.hours || '24', 10);
+        const kpis = await computeShadowAnalytics(hours);
+        res.json(kpis);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/ai/rollout/status', async (req, res) => {
+    try {
+        const hours = parseInt(req.query.hours || '72', 10);
+        const kpis = await computeShadowAnalytics(hours);
+        const state = await getCurrentRolloutState();
+        const gate = evaluateFullGate(kpis, state.current_state);
+        const schema = await checkSchemaReady(supabase);
+        res.json({
+            rollout_state: state,
+            gate_evaluation: gate,
+            schema_ready: schema,
+            kpi_summary: {
+                total: kpis.total_decisions,
+                with_feedback: kpis.total_with_feedback,
+                approval_rate: kpis.approval_rate,
+                avg_confidence: kpis.avg_confidence,
+                duplicates: kpis.duplicate_outbound,
+                safe_pct: kpis.safety_breakdown.safe_pct
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/ai/rollout/transition', async (req, res) => {
+    try {
+        const { target_state, reason, changed_by } = req.body;
+        if (!target_state || !reason) {
+            return res.status(400).json({ error: 'target_state and reason are required' });
+        }
+        const result = await transitionRolloutState(target_state, reason, changed_by || 'operator');
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/ai/rollout/history', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit || '20', 10);
+        const history = await getRolloutHistory(limit);
+        res.json(history);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/ai/rollout/evaluate', async (req, res) => {
+    try {
+        const hours = parseInt(req.query.hours || '72', 10);
+        const kpis = await computeShadowAnalytics(hours);
+        const state = await getCurrentRolloutState();
+        const gate = evaluateFullGate(kpis, state.current_state);
+        const result = await autoEvaluateRollout(gate);
+        res.json({ evaluation: gate, transition: result });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/ai/review/:decision_id', async (req, res) => {
+    try {
+        const data = await getOperatorReviewData(req.params.decision_id);
+        if (data.error) return res.status(404).json({ error: data.error });
+        res.json(data);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

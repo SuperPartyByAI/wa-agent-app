@@ -38,3 +38,13 @@ export const AI_FULL_AUTOREPLY_ENABLED = process.env.AI_FULL_AUTOREPLY_ENABLED =
 export const AI_SAFE_AUTOREPLY_MIN_CONFIDENCE = parseInt(process.env.AI_SAFE_AUTOREPLY_MIN_CONFIDENCE || '75', 10);
 export const AI_AUTOREPLY_ALLOWED_STAGES = (process.env.AI_AUTOREPLY_ALLOWED_STAGES || 'new_lead,greeting,discovery').split(',').map(s => s.trim());
 export const AI_AUTOREPLY_ALLOWED_TOOLS = (process.env.AI_AUTOREPLY_ALLOWED_TOOLS || 'reply_only').split(',').map(s => s.trim());
+
+// ─── Phase 3: Rollout Gate Thresholds ───
+export const AI_WAVE1_MIN_APPROVAL_RATE = parseInt(process.env.AI_WAVE1_MIN_APPROVAL_RATE || '80', 10);
+export const AI_WAVE1_MAX_DANGEROUS_RATE = parseInt(process.env.AI_WAVE1_MAX_DANGEROUS_RATE || '2', 10);
+export const AI_WAVE1_MAX_WRONG_TOOL_RATE = parseInt(process.env.AI_WAVE1_MAX_WRONG_TOOL_RATE || '5', 10);
+export const AI_WAVE1_MAX_CLARIFICATION_FAILURE_RATE = parseInt(process.env.AI_WAVE1_MAX_CLARIFICATION_FAILURE_RATE || '10', 10);
+export const AI_WAVE1_MIN_SAMPLE_SIZE = parseInt(process.env.AI_WAVE1_MIN_SAMPLE_SIZE || '30', 10);
+export const AI_WAVE2_MIN_APPROVAL_RATE = parseInt(process.env.AI_WAVE2_MIN_APPROVAL_RATE || '90', 10);
+export const AI_WAVE2_MAX_EDIT_RATE = parseInt(process.env.AI_WAVE2_MAX_EDIT_RATE || '15', 10);
+export const AI_WAVE2_MIN_SAMPLE_SIZE = parseInt(process.env.AI_WAVE2_MIN_SAMPLE_SIZE || '50', 10);

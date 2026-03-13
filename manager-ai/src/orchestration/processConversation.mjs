@@ -26,8 +26,9 @@ import { scheduleFollowUp, clearFollowUp } from '../orchestration/scheduleFollow
 import { loadGoalState, transitionGoalState } from '../workflow/goalStateMachine.mjs';
 import { evaluateGoalTransition } from '../workflow/goalTransitions.mjs';
 import { evaluateNextBestAction } from '../workflow/evaluateNextBestAction.mjs';
-import { loadOrCreateEventPlan, updateEventPlan } from '../events/eventPlanAssembler.mjs';
-import { evaluateEventPlan, extractEventPlanUpdates } from '../events/eventPlanEvaluator.mjs';
+import { loadOrCreateEventPlan } from '../events/eventPlanAssembler.mjs';
+import { evaluateEventPlan } from '../events/eventPlanEvaluator.mjs';
+import { executeAiAction } from '../actions/actionExecutor.mjs';
 import { loadLatestQuote } from '../quotes/buildQuoteDraft.mjs';
 import { formatQuoteForBrainTab } from '../quotes/quoteFormatter.mjs';
 import { dispatchBookingToCore } from '../api/coreApiClient.mjs';
@@ -415,7 +416,8 @@ export async function processConversation(conversation_id, message_id = null, op
         }
         decision.confidence_score = Number(decision.confidence_score) || 0;
 
-        let suggestedReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
+        let suggestedReply = analysis.assistant_reply || analysis.suggested_reply || 'Nu am putut genera un raspuns.';
+        const toolAction = analysis.tool_action || { name: 'reply_only', arguments: { reason: 'No tool action provided' } };
         const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: '' };
         const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: {}, missing_fields: [] };
         const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
@@ -679,24 +681,39 @@ export async function processConversation(conversation_id, message_id = null, op
         console.log(`[Pipeline] Mutation: ${mutation.mutation_type} (confidence=${mutation.mutation_confidence}, applied=${mutationResult.applied})`);
 
         // Conversation state
-        // ── 8.4.1. Sync Event Plan from LLM analysis ──
-        const planUpdates = extractEventPlanUpdates(analysis, eventPlan);
-        
-        if (Object.keys(planUpdates).length > 0 && eventPlan?.id) {
-            // Evaluate readiness after applying updates
-            const updatedPlanPreview = { ...eventPlan, ...planUpdates };
-            const planEval = evaluateEventPlan(updatedPlanPreview);
-            planUpdates.missing_fields = planEval.missingFields;
-            planUpdates.confirmed_fields = planEval.confirmedFields;
-            planUpdates.confidence = planEval.confidence;
-            planUpdates.readiness_for_recommendation = planEval.readinessForRecommendation;
-            planUpdates.readiness_for_quote = planEval.readinessForQuote;
-            planUpdates.readiness_for_booking = planEval.readinessForBooking;
+        // ── 8.4.1. Execute LLM Tool Action ──
+        console.log(`[Pipeline] Attempting to execute tool action: ${toolAction.name}`);
+        const actionResult = await executeAiAction(toolAction, {
+            conversationId: conversation_id,
+            clientId,
+            goalState,
+            eventPlan
+        });
 
-            await updateEventPlan(eventPlan.id, conversation_id, planUpdates, 'ai', `LLM analysis: ${mutation.mutation_type}`);
-            // Update local reference
-            Object.assign(eventPlan, planUpdates);
-            console.log(`[Pipeline] EventPlan synced: ${planEval.completionPercent}% complete, quote_ready=${planEval.readinessForQuote}, missing=[${planEval.missingFields.join(',')}]`);
+        // If the action successfully updated the event plan, re-evaluate it
+        if (eventPlan?.id && (toolAction.name === 'update_event_plan' && actionResult.success)) {
+            // Reload the plan to get the fresh DB state
+            const updatedPlan = await loadOrCreateEventPlan(conversation_id, clientId);
+            Object.assign(eventPlan, updatedPlan);
+
+            const planEval = evaluateEventPlan(eventPlan);
+            
+            // Push the evaluation metrics back to the DB cleanly
+            const { updateEventPlan: rawUpdateEventPlan } = await import('../events/eventPlanAssembler.mjs');
+            await rawUpdateEventPlan(eventPlan.id, conversation_id, {
+                missing_fields: planEval.missingFields,
+                confirmed_fields: planEval.confirmedFields,
+                confidence: planEval.confidence,
+                readiness_for_recommendation: planEval.readinessForRecommendation,
+                readiness_for_quote: planEval.readinessForQuote,
+                readiness_for_booking: planEval.readinessForBooking
+            }, 'system', 'post_action_evaluation');
+
+            console.log(`[Pipeline] EventPlan evaluated post-action: ${planEval.completionPercent}% complete, quote_ready=${planEval.readinessForQuote}, missing=[${planEval.missingFields.join(',')}]`);
+        } else if (!actionResult.success) {
+            console.warn(`[Pipeline] Action failed or blocked: ${actionResult.message}`);
+            // If it's a critical failure, we might want to tell the user or override the reply, 
+            // but for now we degrade gracefully and keep the reply.
         }
 
         const statePayload = {

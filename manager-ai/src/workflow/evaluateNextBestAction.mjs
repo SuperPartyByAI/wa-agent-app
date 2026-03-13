@@ -52,9 +52,9 @@ export function evaluateNextBestAction(ctx) {
     // 1. Human takeover — defer
     if (humanTakeover) {
         return {
-            action: 'defer_to_operator',
+            action: 'handoff_to_operator',
             question: '',
-            explanation: 'Operatorul a preluat conversația. AI-ul stă deoparte.',
+            explanation: 'Operatorul a preluat conversația. Oprește intervențiile automate prin delegare.',
             priority: 'override',
             commercialReadiness: buildCommercialReadiness(eventPlan)
         };
@@ -63,9 +63,9 @@ export function evaluateNextBestAction(ctx) {
     // 2. Escalation
     if (escalation?.needs_escalation) {
         return {
-            action: 'escalate_to_operator',
+            action: 'handoff_to_operator',
             question: '',
-            explanation: `Escalare: ${escalation.escalation_reason || 'motiv necunoscut'}`,
+            explanation: `Escalare necesară: ${escalation.escalation_reason}`,
             priority: 'override',
             commercialReadiness: buildCommercialReadiness(eventPlan)
         };
@@ -74,9 +74,9 @@ export function evaluateNextBestAction(ctx) {
     // 3. KB answer available with high confidence
     if (kbMatch && kbMatch.score >= 0.75 && ['discovery', 'greeting', 'service_selection'].includes(state)) {
         return {
-            action: 'answer_from_knowledge_base',
+            action: 'reply_only',
             question: '',
-            explanation: `Răspuns din KB: ${kbMatch.knowledgeKey || 'match'} (scor=${kbMatch.score.toFixed(2)})`,
+            explanation: `Oferă răspuns direct din KB: ${kbMatch.knowledgeKey || 'match'} fără a modifica datele.`,
             priority: 'high',
             commercialReadiness: buildCommercialReadiness(eventPlan)
         };
@@ -123,9 +123,9 @@ export function evaluateNextBestAction(ctx) {
         for (const fp of FIELD_PRIORITY) {
             if (missing.includes(fp.key) && fp.key !== 'selected_package' && fp.key !== 'payment_method_preference' && fp.key !== 'invoice_requested' && fp.key !== 'advance_status') {
                 return {
-                    action: fp.action,
+                    action: 'update_event_plan',
                     question: fp.question,
-                    explanation: `Lipsește ${fp.key} — întrebăm clientul.`,
+                    explanation: `Lipsește ${fp.key} — folosește reply pentru a întreba clientul. Când răspunde folosește update_event_plan.`,
                     priority: 'normal',
                     commercialReadiness: buildCommercialReadiness(eventPlan)
                 };
@@ -133,9 +133,9 @@ export function evaluateNextBestAction(ctx) {
         }
         // All event fields filled — recommend packages
         return {
-            action: 'recommend_packages',
+            action: 'reply_only',
             question: 'Am toate detaliile. Doriți să vedeți pachetele disponibile?',
-            explanation: 'Detalii eveniment complete — trecem la recomandare.',
+            explanation: 'Detalii eveniment complete — trecem la recomandare de pachete prin discuție.',
             priority: 'normal',
             commercialReadiness: buildCommercialReadiness(eventPlan)
         };
@@ -156,9 +156,9 @@ export function evaluateNextBestAction(ctx) {
     if (state === 'quotation_draft') {
         if (quoteState?.status === 'draft') {
             return {
-                action: 'send_quote',
+                action: 'reply_only',
                 question: 'Am pregătit oferta. Doriți să o trimitem?',
-                explanation: 'Ofertă draft gata — așteptăm ok de la operator sau trimitere.',
+                explanation: 'Ofertă draft gata — prezintă oferta clientului prin reply_only.',
                 priority: 'high',
                 commercialReadiness: buildCommercialReadiness(eventPlan)
             };
@@ -166,7 +166,7 @@ export function evaluateNextBestAction(ctx) {
         return {
             action: 'generate_quote_draft',
             question: '',
-            explanation: 'Generăm ofertă draft pe baza planului.',
+            explanation: 'Efectuează acțiunea generate_quote_draft folosind pachetul țintă.',
             priority: 'high',
             commercialReadiness: buildCommercialReadiness(eventPlan)
         };
@@ -199,18 +199,18 @@ export function evaluateNextBestAction(ctx) {
         for (const fp of FIELD_PRIORITY) {
             if (missing.includes(fp.key) && ['payment_method_preference', 'invoice_requested', 'advance_status'].includes(fp.key)) {
                 return {
-                    action: fp.action,
+                    action: 'update_event_plan',
                     question: fp.question,
-                    explanation: `Detaliu comercial lipsă: ${fp.key}`,
+                    explanation: `Detaliu comercial lipsă: ${fp.key}. Întreabă iar când răspunde actualizează planul cu update_event_plan.`,
                     priority: 'high',
                     commercialReadiness: buildCommercialReadiness(eventPlan)
                 };
             }
         }
         return {
-            action: 'confirm_booking',
+            action: 'reply_only',
             question: 'Avem toate detaliile comerciale. Confirmăm rezervarea?',
-            explanation: 'Detalii comerciale complete — trecem la confirmare.',
+            explanation: 'Întreabă clientul dacă putem confirma ferm rezervarea și emite factura.',
             priority: 'high',
             commercialReadiness: buildCommercialReadiness(eventPlan)
         };
@@ -219,9 +219,9 @@ export function evaluateNextBestAction(ctx) {
     // Booking ready
     if (state === 'booking_ready') {
         return {
-            action: 'confirm_booking',
+            action: 'confirm_booking_from_ai_plan',
             question: 'Totul este pregătit. Confirmăm rezervarea?',
-            explanation: 'Toate detaliile comerciale OK — gata de confirmare finală.',
+            explanation: 'Toate detaliile comerciale OK. Așteaptă "DA"-ul final din partea clientului, apoi trimite acțiunea confirm_booking_from_ai_plan.',
             priority: 'high',
             commercialReadiness: buildCommercialReadiness(eventPlan)
         };
@@ -230,9 +230,9 @@ export function evaluateNextBestAction(ctx) {
     // Booking confirmed
     if (state === 'booking_confirmed') {
         return {
-            action: 'send_confirmation_recap',
+            action: 'reply_only',
             question: '',
-            explanation: 'Rezervare confirmată — trimitem recap.',
+            explanation: 'Rezervarea a fost deja confirmată și expediată. Spune la mulți ani/mulțumesc și închide.',
             priority: 'normal',
             commercialReadiness: buildCommercialReadiness(eventPlan)
         };

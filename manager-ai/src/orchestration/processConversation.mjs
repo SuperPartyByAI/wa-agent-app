@@ -30,6 +30,7 @@ import { loadOrCreateEventPlan, updateEventPlan } from '../events/eventPlanAssem
 import { evaluateEventPlan, extractEventPlanUpdates } from '../events/eventPlanEvaluator.mjs';
 import { loadLatestQuote } from '../quotes/buildQuoteDraft.mjs';
 import { formatQuoteForBrainTab } from '../quotes/quoteFormatter.mjs';
+import { dispatchBookingToCore } from '../api/coreApiClient.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -393,42 +394,9 @@ export async function processConversation(conversation_id, message_id = null, op
         console.log(`[Pipeline] LLM analysis completed in ${t_llm_ms}ms`);
 
         if (!analysis) {
-            console.warn(`[Pipeline] LLM unreachable. Using mock fallback FOR E2E QUOTATION TESTS.`);
-            analysis = {
-                client_memory: { priority_level: 'normal', internal_notes_summary: 'E2E mock client' },
-                entity_memory: { entity_type: 'b2b', entity_confidence: 100, usual_locations: [], usual_services: [], preferences: {}, behavior_patterns: [], notes_for_ops: [] },
-                event_draft: { 
-                    draft_type: 'petrecere_copii', 
-                    structured_data: { 
-                        location: 'București', 
-                        date: '20 aprilie',
-                        ora: '17:00',
-                        children_count_estimate: 12,
-                        child_age: 5
-                    }, 
-                    missing_fields: [] 
-                },
-                selected_services: ['animator_packages'],
-                service_requirements: {
-                    animator_packages: {
-                        package_name: 'Super 3 Confetti',
-                        children_count: 12
-                    }
-                },
-                missing_fields_per_service: {},
-                cross_sell_opportunities: [],
-                conversation_state: { current_intent: 'cere_oferta', next_best_action: 'ofera_cotatie' },
-                commercial_closing: {
-                    selected_package: 'Super 3 Confetti',
-                    invoice_requested: true,
-                    payment_method_preference: 'transfer bancar',
-                    advance_amount: '300 lei',
-                    advance_status: 'requested',
-                    billing_details_status: 'complete'
-                },
-                suggested_reply: 'Perfect! Va trimit imediat oferta pentru pachetul Super 3 Confetti.',
-                decision: { can_auto_reply: true, needs_human_review: false, escalation_reason: null, confidence_score: 95, conversation_stage: 'quote' }
-            };
+            console.warn(`[Pipeline] LLM unreachable or returned invalid JSON for conv ${conversation_id}. Aborting.`);
+            releaseConversationLock(conversation_id);
+            return;
         }
 
         // ── 5. Post-process ──
@@ -489,10 +457,6 @@ export async function processConversation(conversation_id, message_id = null, op
             salesCycle
         });
         
-        // E2E OVERRIDE
-        eligibility.eligible = true;
-        eligibility.reason = 'e2e_mock_override';
-
         console.log(`[Pipeline] Services: [${serviceData.selected_services.join(', ')}], Entity: ${entityMemory.entity_type} (${entityMemory.entity_confidence}%), Eligibility: ${eligibility.eligible ? 'ALLOWED' : eligibility.reason}, Cycle: ${salesCycle.cycle_eligibility}/${salesCycle.cycle_reason}, Decision: confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
 
         // ── 7.1. KB Lookup — AFTER all guards, service-aware ──
@@ -718,15 +682,6 @@ export async function processConversation(conversation_id, message_id = null, op
         // ── 8.4.1. Sync Event Plan from LLM analysis ──
         const planUpdates = extractEventPlanUpdates(analysis, eventPlan);
         
-        // E2E OVERRIDE - FORCE QUOTE READINESS
-        planUpdates.selected_package = 'super_3_confetti';
-        planUpdates.payment_method_preference = 'transfer';
-        planUpdates.advance_amount = 300;
-        planUpdates.advance_status = 'requested';
-        planUpdates.invoice_requested = 'true';
-        planUpdates.billing_details_status = 'complete';
-        planUpdates.children_count_estimate = 12;
-
         if (Object.keys(planUpdates).length > 0 && eventPlan?.id) {
             // Evaluate readiness after applying updates
             const updatedPlanPreview = { ...eventPlan, ...planUpdates };
@@ -871,6 +826,38 @@ export async function processConversation(conversation_id, message_id = null, op
             });
             goalState.current_state = goalTransition.newState;
             goalState.previous_state = goalTransition.from;
+
+            // ── NEW: Dispatch to Core API on booking_confirmed ──
+            if (goalTransition.newState === 'booking_confirmed') {
+                console.log(`[Pipeline] Conversation ${conversation_id} reached booking_confirmed. Dispatching to Core API...`);
+                
+                // Fire async dispatch, don't await heavily so we don't stall the WhatsApp reply
+                dispatchBookingToCore({
+                    ai_event_plan_id: eventPlan.id,
+                    client_id: clientId,
+                    conversation_id: conversation_id,
+                    operator_locked: eventPlan.operator_locked,
+                    quote: latestQuote ? {
+                        id: latestQuote.id,
+                        total: latestQuote.grand_total,
+                        packages: latestQuote.line_items?.map(i => i.title)
+                    } : null,
+                    plan_details: {
+                        date: eventPlan.event_date,
+                        time: eventPlan.event_time,
+                        location: eventPlan.location,
+                        child_name: eventPlan.child_name,
+                        children_count_estimate: eventPlan.children_count_estimate,
+                        duration_hours: eventPlan.duration_hours,
+                        animator_count: eventPlan.animator_count,
+                        payment_method: eventPlan.payment_method_preference,
+                        invoice_requested: eventPlan.invoice_requested,
+                        advance_status: eventPlan.advance_status
+                    }
+                }).catch(err => {
+                    console.error('[Pipeline] Async Core API Dispatch Error:', err);
+                });
+            }
         }
 
         // ── 8.8.2. Next Best Action ──

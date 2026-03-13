@@ -210,6 +210,8 @@ import { getCurrentRolloutState, transitionRolloutState, autoEvaluateRollout, ge
 import { getOperatorReviewData } from './src/feedback/operatorReviewData.mjs';
 import { computeScorecard } from './src/analytics/operatorScorecard.mjs';
 import { executeAutoRollback, evaluateRollback } from './src/rollout/rollbackEvaluator.mjs';
+import { detectMemoryConflicts } from './src/rollout/memoryConflictDetector.mjs';
+import { isWave2Eligible } from './src/rollout/wave2Eligibility.mjs';
 
 // ─── Audit Endpoints for Controlled Activation Pilot ───
 
@@ -459,6 +461,44 @@ app.get('/api/ai/rollback/check', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// ─── Phase 5: Wave 2 Endpoints ───
+app.get('/api/ai/wave2/status', async (req, res) => {
+    try {
+        const state = await getCurrentRolloutState();
+        const hours = parseInt(req.query.hours || '72', 10);
+        const kpis = await computeShadowAnalytics(hours);
+        const { evaluateWave2Gate } = await import('./src/rollout/rolloutGate.mjs');
+        const gate = evaluateWave2Gate(kpis, state.current_state);
+        res.json({
+            rollout_state: state.current_state,
+            wave2_enabled: process.env.AI_WAVE2_ENABLED === 'true',
+            wave2_traffic: process.env.AI_WAVE2_TRAFFIC_PERCENT || '1',
+            gate: gate,
+            kpi_summary: {
+                total: kpis.total_decisions,
+                approval_rate: kpis.approval_rate,
+                edit_rate: kpis.edit_rate,
+                duplicates: kpis.duplicate_outbound
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/ai/wave2/conflicts', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('ai_reply_decisions')
+            .select('id, conversation_id, safety_class, tool_action_suggested, memory_context_used, created_at')
+            .eq('tool_action_suggested', 'update_event_plan')
+            .order('created_at', { ascending: false })
+            .limit(20);
+        res.json(data || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
@@ -469,5 +509,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 ManagerAi API is running on port ${PORT}`);
     console.log(`   Operational Mode: ${mode}`);
     console.log(`   Wave1: ${process.env.AI_WAVE1_ENABLED === 'true' ? '🟢 ON' : '❌ OFF'} (${process.env.AI_WAVE1_TRAFFIC_PERCENT || 5}% traffic)`);
+    console.log(`   Wave2: ${process.env.AI_WAVE2_ENABLED === 'true' ? '🟡 ON' : '❌ OFF'} (${process.env.AI_WAVE2_TRAFFIC_PERCENT || 1}% traffic)`);
     console.log(`   Auto-Rollback: ${process.env.AI_WAVE1_AUTO_ROLLBACK_ENABLED !== 'false' ? '✅ ON' : '❌ OFF'}`);
 });

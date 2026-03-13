@@ -61,3 +61,11 @@ export const AI_WAVE1_MAX_DANGEROUS_RATE_ROLLBACK = parseInt(process.env.AI_WAVE
 export const AI_WAVE1_MAX_WRONG_TOOL_RATE_ROLLBACK = parseInt(process.env.AI_WAVE1_MAX_WRONG_TOOL_RATE_ROLLBACK || '10', 10);
 export const AI_WAVE1_MAX_MISUNDERSTOOD_RATE_ROLLBACK = parseInt(process.env.AI_WAVE1_MAX_MISUNDERSTOOD_RATE_ROLLBACK || '10', 10);
 export const AI_WAVE1_MAX_CLARIFICATION_FAILURE_ROLLBACK = parseInt(process.env.AI_WAVE1_MAX_CLARIFICATION_FAILURE_ROLLBACK || '15', 10);
+
+// ─── Phase 5: Wave 2 Rollout (update_event_plan) ───
+export const AI_WAVE2_ENABLED = process.env.AI_WAVE2_ENABLED === 'true'; // default OFF
+export const AI_WAVE2_TRAFFIC_PERCENT = parseInt(process.env.AI_WAVE2_TRAFFIC_PERCENT || '1', 10);
+export const AI_WAVE2_ALLOWED_CHANNELS = (process.env.AI_WAVE2_ALLOWED_CHANNELS || 'whatsapp').split(',').map(s => s.trim());
+export const AI_WAVE2_AUTO_ROLLBACK_ENABLED = process.env.AI_WAVE2_AUTO_ROLLBACK_ENABLED !== 'false'; // default ON
+export const AI_WAVE2_MIN_CONFIDENCE = parseInt(process.env.AI_WAVE2_MIN_CONFIDENCE || '80', 10);
+export const AI_WAVE2_ALLOWED_STAGES_LIST = (process.env.AI_WAVE2_ALLOWED_STAGES || 'discovery,event_qualification,service_selection').split(',').map(s => s.trim());

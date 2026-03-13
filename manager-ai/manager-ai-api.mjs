@@ -213,6 +213,109 @@ import { executeAutoRollback, evaluateRollback } from './src/rollout/rollbackEva
 import { detectMemoryConflicts } from './src/rollout/memoryConflictDetector.mjs';
 import { isWave2Eligible } from './src/rollout/wave2Eligibility.mjs';
 
+// ─── Phase 6: Operational Endpoints ───
+
+app.get('/api/ai/health', async (req, res) => {
+    try {
+        // Supabase check
+        const { data: sbCheck, error: sbErr } = await supabase.from('ai_runtime_context')
+            .select('id').limit(1);
+        const supabaseOk = !sbErr;
+
+        // Schema check
+        const schemaResult = await checkSchemaReady(supabase);
+
+        // LLM check (quick test)
+        let llmOk = false;
+        try {
+            const resp = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`,
+                { signal: AbortSignal.timeout(5000) }
+            );
+            llmOk = resp.ok;
+        } catch { llmOk = false; }
+
+        // Operational mode
+        const mode = process.env.AI_SHADOW_MODE_ENABLED === 'true' ? 'shadow_mode'
+            : process.env.AI_SAFE_AUTOREPLY_ENABLED === 'true' ? 'safe_autoreply_mode'
+            : 'legacy';
+
+        const healthy = supabaseOk && schemaResult.ready && llmOk;
+
+        res.json({
+            healthy,
+            operational_mode: mode,
+            supabase_reachable: supabaseOk,
+            schema_ok: schemaResult.ready,
+            schema_missing: schemaResult.missing || [],
+            llm_reachable: llmOk,
+            wave1_enabled: process.env.AI_WAVE1_ENABLED === 'true',
+            wave2_enabled: process.env.AI_WAVE2_ENABLED === 'true',
+            auto_rollback: process.env.AI_WAVE1_AUTO_ROLLBACK_ENABLED !== 'false',
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        res.status(500).json({ healthy: false, error: err.message });
+    }
+});
+
+app.get('/api/ai/readiness', async (req, res) => {
+    try {
+        // Context pack
+        const { data: ctx } = await supabase.from('ai_runtime_context')
+            .select('version, deployed_commit_sha, is_active, published_at')
+            .eq('is_active', true).order('published_at', { ascending: false }).limit(1).maybeSingle();
+
+        // Rollout state
+        const state = await getCurrentRolloutState();
+
+        // Gate evaluation
+        const hours = parseInt(req.query.hours || '72', 10);
+        const kpis = await computeShadowAnalytics(hours);
+        const gate = await evaluateFullGate(kpis, state.current_state);
+
+        // Schema
+        const schema = await checkSchemaReady(supabase);
+
+        // Feature flags
+        const flags = {
+            shadow_mode: process.env.AI_SHADOW_MODE_ENABLED === 'true',
+            safe_autoreply: process.env.AI_SAFE_AUTOREPLY_ENABLED === 'true',
+            wave1_enabled: process.env.AI_WAVE1_ENABLED === 'true',
+            wave1_traffic: process.env.AI_WAVE1_TRAFFIC_PERCENT || '5',
+            wave2_enabled: process.env.AI_WAVE2_ENABLED === 'true',
+            wave2_traffic: process.env.AI_WAVE2_TRAFFIC_PERCENT || '1',
+            auto_rollback: process.env.AI_WAVE1_AUTO_ROLLBACK_ENABLED !== 'false'
+        };
+
+        // Verdicts
+        const verdicts = {
+            production_ready_for_shadow: schema.ready && !!ctx,
+            production_ready_for_wave1: schema.ready && !!ctx && gate.wave1?.eligible,
+            production_ready_for_wave2_candidate: schema.ready && !!ctx && gate.wave2?.eligible
+        };
+
+        res.json({
+            context_pack: ctx ? { version: ctx.version, sha: ctx.deployed_commit_sha, active: ctx.is_active } : null,
+            rollout_state: state.current_state,
+            schema: { ready: schema.ready, missing: schema.missing },
+            gate,
+            flags,
+            verdicts,
+            kpi_summary: {
+                total_decisions: kpis.total_decisions,
+                total_with_feedback: kpis.total_with_feedback,
+                approval_rate: kpis.approval_rate,
+                dangerous_rate: kpis.verdict_breakdown?.dangerous || 0,
+                duplicates: kpis.duplicate_outbound
+            },
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── Audit Endpoints for Controlled Activation Pilot ───
 
 // Summary: eligibility breakdown, reply status, stages, confidence buckets

@@ -157,30 +157,53 @@ export function extractEventPlanUpdates(analysis, existingPlan) {
     const services = analysis.selected_services || [];
 
     // ── Map event fields ──
-    if (draft.date && draft.date !== 'null') updates.event_date = draft.date;
-    if (draft.location && draft.location !== 'null') updates.location = draft.location;
-    if (draft.event_type && draft.event_type !== 'null') updates.event_type = draft.event_type;
-    if (draft.ora || draft.ora_start) updates.event_time = draft.ora || draft.ora_start;
-    if (draft.interval_orar) updates.event_time = draft.interval_orar;
-    if (draft.venue_type) updates.venue_type = draft.venue_type;
-    if (draft.occasion || draft.tip_eveniment) updates.occasion = draft.occasion || draft.tip_eveniment;
+    const animatorFields = analysis.service_requirements?.animator?.extracted_fields || {};
+    
+    // Merge animator specific fields into draft fallback
+    const mergedSource = { ...draft, ...animatorFields };
+
+    if (mergedSource.date && mergedSource.date !== 'null') updates.event_date = mergedSource.date;
+    if (mergedSource.location && mergedSource.location !== 'null') updates.location = mergedSource.location;
+    if (mergedSource.event_type && mergedSource.event_type !== 'null') updates.event_type = mergedSource.event_type;
+    if (mergedSource.ora || mergedSource.ora_start) updates.event_time = mergedSource.ora || mergedSource.ora_start;
+    if (mergedSource.interval_orar) updates.event_time = mergedSource.interval_orar;
+    if (mergedSource.venue_type) updates.venue_type = mergedSource.venue_type;
+    if (mergedSource.occasion || mergedSource.tip_eveniment) updates.occasion = mergedSource.occasion || mergedSource.tip_eveniment;
 
     // ── Children count (primary volume field) ──
-    const childrenCount = draft.numar_copii || draft.children_count_estimate || draft.nr_copii || draft.guest_count;
+    const childrenCount = mergedSource.numar_copii || mergedSource.children_count_estimate || mergedSource.nr_copii || mergedSource.guest_count;
     if (childrenCount) {
         const parsed = typeof childrenCount === 'number' ? childrenCount : Number.parseInt(String(childrenCount), 10);
         if (!Number.isNaN(parsed)) updates.children_count_estimate = parsed;
     }
 
     // ── Adults count (optional) ──
-    const adultsCount = draft.numar_adulti || draft.adults_count_estimate;
+    const adultsCount = mergedSource.numar_adulti || mergedSource.adults_count_estimate;
     if (adultsCount) {
         const parsed = typeof adultsCount === 'number' ? adultsCount : Number.parseInt(String(adultsCount), 10);
         if (!Number.isNaN(parsed)) updates.adults_count_estimate = parsed;
     }
 
+    // ── Child Name ──
+    const childName = mergedSource.nume_copil || mergedSource.child_name || mergedSource.sarbatorit;
+    if (childName && childName !== 'null') updates.child_name = childName;
+
+    // ── Duration Hours ──
+    const durationHours = mergedSource.durata_ore || mergedSource.duration_hours || mergedSource.ore;
+    if (durationHours) {
+        const parsed = typeof durationHours === 'number' ? durationHours : Number.parseInt(String(durationHours), 10);
+        if (!Number.isNaN(parsed)) updates.duration_hours = parsed;
+    }
+
+    // ── Animator Count ──
+    const animatorCount = mergedSource.nr_animatori || mergedSource.animator_count || mergedSource.personaje;
+    if (animatorCount) {
+        const parsed = typeof animatorCount === 'number' ? animatorCount : Number.parseInt(String(animatorCount), 10);
+        if (!Number.isNaN(parsed)) updates.animator_count = parsed;
+    }
+
     // ── Child age ──
-    const childAge = draft.varsta_copil || draft.child_age;
+    const childAge = mergedSource.varsta_copil || mergedSource.child_age;
     if (childAge) {
         const parsed = typeof childAge === 'number' ? childAge : Number.parseInt(String(childAge), 10);
         if (!Number.isNaN(parsed)) updates.child_age = parsed;

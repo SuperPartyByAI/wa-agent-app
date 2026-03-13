@@ -6,13 +6,13 @@
       "service_key": "animator",
       "display_name": "Animator / Animatoare",
       "description": "Animatoare sau animatori pentru petreceri copii. Program de divertisment, jocuri, dans.",
-      "required_fields": ["varsta_copil", "nr_copii", "durata_ore", "data_eveniment", "locatie"],
-      "optional_fields": ["tematica", "personaj_preferat", "interval_orar"],
+      "required_fields": ["varsta_copil", "nume_copil", "nr_copii", "durata_ore", "nr_animatori", "ora_eveniment", "data_eveniment", "locatie"],
+      "optional_fields": ["tematica", "personaj_preferat"],
       "standard_questions": [
-        "Cati ani implineste copilul?",
-        "Cati copii vor fi la petrecere?",
-        "Cate ore doriti programul?",
-        "Aveti o tematica preferata?"
+        "Cum il/o cheama pe sarbatorit si cati ani implineste?",
+        "Cati copii estimati ca vor fi la petrecere?",
+        "Cati animatori ati dori si pentru cate ore?",
+        "La ce ora ar trebui sa inceapa programul de animatie?"
       ],
       "cross_sell_services": ["vata_zahar", "popcorn", "arcada_baloane", "cifre_volumetrice"],
       "human_review_triggers": ["personaj specific neobisnuit", "solicitare limbi straine", "eveniment peste 50 copii"],

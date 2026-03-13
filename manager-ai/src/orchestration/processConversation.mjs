@@ -23,6 +23,13 @@ import { buildFastPathReply } from '../replies/buildFastPathReply.mjs';
 import { shouldReplyNow, acquireConversationLock, releaseConversationLock } from '../policy/shouldReplyNow.mjs';
 import { evaluateFollowUpEligibility } from '../policy/evaluateFollowUpEligibility.mjs';
 import { scheduleFollowUp, clearFollowUp } from '../orchestration/scheduleFollowUp.mjs';
+import { loadGoalState, transitionGoalState } from '../workflow/goalStateMachine.mjs';
+import { evaluateGoalTransition } from '../workflow/goalTransitions.mjs';
+import { evaluateNextBestAction } from '../workflow/evaluateNextBestAction.mjs';
+import { loadOrCreateEventPlan, updateEventPlan } from '../events/eventPlanAssembler.mjs';
+import { evaluateEventPlan, extractEventPlanUpdates } from '../events/eventPlanEvaluator.mjs';
+import { loadLatestQuote } from '../quotes/buildQuoteDraft.mjs';
+import { formatQuoteForBrainTab } from '../quotes/quoteFormatter.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -129,6 +136,12 @@ export async function processConversation(conversation_id, message_id = null, op
         // ── 2. Load entity memory ──
         const existingMemory = await loadClientMemory(clientId);
         console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, locations=${existingMemory.usual_locations.length}, services=${existingMemory.usual_services.length}`);
+
+        // ── 2.1. Load Goal State + Event Plan ──
+        const goalState = await loadGoalState(conversation_id);
+        const eventPlan = await loadOrCreateEventPlan(conversation_id, clientId);
+        const latestQuote = await loadLatestQuote(eventPlan?.id);
+        console.log(`[Pipeline] Goal: ${goalState.current_state}, EventPlan: ${eventPlan?.id || 'new'} (status=${eventPlan?.status}), Quote: ${latestQuote ? 'v' + latestQuote.version_no + '/' + latestQuote.status : 'none'}`);
 
         // ── 3. Check for legacy context + last inbound ──
         const lastHumanMsg = messages.find(m => m.sender_type === 'agent');
@@ -361,7 +374,7 @@ export async function processConversation(conversation_id, message_id = null, op
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
         }
 
-        const systemPrompt = buildSystemPrompt(existingMemory);
+        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState });
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();
@@ -666,6 +679,24 @@ export async function processConversation(conversation_id, message_id = null, op
         console.log(`[Pipeline] Mutation: ${mutation.mutation_type} (confidence=${mutation.mutation_confidence}, applied=${mutationResult.applied})`);
 
         // Conversation state
+        // ── 8.4.1. Sync Event Plan from LLM analysis ──
+        const planUpdates = extractEventPlanUpdates(analysis, eventPlan);
+        if (Object.keys(planUpdates).length > 0 && eventPlan?.id) {
+            // Evaluate readiness after applying updates
+            const updatedPlanPreview = { ...eventPlan, ...planUpdates };
+            const planEval = evaluateEventPlan(updatedPlanPreview);
+            planUpdates.missing_fields = planEval.missingFields;
+            planUpdates.confirmed_fields = planEval.confirmedFields;
+            planUpdates.confidence = planEval.confidence;
+            planUpdates.readiness_for_quote = planEval.readinessForQuote;
+            planUpdates.readiness_for_booking = planEval.readinessForBooking;
+
+            await updateEventPlan(eventPlan.id, conversation_id, planUpdates, 'ai', `LLM analysis: ${mutation.mutation_type}`);
+            // Update local reference
+            Object.assign(eventPlan, planUpdates);
+            console.log(`[Pipeline] EventPlan synced: ${planEval.completionPercent}% complete, quote_ready=${planEval.readinessForQuote}, missing=[${planEval.missingFields.join(',')}]`);
+        }
+
         const statePayload = {
             conversation_id,
             current_intent: convState.current_intent,
@@ -772,6 +803,57 @@ export async function processConversation(conversation_id, message_id = null, op
         if (escalation.needs_escalation) {
             console.log(`[Pipeline] Escalation: type=${escalation.escalation_type}, reason=${escalation.escalation_reason}`);
         }
+
+        // ── 8.8.1. Goal State Transition ──
+        const goalTransition = evaluateGoalTransition({
+            currentState: goalState.current_state,
+            eventPlan,
+            analysis,
+            mutation,
+            services: {
+                selected: serviceData.selected_services,
+                confirmed: eventPlan?.confirmed_services || [],
+                detection_status: serviceConfidence?.service_detection_status
+            },
+            isGreeting,
+            lastClientMessage: lastClientMessageText
+        });
+
+        if (goalTransition.shouldTransition) {
+            await transitionGoalState(conversation_id, goalTransition.newState, {
+                trigger: 'message',
+                reason: goalTransition.reason,
+                confidence: goalTransition.confidence
+            });
+            goalState.current_state = goalTransition.newState;
+            goalState.previous_state = goalTransition.from;
+        }
+
+        // ── 8.8.2. Next Best Action ──
+        const nextBestAction = evaluateNextBestAction({
+            goalState,
+            eventPlan,
+            quoteState: latestQuote,
+            kbMatch,
+            escalation,
+            humanTakeover: replyDecisionResult?.humanTakeoverActive || false,
+            services: {
+                selected: serviceData.selected_services,
+                detection_status: serviceConfidence?.service_detection_status
+            }
+        });
+
+        // Persist NBA into goal state
+        await transitionGoalState(conversation_id, goalState.current_state, {
+            trigger: 'nba_update',
+            reason: 'next_best_action_computed',
+            confidence: goalTransition.confidence || 80,
+            nextBestAction: nextBestAction.action,
+            nextBestQuestion: nextBestAction.question,
+            explanationForOperator: nextBestAction.explanation
+        });
+
+        console.log(`[Pipeline] Goal: ${goalTransition.shouldTransition ? goalTransition.from + '→' + goalTransition.newState : goalState.current_state} | NBA: ${nextBestAction.action} | ${nextBestAction.explanation}`);
 
         // ── 8.9. Compose humanized reply (with progression + KB grounding context) ──
         let composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, serviceDetectionStatus: 'unknown' };
@@ -1046,7 +1128,11 @@ export async function processConversation(conversation_id, message_id = null, op
             mutationResult,
             progression,
             autonomy,
-            escalation
+            escalation,
+            goalState,
+            eventPlan,
+            nextBestAction,
+            latestQuote
         });
 
         const { error: err4 } = await supabase.from('ai_ui_schemas').insert({

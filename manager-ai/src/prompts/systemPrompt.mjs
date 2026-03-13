@@ -6,7 +6,7 @@ import { buildCatalogPromptBlock } from '../services/postProcessServices.mjs';
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null) {
+export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
 
     // Build memory context block if we have existing memory
@@ -22,6 +22,38 @@ IMPORTANT: Foloseste aceasta memorie in raspunsul sugerat. Daca locatia sau serv
 === SFARSIT MEMORIE ===\n`;
     }
 
+    // Build event plan context block
+    let planBlock = '';
+    if (eventPlan && eventPlan.id) {
+        const parts = [];
+        if ((eventPlan.requested_services || []).length > 0) parts.push(`Servicii cerute: ${eventPlan.requested_services.join(', ')}`);
+        if (eventPlan.event_date) parts.push(`Data: ${eventPlan.event_date}`);
+        if (eventPlan.location) parts.push(`Locatie: ${eventPlan.location}`);
+        if (eventPlan.guest_count) parts.push(`Invitati: ${eventPlan.guest_count}`);
+        if (eventPlan.child_age) parts.push(`Varsta copil: ${eventPlan.child_age}`);
+        if (eventPlan.event_type) parts.push(`Tip: ${eventPlan.event_type}`);
+        if (eventPlan.selected_package) parts.push(`Pachet selectat: ${JSON.stringify(eventPlan.selected_package)}`);
+        if ((eventPlan.missing_fields || []).length > 0) parts.push(`CAMPURI LIPSA: ${eventPlan.missing_fields.join(', ')}`);
+        parts.push(`Gata de oferta: ${eventPlan.readiness_for_quote ? 'DA' : 'NU'}`);
+        parts.push(`Completare: ${eventPlan.confidence || 0}%`);
+
+        planBlock = `\n=== PLAN EVENIMENT CURENT ===
+${parts.join('\n')}
+IMPORTANT: Nu intreba informatii deja completate. Cere DOAR campurile lipsa. Daca planul e gata de oferta, ofera sa faci propunere.
+=== SFARSIT PLAN ===\n`;
+    }
+
+    // Build goal state context
+    let goalBlock = '';
+    if (goalState && goalState.current_state !== 'new_lead') {
+        goalBlock = `\n=== STAREA CONVERSATIEI ===
+Etapa curenta: ${goalState.current_state}
+${goalState.next_best_action ? 'Actiune recomandata: ' + goalState.next_best_action : ''}
+${goalState.next_best_question ? 'Intrebare de pus: ' + goalState.next_best_question : ''}
+IMPORTANT: Comporta-te conform etapei. Nu sari peste pasi. Daca esti in event_qualification, cere detalii, nu oferi pachete. Daca esti in package_recommendation, recomanda pachete cu preturi din KB.
+=== SFARSIT STARE ===\n`;
+    }
+
     return `Esti asistentul AI al Superparty — companie de organizare evenimente si petreceri.
 Analizeaza conversatia WhatsApp de mai jos dintre echipa noastra (Superparty) si un Client.
 Extrage detaliile principale folosind DOAR informatiile explicite din conversatie. Nu inventa nimic.
@@ -31,7 +63,7 @@ IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.
 === CATALOGUL NOSTRU DE SERVICII ===
 ${catalogBlock}
 === SFARSIT CATALOG ===
-${memoryBlock}
+${memoryBlock}${planBlock}${goalBlock}
 SARCINA TA:
 1. Identifica ce SERVICII din catalogul nostru sunt cerute sau mentionate in conversatie.
 2. Pentru fiecare serviciu detectat, extrage campurile obligatorii completate sau pune null daca lipsesc.

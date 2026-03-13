@@ -1,4 +1,5 @@
 import { CATALOG_MAP } from '../services/postProcessServices.mjs';
+import { formatQuoteForBrainTab } from '../quotes/quoteFormatter.mjs';
 
 /**
  * Builds the dynamic layout_json for Android Brain Tab.
@@ -20,7 +21,11 @@ export function buildBrainSchema({
     mutationResult,
     progression,
     autonomy,
-    escalation
+    escalation,
+    goalState,
+    eventPlan,
+    nextBestAction,
+    latestQuote
 }) {
     const schema = [];
 
@@ -328,6 +333,64 @@ export function buildBrainSchema({
             title: "Trebuie sa aflam:",
             items: generalMissing.map(f => ({ label: f, value: "" }))
         });
+    }
+
+    // ── Goal State Card ──
+    if (goalState) {
+        const stateLabels = {
+            new_lead: '🆕 Lead Nou', greeting: '👋 Salut', discovery: '🔍 Descoperire',
+            service_selection: '🎯 Selectare Servicii', event_qualification: '📋 Calificare Eveniment',
+            package_recommendation: '📦 Recomandare Pachete', quotation_draft: '📝 Ofertă Draft',
+            quotation_sent: '📤 Ofertă Trimisă', objection_handling: '🤝 Obiecții',
+            booking_pending: '⏳ Rezervare Pending', booking_confirmed: '✅ Confirmat',
+            reschedule_pending: '🔄 Reprogramare', cancelled: '❌ Anulat', completed: '✅ Finalizat'
+        };
+        const goalItems = [
+            { label: 'Stare', value: stateLabels[goalState.current_state] || goalState.current_state }
+        ];
+        if (goalState.previous_state) {
+            goalItems.push({ label: 'Anterioară', value: stateLabels[goalState.previous_state] || goalState.previous_state });
+        }
+        schema.push({ type: 'section', title: '🧠 Goal State', items: goalItems });
+    }
+
+    // ── Next Best Action Card ──
+    if (nextBestAction) {
+        const nbaItems = [
+            { label: 'Acțiune', value: nextBestAction.action || '-' },
+            { label: 'Explicație', value: (nextBestAction.explanation || '').substring(0, 120) }
+        ];
+        if (nextBestAction.question) {
+            nbaItems.push({ label: 'Întrebare', value: nextBestAction.question });
+        }
+        schema.push({ type: 'section', title: '🎯 Următoarea Acțiune', items: nbaItems });
+    }
+
+    // ── Event Plan Card ──
+    if (eventPlan && eventPlan.id) {
+        const planItems = [];
+        if ((eventPlan.requested_services || []).length > 0) {
+            planItems.push({ label: 'Servicii', value: eventPlan.requested_services.join(', ') });
+        }
+        if (eventPlan.event_date) planItems.push({ label: 'Data', value: eventPlan.event_date });
+        if (eventPlan.location) planItems.push({ label: 'Locație', value: eventPlan.location });
+        if (eventPlan.guest_count) planItems.push({ label: 'Invitați', value: String(eventPlan.guest_count) });
+        if (eventPlan.child_age) planItems.push({ label: 'Vârsta copil', value: String(eventPlan.child_age) });
+
+        const readyEmoji = eventPlan.readiness_for_quote ? '✅' : '⏳';
+        planItems.push({ label: 'Gata de ofertă', value: `${readyEmoji} ${eventPlan.readiness_for_quote ? 'Da' : 'Nu'}` });
+
+        if ((eventPlan.missing_fields || []).length > 0) {
+            planItems.push({ label: 'Lipsă', value: eventPlan.missing_fields.join(', ') });
+        }
+        planItems.push({ label: 'Completare', value: `${eventPlan.confidence || 0}%` });
+        schema.push({ type: 'section', title: '📅 Plan Eveniment', items: planItems });
+    }
+
+    // ── Quote Card ──
+    if (latestQuote) {
+        const quoteCard = formatQuoteForBrainTab(latestQuote);
+        if (quoteCard) schema.push(quoteCard);
     }
 
     return schema;

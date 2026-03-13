@@ -143,15 +143,21 @@ export function validateToolActionSchema(actionName, args) {
         }
     }
 
-    // Basic enum validation
+    // Basic enum validation + type coercion
     if (schema.properties) {
         for (const [key, rules] of Object.entries(schema.properties)) {
             const val = args[key];
             if (val !== undefined && rules.enum && !rules.enum.includes(val)) {
                 return { valid: false, error: `Invalid enum value for '${key}'. Allowed: ${rules.enum.join(', ')}` };
             }
+            // Type coercion: if schema expects number but LLM sent string, try to coerce
             if (val !== undefined && rules.type === 'number' && typeof val !== 'number') {
-                return { valid: false, error: `Type mismatch for '${key}'. Expected number.` };
+                const parsed = Number(val);
+                if (!isNaN(parsed)) {
+                    args[key] = parsed; // Coerce in place
+                } else {
+                    return { valid: false, error: `Type mismatch for '${key}'. Expected number, got '${val}'.` };
+                }
             }
         }
     }

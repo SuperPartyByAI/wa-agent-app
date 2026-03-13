@@ -99,6 +99,13 @@ const COMPARE_PATTERNS = [
     /diferent.*intre/i, /compari/i
 ];
 
+const DURATION_PATTERNS = [
+    /cat costa\s*(\d+)\s*ore/i, /pret.*?(\d+)\s*ore/i,
+    /(\d+)\s*ore.*cat costa/i, /(\d+)\s*ore.*pret/i,
+    /vreau\s*(\d+)\s*ore/i, /pe\s*(\d+)\s*ore/i,
+    /(\d+)\s*ore.*animator/i
+];
+
 const PRICING_PATTERNS = [
     /cat costa/i, /ce pret/i, /preturi/i, /tarif/i,
     /oferta de pret/i, /cat e/i, /pret animat/i,
@@ -170,6 +177,17 @@ export function detectPackageIntent(message) {
         return { mode: 'detail', feature: null, priceFilter: parseInt(priceMatch[1]), packageNumbers: null };
     }
 
+    // Duration pricing (e.g. "cat costa 3 ore un animator?")
+    for (const pattern of DURATION_PATTERNS) {
+        const dm = msg.match(pattern);
+        if (dm) {
+            const hours = parseInt(dm[1]);
+            if (hours >= 1 && hours <= 10) {
+                return { mode: 'duration_pricing', feature: null, priceFilter: null, packageNumbers: null, hours };
+            }
+        }
+    }
+
     // Compare
     if (COMPARE_PATTERNS.some(p => p.test(msg))) {
         return { mode: 'compare', feature: null, priceFilter: null, packageNumbers: null };
@@ -225,6 +243,10 @@ export function formatPackageReply(kbMatch, intent, conversationId) {
             reply = formatPricing(packages, transportNote);
             recordEvent('kb_animator_pricing_used', conversationId, { knowledgeKey: kbMatch.knowledgeKey });
             break;
+        case 'duration_pricing':
+            reply = formatDurationPricing(packages, intent.hours, transportNote);
+            recordEvent('kb_animator_duration_pricing_used', conversationId, { knowledgeKey: kbMatch.knowledgeKey, hours: intent.hours });
+            break;
         default:
             reply = formatSummary(packages, transportNote);
     }
@@ -254,6 +276,34 @@ function formatSummary(packages, transportNote) {
     lines.push('\nSpune-mi numărul pachetului și pe câte ore ai nevoie, și îți fac calculul exact! 😊');
 
     return lines.join('\n\n');
+}
+
+// ── DURATION PRICING MODE ──
+const EXTRA_HOUR_PRICE = 170;
+
+function formatDurationPricing(packages, hours, transportNote) {
+    // Find the cheapest base package (typically 2h, 490 lei)
+    const base = packages.find(p => p.package_code === 'animator_1p_2h') || packages[0];
+    const baseHours = parseInt((base.title.match(/(\d+)\s*ore?/i) || [, '2'])[1]) || 2;
+    const extraHours = Math.max(0, hours - baseHours);
+    const totalPrice = base.price + (extraHours * EXTRA_HOUR_PRICE);
+
+    const lines = [];
+    if (extraHours > 0) {
+        lines.push(`Pentru *${hours} ore* de animație:\n`);
+        lines.push(`📦 Pachet bază: *${baseHours}h* — ${base.price} lei`);
+        lines.push(`⏰ +${extraHours} ${extraHours === 1 ? 'oră' : 'ore'} extra × ${EXTRA_HOUR_PRICE} lei = ${extraHours * EXTRA_HOUR_PRICE} lei`);
+        lines.push(`\n💰 *Total: ${totalPrice} lei* pentru ${hours} ore`);
+    } else {
+        lines.push(`Pentru *${hours} ${hours === 1 ? 'oră' : 'ore'}* de animație:\n`);
+        lines.push(`📦 *${base.title}* — *${base.price} lei*`);
+    }
+
+    lines.push(`\n${transportNote}.`);
+    lines.push('\nInclude: jocuri, baloane modelate, pictură pe față, dansuri, diplome magnetice, boxă portabilă.');
+    lines.push('\nVrei să rezervi sau ai nevoie de alte detalii? 😊');
+
+    return lines.join('\n');
 }
 
 // ── DETAIL MODE ──

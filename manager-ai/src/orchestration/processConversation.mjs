@@ -641,14 +641,26 @@ export async function processConversation(conversation_id, message_id = null, op
         if (kbMatch && (effectiveKbMode === 'kb_grounded_composer' || effectiveKbMode === 'kb_strict_grounded')) {
             kbGroundingContext = buildGroundingPayload(kbMatch);
 
-            // For packages: use dedicated hybrid composer (LLM intro/outro + KB template prices)
-            if (kbMatch.category === 'packages' && kbMatch.score >= 0.75) {
+            // For packages or pricing/duration queries: use dedicated hybrid composer
+            const isPricingDuration = kbMatch.category === 'pricing' && /\d+\s*ore/i.test(kbMatchedMessage);
+            if ((kbMatch.category === 'packages' || isPricingDuration) && kbMatch.score >= 0.75) {
                 const { detectPackageIntent, formatPackageReply, hasStructuredPackages, composeContextualPackageReply } = await import('../knowledge/packagePresenter.mjs');
-                if (hasStructuredPackages(kbMatch)) {
+
+                // For pricing queries, we need to load the packages KB entry
+                let packageKbMatch = kbMatch;
+                if (isPricingDuration) {
+                    const { matchKnowledge } = await import('../knowledge/knowledgeMatcher.mjs');
+                    const pkgMatch = await matchKnowledge('Ce pachete de animatie aveti?', { detectedServices: serviceData.selected_services || ['animator'] });
+                    if (pkgMatch && pkgMatch.knowledgeKey === 'animator_packages') {
+                        packageKbMatch = pkgMatch;
+                    }
+                }
+
+                if (hasStructuredPackages(packageKbMatch)) {
                     const intent = detectPackageIntent(kbMatchedMessage);
-                    const formattedPkgs = formatPackageReply(kbMatch, intent, conversation_id);
+                    const formattedPkgs = formatPackageReply(packageKbMatch, intent, conversation_id);
                     kbGroundingContext.formattedPackages = formattedPkgs;
-                    console.log(`[Pipeline] Package presenter: mode=${intent.mode}, formatted ${formattedPkgs.length} chars`);
+                    console.log(`[Pipeline] Package presenter: mode=${intent.mode}${intent.hours ? ', hours=' + intent.hours : ''}, formatted ${formattedPkgs.length} chars`);
 
                     // Hybrid compose: LLM writes intro/outro, template provides prices
                     hybridPackageReply = await composeContextualPackageReply(formattedPkgs, userMessage, conversation_id);

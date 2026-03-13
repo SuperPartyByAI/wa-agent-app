@@ -1203,9 +1203,34 @@ export async function processConversation(conversation_id, message_id = null, op
                 goal_state: goalState?.current_state
             })
         });
-        // Fallback cascade: if quality columns missing, try without them
+        // Fallback 1: if safety JSONB columns missing, try without them
         if (errDecision && errDecision.message?.includes('does not exist')) {
-            console.warn('[Pipeline] Quality columns not in schema cache. Trying without quality...');
+            console.warn('[Pipeline] Safety JSONB columns missing. Trying with simple safety...');
+            const { error: e1b } = await supabase.from('ai_reply_decisions').insert({
+                ...decisionPayload,
+                eligibility_status: eligibility.eligible ? 'eligible' : 'blocked',
+                eligibility_reason: eligibility.reason,
+                cycle_status: salesCycle.cycle_eligibility,
+                cycle_reason: salesCycle.cycle_reason,
+                reply_quality_score: replyQuality.reply_quality_score,
+                reply_quality_label: replyQuality.reply_quality_label,
+                reply_quality_flags: replyQuality.reply_quality_flags,
+                reply_style: composerResult.replyStyle,
+                composer_used: composerResult.composerUsed,
+                next_step: progression.next_step,
+                progression_status: progression.progression_status,
+                autonomy_level: autonomy.autonomy_level,
+                escalation_type: escalation.escalation_type,
+                escalation_reason: escalation.needs_escalation ? escalation.escalation_reason : null,
+                safety_class: safetyResult.safetyClass,
+                operational_mode: operationalMode,
+                tool_action_suggested: toolAction ? JSON.stringify(toolAction) : null
+            });
+            errDecision = e1b;
+        }
+        // Fallback 2: if safety columns also missing, try without them
+        if (errDecision && errDecision.message?.includes('does not exist')) {
+            console.warn('[Pipeline] Safety columns not in schema. Trying with quality only...');
             const { error: e2 } = await supabase.from('ai_reply_decisions').insert({
                 ...decisionPayload,
                 eligibility_status: eligibility.eligible ? 'eligible' : 'blocked',
@@ -1215,7 +1240,7 @@ export async function processConversation(conversation_id, message_id = null, op
             });
             errDecision = e2;
         }
-        // Fallback cascade: if eligibility columns also missing, save base only
+        // Fallback 3: if eligibility columns also missing, save base only
         if (errDecision && errDecision.message?.includes('does not exist')) {
             console.warn('[Pipeline] Eligibility columns also missing. Saving base only.');
             const { error: e3 } = await supabase.from('ai_reply_decisions').insert(decisionPayload);

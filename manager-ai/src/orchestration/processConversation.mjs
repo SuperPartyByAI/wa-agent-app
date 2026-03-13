@@ -11,6 +11,7 @@ import { composeHumanReply } from '../replies/composeHumanReply.mjs';
 import { evaluateReplyQuality } from '../replies/evaluateReplyQuality.mjs';
 import { buildReplyContext } from '../replies/buildReplyContext.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
+import { loadRelationshipData } from '../memory/loadRelationshipData.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
 import { recordEvent, recordKbMiss } from '../analytics/recordAiEvent.mjs';
 import { detectEventMutation } from '../events/detectEventMutation.mjs';
@@ -154,6 +155,9 @@ export async function processConversation(conversation_id, message_id = null, op
         // ── 2. Load entity memory ──
         const existingMemory = await loadClientMemory(clientId);
         console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, locations=${existingMemory.usual_locations.length}, services=${existingMemory.usual_services.length}`);
+
+        // ── 2.0.1. Load Relationship Data ──
+        const relationshipData = await loadRelationshipData(clientId);
 
         // ── 2.1. Load Goal State + Event Plan ──
         const goalState = await loadGoalState(conversation_id);
@@ -392,7 +396,7 @@ export async function processConversation(conversation_id, message_id = null, op
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
         }
 
-        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack });
+        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData });
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();
@@ -688,6 +692,14 @@ export async function processConversation(conversation_id, message_id = null, op
         console.log(`[Pipeline] Mutation: ${mutation.mutation_type} (confidence=${mutation.mutation_confidence}, applied=${mutationResult.applied})`);
 
         // Conversation state
+        // ── 8.4.0. Confidence Guard — prevent side effects on ambiguous intent ──
+        const llmConfidence = decision.confidence_score || 0;
+        const SIDE_EFFECT_TOOLS = ['update_event_plan', 'generate_quote_draft', 'confirm_booking_from_ai_plan', 'archive_plan'];
+        if (llmConfidence < 50 && SIDE_EFFECT_TOOLS.includes(toolAction.name)) {
+            console.warn(`[Pipeline] ⚠️  Confidence too low (${llmConfidence}) for side-effect tool "${toolAction.name}" → downgrading to reply_only`);
+            toolAction = { name: 'reply_only', arguments: { reason: `confidence_guard: ${llmConfidence}% too low for ${toolAction.name}` } };
+        }
+
         // ── 8.4.1. Execute LLM Tool Action ──
         console.log(`[Pipeline] Attempting to execute tool action: ${toolAction.name}`);
         const actionResult = await executeAiAction(toolAction, {

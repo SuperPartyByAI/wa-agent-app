@@ -45,6 +45,8 @@ export const ACTION_REGISTRY = {
             // All properties are optional (it's a partial update)
         },
         allowedGoalStates: [
+            'new_lead',
+            'greeting',
             'discovery',
             'service_selection',
             'event_qualification',

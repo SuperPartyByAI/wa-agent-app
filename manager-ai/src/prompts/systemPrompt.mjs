@@ -48,7 +48,7 @@ function buildToolsFromLiveRegistry() {
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null } = {}) {
+export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
 
     // Build memory context block if we have existing memory
@@ -62,6 +62,26 @@ ${existingMemory.behavior_patterns?.length > 0 ? 'Patternuri: ' + existingMemory
 ${existingMemory.notes_for_ops?.length > 0 ? 'Note operationale: ' + existingMemory.notes_for_ops.join(', ') : ''}
 IMPORTANT: Foloseste aceasta memorie in raspunsul sugerat. Daca locatia sau serviciile sunt uzuale, nu le mai cere, confirma.
 === SFARSIT MEMORIE ===\n`;
+    }
+
+    // Build relationship memory block
+    let relationBlock = '';
+    if (relationshipData) {
+        const parts = [];
+        if (relationshipData.conversationCount > 1) parts.push(`Client RECURENT — ${relationshipData.conversationCount} conversatii anterioare`);
+        else parts.push('Client NOU — prima conversatie');
+        if (relationshipData.eventPlanCount > 0) parts.push(`${relationshipData.eventPlanCount} planuri de eveniment (inclusiv curente/trecute)`);
+        if (relationshipData.hasActiveBooking) parts.push('ARE o rezervare activa');
+        if (relationshipData.hasPastBookings) parts.push(`A avut rezervari anterioare`);
+        if (relationshipData.hasPastCancellations) parts.push('A anulat anterior');
+        if (relationshipData.lastInteractionAt) parts.push(`Ultima interactiune: ${relationshipData.lastInteractionAt}`);
+        
+        if (parts.length > 0) {
+            relationBlock = `\n=== RELATIE CLIENT ===
+${parts.join('\n')}
+IMPORTANT: Daca este client recurent, saluta-l cald si scurt. Nu-l trata ca pe un lead nou. Daca are rezervare activa, verifica daca doreste modificare sau eveniment NOU — cere clarificare.
+=== SFARSIT RELATIE ===\n`;
+        }
     }
 
     // Build event plan context block
@@ -130,7 +150,7 @@ IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.
 === CATALOGUL NOSTRU DE SERVICII ===
 ${catalogBlock}
 === SFARSIT CATALOG ===
-${memoryBlock}${planBlock}${goalBlock}
+${memoryBlock}${relationBlock}${planBlock}${goalBlock}
 SARCINA TA:
 1. Identifica ce SERVICII din catalogul nostru sunt cerute sau mentionate in conversatie.
 2. Pentru fiecare serviciu detectat, extrage campurile obligatorii completate sau pune null daca lipsesc.
@@ -165,5 +185,19 @@ REGULI GENERALE:
   { "event_date": "2026-04-20", "location": "București" }
   NU lasa arguments gol — daca ai ales update_event_plan, PUNE datele in arguments!
 - Formate acceptate: event_date=YYYY-MM-DD, event_time=HH:MM, children_count_estimate=numar, location=text, selected_package=text, invoice_requested=true/false, payment_method_preference=text, advance_status=text.
+
+REGULI DE CLARIFICARE (OBLIGATORII):
+- Daca mesajul clientului este AMBIGUU sau INCOMPLET, NU executa side effects. Foloseste "reply_only" si cere clarificare naturala.
+- Daca nu e clar daca clientul vrea eveniment NOU sau MODIFICARE la unul existent, INTREABA inainte de a executa.
+- Daca nu e clar daca vrea OFERTA sau CONFIRMARE, cere clarificare.
+- Daca mesajul este vag ("vreau si eu ceva", "muta-l pe maine", "da, e bine") si nu exista context suficient, cere detalii.
+- Daca referinta la entitate este neclara (care eveniment? care rezervare?), cere specificare.
+- NU inventa informatii. NU ghici date, locatii sau servicii. Daca nu stii, intreaba.
+- Cand ceri clarificare, fii SCURT, POLITICOS si UTIL. Exemple:
+  "Scuze, nu am inteles exact. Vrei eveniment nou sau sa modificam cel existent?"
+  "Nu mi-e clar daca vrei doar oferta sau sa confirmam rezervarea. Ce preferi?"
+  "Poti reformula putin? Vreau sa notez corect."
+  "Nu am prins exact data si ora. Mi le poti scrie complet?"
+- Preferi clarificarea in loc de executie gresita.
 - Trebuie sa raspunzi DOAR acel format JSON cu 2 randuri, nimic inainte sau dupa.`;
 }

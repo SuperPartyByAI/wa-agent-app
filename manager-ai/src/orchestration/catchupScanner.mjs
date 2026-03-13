@@ -137,6 +137,14 @@ export async function scanUnanswered() {
 const isOnce = process.argv.includes('--once');
 
 async function run() {
+    // Prevent unhandled rejections from crashing the process
+    process.on('unhandledRejection', (err) => {
+        console.error('[CatchUp] Unhandled rejection (suppressed):', err?.message || err);
+    });
+    process.on('uncaughtException', (err) => {
+        console.error('[CatchUp] Uncaught exception (suppressed):', err?.message || err);
+    });
+
     console.log(`[CatchUp] Starting (mode=${isOnce ? 'once' : 'loop'}, lookback=${LOOKBACK_MS/60000}min, poll=${POLL_INTERVAL/1000}s)`);
 
     if (isOnce) {
@@ -157,5 +165,5 @@ async function run() {
 
 const isMain = process.argv[1]?.endsWith('catchupScanner.mjs');
 if (isMain) {
-    run().catch(err => { console.error('[CatchUp] Fatal:', err); process.exit(1); });
+    run().catch(err => { console.error('[CatchUp] Fatal (staying alive):', err.message); });
 }

@@ -473,8 +473,15 @@ export async function processConversation(conversation_id, message_id = null, op
         const { resolveGroundingMode, validateGroundedReply, buildGroundingPayload } = await import('../knowledge/groundedValidator.mjs');
         let effectiveKbMode = kbMatch ? resolveGroundingMode(kbMatch) : null;
 
-        // If strong KB match AND eligibility allows → send KB answer directly, skip LLM
-        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && eligibility.eligible) {
+        // If strong KB match → send KB answer directly, skip LLM
+        // KB direct answer bypasses legacy eligibility blocks (safe: KB data is approved factual)
+        const kbBypassEligibility = kbMatch && effectiveKbMode === 'kb_direct_answer' && kbMatch.score >= 0.75
+            && ['cycle_review_on_legacy', 'blocked_manual_legacy', 'cycle_review_on_draft', 'cycle_review_on_blocked_stage'].includes(eligibility.reason);
+        if (kbBypassEligibility) {
+            console.log(`[Pipeline] KB direct answer bypassing eligibility block: ${eligibility.reason} (KB score=${kbMatch.score.toFixed(2)})`);
+        }
+
+        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility)) {
             // Package presenter — detect intent + format reply (summary/detail/compare/pricing)
             const { detectPackageIntent, formatPackageReply, hasStructuredPackages } = await import('../knowledge/packagePresenter.mjs');
             let kbReply;

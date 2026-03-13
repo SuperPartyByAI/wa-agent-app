@@ -30,3 +30,11 @@ export const WHTSUP_API_KEY = process.env.WHTSUP_API_KEY || process.env.API_KEY;
 
 // ─── Feature flags ───
 export const ENTITY_MEMORY_ENABLED = process.env.ENTITY_MEMORY_ENABLED !== 'false'; // default ON
+
+// ─── Phase 2: Shadow Mode + Safe Autoreply ───
+export const AI_SHADOW_MODE_ENABLED = process.env.AI_SHADOW_MODE_ENABLED === 'true'; // default OFF
+export const AI_SAFE_AUTOREPLY_ENABLED = process.env.AI_SAFE_AUTOREPLY_ENABLED === 'true'; // default OFF
+export const AI_FULL_AUTOREPLY_ENABLED = process.env.AI_FULL_AUTOREPLY_ENABLED === 'true'; // default OFF
+export const AI_SAFE_AUTOREPLY_MIN_CONFIDENCE = parseInt(process.env.AI_SAFE_AUTOREPLY_MIN_CONFIDENCE || '75', 10);
+export const AI_AUTOREPLY_ALLOWED_STAGES = (process.env.AI_AUTOREPLY_ALLOWED_STAGES || 'new_lead,greeting,discovery').split(',').map(s => s.trim());
+export const AI_AUTOREPLY_ALLOWED_TOOLS = (process.env.AI_AUTOREPLY_ALLOWED_TOOLS || 'reply_only').split(',').map(s => s.trim());

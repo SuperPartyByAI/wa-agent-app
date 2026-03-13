@@ -33,6 +33,10 @@ import { executeAiAction } from '../actions/actionExecutor.mjs';
 import { loadLatestQuote } from '../quotes/buildQuoteDraft.mjs';
 import { formatQuoteForBrainTab } from '../quotes/quoteFormatter.mjs';
 import { loadRuntimeContext } from '../grounding/loadRuntimeContext.mjs';
+import { evaluateSafetyClass } from '../policy/evaluateSafetyClass.mjs';
+import {
+    AI_SHADOW_MODE_ENABLED, AI_SAFE_AUTOREPLY_ENABLED, AI_FULL_AUTOREPLY_ENABLED
+} from '../config/env.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -1011,11 +1015,45 @@ export async function processConversation(conversation_id, message_id = null, op
             composerUsed: composerResult.composerUsed
         });
 
-        // ── 9. Auto-send logic (via shouldReplyNow engine) ──
+        // ── 9. Safety classification + operational mode ──
+        const operationalMode = AI_SHADOW_MODE_ENABLED ? 'shadow_mode'
+            : AI_SAFE_AUTOREPLY_ENABLED ? 'safe_autoreply_mode'
+            : AI_FULL_AUTOREPLY_ENABLED ? 'full_autoreply_mode'
+            : 'legacy';
+
+        const safetyResult = evaluateSafetyClass({
+            decision,
+            toolAction,
+            goalState,
+            escalation,
+            serviceConfidence,
+            relationshipData,
+            eventPlan,
+            mutation
+        });
+
+        console.log(`[Pipeline] Safety: class=${safetyResult.safetyClass}, mode=${operationalMode}, reasons=${safetyResult.reasons.join('; ')}`);
+
+        // ── 9.1. Auto-send logic (via shouldReplyNow engine) ──
         let replyStatus = 'pending';
         let sentBy = 'pending';
         let sentAt = null;
         let replyDecisionResult = { decision: 'blocked_autoreply_off', reason: 'not_checked' };
+
+        // Shadow mode: never send, always save
+        if (operationalMode === 'shadow_mode') {
+            replyStatus = 'shadow';
+            sentBy = 'shadow_mode';
+            replyDecisionResult = { decision: 'shadow_hold', reason: `shadow_mode: ${safetyResult.safetyClass}` };
+            console.log(`[Pipeline] Shadow mode: holding reply (safety=${safetyResult.safetyClass})`);
+        }
+        // Safe autoreply mode: only send if safety class allows
+        else if (operationalMode === 'safe_autoreply_mode' && safetyResult.safetyClass !== 'safe_autoreply_allowed') {
+            replyStatus = 'pending_review';
+            sentBy = 'safety_hold';
+            replyDecisionResult = { decision: 'safety_hold', reason: safetyResult.reasons.join('; ') };
+            console.log(`[Pipeline] Safe autoreply: holding for review (safety=${safetyResult.safetyClass})`);
+        } else {
 
         // KB score-based bypass for composer path (same as KB direct answer bypass)
         const kbComposerBypass = kbMatch && kbMatch.score >= 0.75 && kbGroundingContext && !eligibility.eligible;
@@ -1119,6 +1157,7 @@ export async function processConversation(conversation_id, message_id = null, op
             console.log(`[Pipeline] Escalation: ${decision.escalation_reason}`);
             await clearFollowUp(conversation_id, 'escalated');
         }
+        } // close shadow/safe mode else
 
         // ── 10. Audit trail ──
         const decisionPayload = {
@@ -1134,7 +1173,7 @@ export async function processConversation(conversation_id, message_id = null, op
             sent_at: sentAt,
             operator_prompt: operator_prompt || null
         };
-        // Try with all columns (eligibility + quality)
+        // Try with all columns (eligibility + quality + safety)
         let { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
             ...decisionPayload,
             eligibility_status: eligibility.eligible ? 'eligible' : 'blocked',
@@ -1150,7 +1189,19 @@ export async function processConversation(conversation_id, message_id = null, op
             progression_status: progression.progression_status,
             autonomy_level: autonomy.autonomy_level,
             escalation_type: escalation.escalation_type,
-            escalation_reason: escalation.needs_escalation ? escalation.escalation_reason : null
+            escalation_reason: escalation.needs_escalation ? escalation.escalation_reason : null,
+            safety_class: safetyResult.safetyClass,
+            safety_class_reasons: safetyResult.reasons,
+            operational_mode: operationalMode,
+            tool_action_suggested: toolAction ? JSON.stringify(toolAction) : null,
+            memory_context_used: JSON.stringify({
+                entity_type: existingMemory?.entity_type,
+                is_recurring: relationshipData?.isRecurring,
+                conversation_count: relationshipData?.conversationCount,
+                has_active_booking: relationshipData?.hasActiveBooking,
+                plan_status: eventPlan?.status,
+                goal_state: goalState?.current_state
+            })
         });
         // Fallback cascade: if quality columns missing, try without them
         if (errDecision && errDecision.message?.includes('does not exist')) {

@@ -203,6 +203,7 @@ app.post('/api/ai/reply/approve', async (req, res) => {
 
 import { processConversation } from './src/orchestration/processConversation.mjs';
 import { getAuditSummary, getRecentDecisions, getConversationDiagnostic } from './src/repositories/auditRepository.mjs';
+import { saveOperatorFeedback, getOperatorFeedbackStats } from './src/feedback/operatorFeedback.mjs';
 
 // ─── Audit Endpoints for Controlled Activation Pilot ───
 
@@ -242,8 +243,58 @@ app.get('/api/ai/audit/conversation/:conversation_id', async (req, res) => {
     }
 });
 
+// ─── Phase 2: Operator Feedback Endpoint ───
+app.post('/api/ai/feedback', async (req, res) => {
+    try {
+        const { reply_decision_id, verdict, edited_reply, reason } = req.body;
+        if (!reply_decision_id || !verdict) {
+            return res.status(400).json({ error: 'reply_decision_id and verdict are required' });
+        }
+        const result = await saveOperatorFeedback(reply_decision_id, verdict, edited_reply, reason);
+        if (!result.success) return res.status(400).json({ error: result.error });
+        res.json({ status: 'saved', verdict });
+    } catch (err) {
+        console.error('[Feedback API] Error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Feedback KPI stats
+app.get('/api/ai/feedback/stats', async (req, res) => {
+    try {
+        const stats = await getOperatorFeedbackStats(req.query.start, req.query.end);
+        res.json(stats);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Shadow mode queue — pending review items
+app.get('/api/ai/shadow/queue', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit || '20', 10);
+        const { data, error } = await supabase
+            .from('ai_reply_decisions')
+            .select('id, conversation_id, suggested_reply, confidence_score, safety_class, safety_class_reasons, tool_action_suggested, memory_context_used, operational_mode, created_at')
+            .in('reply_status', ['shadow', 'pending_review'])
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        res.json({ queue: data, count: data?.length || 0 });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
+    const mode = process.env.AI_SHADOW_MODE_ENABLED === 'true' ? 'SHADOW'
+        : process.env.AI_SAFE_AUTOREPLY_ENABLED === 'true' ? 'SAFE_AUTOREPLY'
+        : process.env.AI_FULL_AUTOREPLY_ENABLED === 'true' ? 'FULL_AUTOREPLY'
+        : 'LEGACY';
     console.log(`🚀 ManagerAi API is running on port ${PORT}`);
+    console.log(`   Operational Mode: ${mode}`);
     console.log(`   AI_AUTOREPLY_ENABLED: ${process.env.AI_AUTOREPLY_ENABLED === 'true' ? '✅ ON' : '❌ OFF (safe mode)'}`);
+    console.log(`   AI_SHADOW_MODE: ${process.env.AI_SHADOW_MODE_ENABLED === 'true' ? '👁️ ON' : '❌ OFF'}`);
+    console.log(`   AI_SAFE_AUTOREPLY: ${process.env.AI_SAFE_AUTOREPLY_ENABLED === 'true' ? '🟢 ON' : '❌ OFF'}`);
 });

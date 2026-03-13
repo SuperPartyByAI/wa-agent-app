@@ -739,6 +739,16 @@ export async function processConversation(conversation_id, message_id = null, op
             t_composer_ms = Date.now() - t_comp_start;
             console.log(`[Pipeline] Composer completed in ${t_composer_ms}ms`);
 
+            // KB template fallback: if composer produced bad/empty reply but we have KB data, use formatted template
+            const BAD_REPLIES = ['nu am putut genera un raspuns', 'nu am putut genera'];
+            if (kbGroundingContext && BAD_REPLIES.some(b => suggestedReply.toLowerCase().includes(b))) {
+                const kbFallback = kbGroundingContext.formattedPackages || kbGroundingContext.factualAnswer;
+                if (kbFallback && kbFallback.length > 20) {
+                    suggestedReply = kbFallback;
+                    console.log(`[Pipeline] Composer failed → KB template fallback used (${kbFallback.length} chars)`);
+                }
+            }
+
             // ── 8.9.1. Truthfulness validation for grounded composer ──
             if (kbGroundingContext && kbGroundingContext.sensitive) {
                 const validation = validateGroundedReply(

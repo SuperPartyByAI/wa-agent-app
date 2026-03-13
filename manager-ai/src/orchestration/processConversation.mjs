@@ -796,6 +796,13 @@ export async function processConversation(conversation_id, message_id = null, op
         }
 
         if (eligibility.eligible || kbComposerBypass) {
+            // When KB bypass is active, override LLM's low confidence/escalation
+            // KB data is factual and approved — no need for human review
+            const effectiveEscalation = kbComposerBypass ? null : escalation;
+            const effectiveDecision = kbComposerBypass
+                ? { ...decision, confidence_score: Math.max(decision.confidence_score, 75), needs_human_review: false }
+                : decision;
+
             // Central should-reply decision (full context)
             replyDecisionResult = await shouldReplyNow({
                 conversationId: conversation_id,
@@ -803,8 +810,8 @@ export async function processConversation(conversation_id, message_id = null, op
                 nextStep: progression.next_step,
                 mutation,
                 lastClientMessage: lastClientMessageText,
-                escalation,
-                decision,
+                escalation: effectiveEscalation,
+                decision: effectiveDecision,
                 serviceConfidence
             });
 

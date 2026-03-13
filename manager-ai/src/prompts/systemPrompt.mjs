@@ -6,7 +6,7 @@ import { buildCatalogPromptBlock } from '../services/postProcessServices.mjs';
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null } = {}) {
+export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
 
     // Build memory context block if we have existing memory
@@ -54,6 +54,18 @@ ${parts.join('\n')}
 IMPORTANT: Nu intreba informatii deja completate. Cere DOAR campurile lipsa. Daca planul e gata de oferta, ofera sa faci propunere.
 Daca trebuie detalii comerciale (plata/factura/avans), intreaba natural, nu agresiv.
 === SFARSIT PLAN ===\n`;
+    }
+
+    // Build quote context block
+    let quoteBlock = '';
+    if (latestQuote && ['draft', 'ready'].includes(latestQuote.status)) {
+        quoteBlock = `\n=== OFERTA CURENTA ===
+Total: ${latestQuote.grand_total} RON
+Subtotal: ${latestQuote.subtotal} RON, Transport: ${latestQuote.transport_cost} RON
+Include: ${(latestQuote.line_items || []).map(i => i.title).join(', ')}
+${latestQuote.missing_info_notes?.length > 0 ? 'Note Info lipsa: ' + latestQuote.missing_info_notes.join(' | ') : ''}
+IMPORTANT: Prezinta aceasta oferta clientului. Daca oferta este Draft, tu trebuie sa i-o trimiti acum. Nu mai astepta nicio aprobare, tu esti agentul principal. Fii clar si prietenos!
+=== SFARSIT OFERTA ===\n`;
     }
 
     // Build goal state context

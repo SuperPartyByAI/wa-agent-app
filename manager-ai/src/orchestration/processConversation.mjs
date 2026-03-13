@@ -844,6 +844,27 @@ export async function processConversation(conversation_id, message_id = null, op
             }
         });
 
+        // ── 8.8.3. Auto-Generate Quote Draft (if NBA says so) ──
+        if (nextBestAction.action === 'generate_quote_draft') {
+            const { buildQuoteDraft, saveQuoteDraft } = await import('../quotes/buildQuoteDraft.mjs');
+            console.log(`[Pipeline] NBA requested quote. Building from package: ${eventPlan.selected_package?.package}`);
+            
+            const newQuote = await buildQuoteDraft(eventPlan, { packageCode: eventPlan.selected_package?.package });
+            if (newQuote && !newQuote.error) {
+                const savedQuote = await saveQuoteDraft(newQuote);
+                if (savedQuote) {
+                    latestQuote = newQuote; // Update in-memory for Brain Tab / Composer
+                    latestQuote.id = savedQuote.id;
+                    latestQuote.version_no = savedQuote.version_no;
+                    console.log(`[Pipeline] Auto-generated Quote Draft v${savedQuote.version_no}`);
+                    
+                    // Tell the composer to present it
+                    nextBestAction.action = 'send_quote';
+                    nextBestAction.explanation = 'Am generat oferta draft. Poti sa o trimiti clientului.';
+                }
+            }
+        }
+
         // Persist NBA into goal state
         await transitionGoalState(conversation_id, goalState.current_state, {
             trigger: 'nba_update',
@@ -878,7 +899,8 @@ export async function processConversation(conversation_id, message_id = null, op
                     conversationText: userMessage,
                     serviceConfidence,
                     progression,
-                    kbGrounding: kbGroundingContext
+                    kbGrounding: kbGroundingContext,
+                    latestQuote
                 });
                 console.log(`[Pipeline] Composer used KB grounding: key=${kbGroundingContext.knowledgeKey}`);
             } else {
@@ -890,7 +912,8 @@ export async function processConversation(conversation_id, message_id = null, op
                     conversationText: userMessage,
                     serviceConfidence,
                     progression,
-                    learnedContext
+                    learnedContext,
+                    latestQuote
                 });
             }
 

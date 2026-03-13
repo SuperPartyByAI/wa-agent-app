@@ -12,25 +12,30 @@ const TRANSPORT_ZONES = {
     far: 350        // > 100km
 };
 
-// ── Package data (from KB) ──
-const PACKAGES = {
-    1: { name: '1 Personaj · 2 ore', price: 490, included_hours: 2, personaje: 1 },
-    2: { name: '1 Personaj · 1 oră', price: 490, included_hours: 1, personaje: 1 },
-    3: { name: '2 Personaje · 2 ore', price: 840, included_hours: 2, personaje: 2 },
-    4: { name: '2 Personaje · 1 oră', price: 840, included_hours: 1, personaje: 2 },
-    5: { name: '2 Personaje · 2 ore (tematic)', price: 840, included_hours: 2, personaje: 2, tematic: true },
-    6: { name: '3 Personaje · 2 ore', price: 1290, included_hours: 2, personaje: 3 },
-    7: { name: '3 Personaje · 3 ore', price: 1290, included_hours: 3, personaje: 3 }
-};
+const EXTRA_HOUR_PRICE = 170; // Still hardcoded or can be moved to KB later
 
-const EXTRA_HOUR_PRICE = 170;
+/**
+ * Fetch dynamic package catalog from KB.
+ */
+async function fetchPackagesCatalog() {
+    const { data } = await supabase
+        .from('ai_knowledge_base')
+        .select('metadata')
+        .eq('knowledge_key', 'animator_packages')
+        .single();
+    
+    if (data && data.metadata && data.metadata.packages) {
+        return data.metadata.packages;
+    }
+    return [];
+}
 
 /**
  * Build a quote draft from an event plan.
  *
  * @param {object} eventPlan - ai_event_plans row
  * @param {object} options
- * @param {number} options.packageNumber - selected package
+ * @param {string} options.packageCode - selected package code (e.g., 'super_3_confetti')
  * @param {number} options.durationHours - requested duration
  * @param {object[]} options.additionalItems - extra services
  * @returns {object} quote object ready to insert
@@ -45,39 +50,46 @@ export async function buildQuoteDraft(eventPlan, options = {}) {
     }
 
     // ── Animator package line item ──
-    const pkgNum = options.packageNumber || eventPlan.selected_package?.package;
+    const pkgCode = options.packageCode || eventPlan.selected_package?.package;
     const duration = options.durationHours || eventPlan.selected_package?.duration;
 
-    if (pkgNum && PACKAGES[pkgNum]) {
-        const pkg = PACKAGES[pkgNum];
-        const requestedHours = duration || pkg.included_hours;
-        const extraHours = Math.max(0, requestedHours - pkg.included_hours);
-        const extraCost = extraHours * EXTRA_HOUR_PRICE;
+    if (pkgCode) {
+        const catalog = await fetchPackagesCatalog();
+        const pkg = catalog.find(p => p.package_code === pkgCode || p.title.toLowerCase().includes(String(pkgCode).toLowerCase()));
 
-        lineItems.push({
-            item_type: 'package',
-            service_key: 'animator',
-            package_key: `pachet_${pkgNum}`,
-            title: `Pachet ${pkgNum}: ${pkg.name}`,
-            quantity: 1,
-            duration_hours: requestedHours,
-            unit_price: pkg.price,
-            total_price: pkg.price + extraCost,
-            notes: extraHours > 0
-                ? `Include ${pkg.included_hours}h + ${extraHours}h extra × ${EXTRA_HOUR_PRICE} lei`
-                : `Include ${pkg.included_hours}h`
-        });
+        if (pkg) {
+            const includedHours = parseInt(pkg.duration_text) || 2; // fallback to 2
+            const requestedHours = duration || includedHours;
+            const extraHours = Math.max(0, requestedHours - includedHours);
+            const extraCost = extraHours * EXTRA_HOUR_PRICE;
 
-        if (extraHours > 0) {
             lineItems.push({
-                item_type: 'extra_hours',
+                item_type: 'package',
                 service_key: 'animator',
-                title: `Ore extra animator (${extraHours}h × ${EXTRA_HOUR_PRICE} lei)`,
-                quantity: extraHours,
-                unit_price: EXTRA_HOUR_PRICE,
-                total_price: extraCost,
-                notes: ''
+                package_key: pkg.package_code,
+                title: pkg.title + (pkg.subtitle ? ` (${pkg.subtitle})` : ''),
+                quantity: 1,
+                duration_hours: requestedHours,
+                unit_price: pkg.price,
+                total_price: pkg.price + extraCost,
+                notes: extraHours > 0
+                    ? `Include ${includedHours}h + ${extraHours}h extra × ${EXTRA_HOUR_PRICE} lei`
+                    : `Include ${includedHours}h`
             });
+
+            if (extraHours > 0) {
+                lineItems.push({
+                    item_type: 'extra_hours',
+                    service_key: 'animator',
+                    title: `Ore extra animator (${extraHours}h × ${EXTRA_HOUR_PRICE} lei)`,
+                    quantity: extraHours,
+                    unit_price: EXTRA_HOUR_PRICE,
+                    total_price: extraCost,
+                    notes: ''
+                });
+            }
+        } else {
+            missingInfoNotes.push(`Pachetul cerut ("${pkgCode}") nu a fost găsit în catalog.`);
         }
     } else if ((eventPlan.requested_services || []).includes('animator')) {
         missingInfoNotes.push('Pachetul animator nu a fost selectat încă.');

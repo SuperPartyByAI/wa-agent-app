@@ -20,7 +20,8 @@ export async function composeHumanReply({
     serviceConfidence,
     progression,
     kbGrounding,
-    learnedContext
+    learnedContext,
+    latestQuote
 }) {
     const draftReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
 
@@ -47,6 +48,19 @@ export async function composeHumanReply({
     // Inject KB grounding or learned context into conversation text
     let enrichedText = conversationText;
 
+    if (latestQuote && ['draft', 'ready'].includes(latestQuote.status)) {
+        const items = (latestQuote.line_items || []).map(i => i.title).join(', ');
+        const notes = (latestQuote.missing_info_notes || []).join(' | ');
+        enrichedText = `--- OFERTĂ GENERATĂ ACUM PENTRU CLIENT (PREZINT-O) ---
+Total: ${latestQuote.grand_total} RON (din care ${latestQuote.transport_cost} transport)
+Pachet: ${items}
+${notes ? '\nLipsesc detalii: ' + notes : ''}
+INSTRUCȚIUNE: Ești un coordonator prietenos. Prezintă-i oferta de mai sus pe scurt. Dă-i prețul total și întreabă-l dacă e ok și dacă vrea să mergem mai departe cu o factură/avans. NU te comporta ca un robot care așteaptă omul.
+---
+
+` + enrichedText;
+    }
+
     if (kbGrounding) {
         const isPackages = kbGrounding.category === 'packages';
 
@@ -65,7 +79,7 @@ Prezintă pachetele de mai jos clientului, DAR:
 2. Dacă clientul a menționat o dată → confirmă data (ex: "Pe 24 martie, perfect!")
 3. Dacă clientul a menționat detalii → recunoaște-le și recomandă un pachet potrivit
 4. Prezintă pachetele numerotate (1️⃣ Pachet 1, 2️⃣ Pachet 2, etc.) cu preț, durată și ce face special fiecare
-5. La final, întreabă ce lipsește (dată, nr copii, locație, tip eveniment)
+5. La final, întreabă ce lipsește (dată, nr copii, locație, tip event) sau dacă s-a hotărât la unul
 6. NU inventa prețuri, NU adăuga pachete care nu sunt mai jos
 7. Fii SCURT și la obiect, maxim 4 pachete, nu lista tot
 8. Ton cald, prietenos, ca un om real, nu ca un robot`;
@@ -86,7 +100,7 @@ ${factualContent}
 INSTRUCȚIUNE COMPOSER: ${instruction}
 ---
 
-${conversationText}`;
+${enrichedText}`;
     } else if (learnedContext && learnedContext.length > 0) {
         const examples = learnedContext.map(c =>
             `- Context: "${c.questionContext}" → Răspuns bun: "${c.correctedReply}" (scope: ${c.scope})`
@@ -95,7 +109,7 @@ ${conversationText}`;
 ${examples}
 ---
 
-${conversationText}`;
+${enrichedText}`;
     }
 
     try {

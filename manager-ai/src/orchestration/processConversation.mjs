@@ -533,7 +533,7 @@ export async function processConversation(conversation_id, message_id = null, op
                     .from('messages').select('id, created_at')
                     .eq('conversation_id', conversation_id)
                     .eq('direction', 'outbound')
-                    .gt('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString())
+                    .gt('created_at', new Date(Date.now() - 20 * 1000).toISOString()) // 20 sec window
                     .order('created_at', { ascending: false })
                     .limit(1);
                 let isDuplicate = false;
@@ -903,7 +903,7 @@ export async function processConversation(conversation_id, message_id = null, op
                     .select('id, created_at')
                     .eq('conversation_id', conversation_id)
                     .eq('direction', 'outbound')
-                    .gt('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString())
+                    .gt('created_at', new Date(Date.now() - 20 * 1000).toISOString()) // 20 sec window
                     .order('created_at', { ascending: false })
                     .limit(1);
                 let isComposerDuplicate = false;

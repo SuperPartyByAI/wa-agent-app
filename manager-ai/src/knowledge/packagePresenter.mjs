@@ -56,50 +56,74 @@ const PRICE_VALUE_PATTERN = /(\d{3,4})\s*(lei|ron)/i;
  * Detect the presentation intent from a client message.
  *
  * @param {string} message — raw client message
- * @returns {object} { mode, feature, priceFilter }
+ * @returns {object} { mode, feature, priceFilter, packageNumbers }
  *   mode: 'summary' | 'detail' | 'compare' | 'pricing'
  *   feature: null | 'popcorn' | 'vata' | 'ursitoare' | 'confetti' | 'tort' | 'banner' | 'super_3' | 'super_5'
  *   priceFilter: null | number
+ *   packageNumbers: null | number[] — e.g. [1, 2] for "pachetul 1 si 2"
  */
 export function detectPackageIntent(message) {
     const msg = (message || '').trim();
     const normMsg = normalize(msg);
 
+    // ── Numbered package reference (e.g. "pachetul 1 si 2", "ce contine pachetul 3") ──
+    const numberRefPattern = /(?:pachetu(?:l|le)|pachet(?:e)?)\s*(?:nr\.?\s*)?(\d(?:\s*(?:,|si|și|&)\s*\d)*)/i;
+    const numberMatch = msg.match(numberRefPattern);
+    if (numberMatch) {
+        const nums = numberMatch[1].match(/\d/g).map(Number).filter(n => n >= 1 && n <= 7);
+        if (nums.length > 0) {
+            return { mode: 'detail', feature: null, priceFilter: null, packageNumbers: nums };
+        }
+    }
+
+    // Also catch "primul", "al doilea", ordinals
+    const ordinals = { 'primul': 1, 'prima': 1, 'al doilea': 2, 'a doua': 2, 'al treilea': 3, 'a treia': 3, 'al patrulea': 4, 'a patra': 4 };
+    for (const [word, num] of Object.entries(ordinals)) {
+        if (normMsg.includes(word)) {
+            const nums = [num];
+            // Check for "primul si al doilea"
+            for (const [w2, n2] of Object.entries(ordinals)) {
+                if (n2 !== num && normMsg.includes(w2)) nums.push(n2);
+            }
+            return { mode: 'detail', feature: null, priceFilter: null, packageNumbers: nums.sort() };
+        }
+    }
+
     // Feature-specific (detail mode with feature filter)
     for (const pattern of FEATURE_PATTERNS) {
         const m = msg.match(pattern);
         if (m) {
-            return { mode: 'detail', feature: m[1].toLowerCase(), priceFilter: null };
+            return { mode: 'detail', feature: m[1].toLowerCase(), priceFilter: null, packageNumbers: null };
         }
     }
 
     // Named package (Super 3, Super 5)
-    if (/super\s*3/i.test(msg)) return { mode: 'detail', feature: 'super_3', priceFilter: null };
-    if (/super\s*5/i.test(msg)) return { mode: 'detail', feature: 'super_5', priceFilter: null };
+    if (/super\s*3/i.test(msg)) return { mode: 'detail', feature: 'super_3', priceFilter: null, packageNumbers: null };
+    if (/super\s*5/i.test(msg)) return { mode: 'detail', feature: 'super_5', priceFilter: null, packageNumbers: null };
 
     // Price-specific detail (e.g. "Ce include pachetul de 490 lei?")
     const priceMatch = msg.match(PRICE_VALUE_PATTERN);
     if (priceMatch && DETAIL_PATTERNS.some(p => p.test(msg))) {
-        return { mode: 'detail', feature: null, priceFilter: parseInt(priceMatch[1]) };
+        return { mode: 'detail', feature: null, priceFilter: parseInt(priceMatch[1]), packageNumbers: null };
     }
 
     // Compare
     if (COMPARE_PATTERNS.some(p => p.test(msg))) {
-        return { mode: 'compare', feature: null, priceFilter: null };
+        return { mode: 'compare', feature: null, priceFilter: null, packageNumbers: null };
     }
 
     // Detail (generic)
     if (DETAIL_PATTERNS.some(p => p.test(msg))) {
-        return { mode: 'detail', feature: null, priceFilter: null };
+        return { mode: 'detail', feature: null, priceFilter: null, packageNumbers: null };
     }
 
     // Pricing
     if (PRICING_PATTERNS.some(p => p.test(msg))) {
-        return { mode: 'pricing', feature: null, priceFilter: null };
+        return { mode: 'pricing', feature: null, priceFilter: null, packageNumbers: null };
     }
 
     // Default: summary
-    return { mode: 'summary', feature: null, priceFilter: null };
+    return { mode: 'summary', feature: null, priceFilter: null, packageNumbers: null };
 }
 
 /**
@@ -174,7 +198,16 @@ function formatSummary(packages, transportNote) {
 function formatDetail(packages, intent, transportNote) {
     let matched = [];
 
-    if (intent.feature) {
+    // Numbered reference (e.g. "pachetul 1 si 2" → packages from summary order)
+    if (intent.packageNumbers && intent.packageNumbers.length > 0) {
+        const representatives = selectRepresentatives(packages);
+        for (const num of intent.packageNumbers) {
+            const idx = num - 1; // 1-based → 0-based
+            if (idx >= 0 && idx < representatives.length) {
+                matched.push({ ...representatives[idx], _displayNum: num });
+            }
+        }
+    } else if (intent.feature) {
         // Named package
         if (intent.feature === 'super_3') {
             matched = packages.filter(p => p.package_code === 'super_3_confetti');
@@ -203,7 +236,9 @@ function formatDetail(packages, intent, transportNote) {
     }
 
     matched.forEach((pkg, i) => {
-        const num = matched.length > 1 ? `${NUM_EMOJI[i]} *Pachet ${i + 1}*` : '📦';
+        // Use original display number if available (from numbered reference)
+        const displayNum = pkg._displayNum || (i + 1);
+        const num = `${NUM_EMOJI[displayNum - 1]} *Pachet ${displayNum}*`;
         const title = pkg.subtitle ? `${pkg.title} — ${pkg.subtitle}` : pkg.title;
         lines.push(`${num} *${title}* — ${pkg.price} lei`);
         if (pkg.weekday_only) lines.push('⚠️ _Disponibil doar L–V_');

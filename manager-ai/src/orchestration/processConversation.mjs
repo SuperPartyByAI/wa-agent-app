@@ -447,17 +447,33 @@ export async function processConversation(conversation_id, message_id = null, op
         console.log(`[Pipeline] Services: [${serviceData.selected_services.join(', ')}], Entity: ${entityMemory.entity_type} (${entityMemory.entity_confidence}%), Eligibility: ${eligibility.eligible ? 'ALLOWED' : eligibility.reason}, Cycle: ${salesCycle.cycle_eligibility}/${salesCycle.cycle_reason}, Decision: confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
 
         // ── 7.1. KB Lookup — AFTER all guards, service-aware ──
+        // Try ALL recent unprocessed client messages (not just last) for KB match
+        // This handles debounced multi-message scenarios
         const { searchKnowledgeBase, getLearningContext } = await import('../knowledge/knowledgeBase.mjs');
-        const kbMatch = await searchKnowledgeBase(lastClientMessageText, {
-            detectedServices: serviceData.selected_services,
-            conversationStage: dbStage || decision.conversation_stage
-        });
+        const recentClientMsgs = [...messages].reverse()
+            .filter(m => m.sender_type === 'client')
+            .slice(0, 5) // max 5 recent client messages
+            .map(m => m.content || '');
+
+        let kbMatch = null;
+        let kbMatchedMessage = lastClientMessageText; // which message triggered the match
+        for (const msgText of recentClientMsgs) {
+            const candidate = await searchKnowledgeBase(msgText, {
+                detectedServices: serviceData.selected_services,
+                conversationStage: dbStage || decision.conversation_stage
+            });
+            if (candidate && (!kbMatch || candidate.score > kbMatch.score)) {
+                kbMatch = candidate;
+                kbMatchedMessage = msgText;
+            }
+        }
 
         if (kbMatch) {
-            console.log(`[Pipeline] KB: key=${kbMatch.knowledgeKey}, score=${kbMatch.score.toFixed(2)}, mode=${kbMatch.mode}, reason=[${kbMatch.matchReason}]`);
+            console.log(`[Pipeline] KB: key=${kbMatch.knowledgeKey}, score=${kbMatch.score.toFixed(2)}, mode=${kbMatch.mode}, matchedMsg="${kbMatchedMessage.substring(0, 50)}"`);
             recordEvent('kb_match_found', conversation_id, {
                 knowledgeKey: kbMatch.knowledgeKey, score: kbMatch.score,
-                mode: kbMatch.mode, category: kbMatch.category
+                mode: kbMatch.mode, category: kbMatch.category,
+                matchedMessage: kbMatchedMessage.substring(0, 100)
             });
         } else {
             console.log('[Pipeline] KB: no match found');

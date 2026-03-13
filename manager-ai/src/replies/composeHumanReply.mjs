@@ -48,20 +48,40 @@ export async function composeHumanReply({
     let enrichedText = conversationText;
 
     if (kbGrounding) {
+        const isPackages = kbGrounding.category === 'packages';
+
         const strictHeader = kbGrounding.sensitive
             ? `CATEGORIE SENSIBILĂ (${kbGrounding.category.toUpperCase()}) — MOD STRICT
 NU adăuga: ${(kbGrounding.constraints?.forbiddenExtrapolations || []).join(', ')}.
 DOAR reformulează informația de mai jos. NU inventa prețuri, pachete, garanții sau condiții noi.`
             : '';
 
-        const instruction = kbGrounding.constraints?.composerInstruction || 'Formulează natural și scurt.';
+        let instruction;
+        if (isPackages) {
+            // Special contextual instruction for packages
+            instruction = `PACHETE ANIMAȚIE — COMPOSER CONTEXTUAL
+Prezintă pachetele de mai jos clientului, DAR:
+1. Citește TOATĂ conversația și observă ce detalii a dat clientul (dată, număr copii, tip eveniment, locație)
+2. Dacă clientul a menționat o dată → confirmă data (ex: "Pe 24 martie, perfect!")
+3. Dacă clientul a menționat detalii → recunoaște-le și recomandă un pachet potrivit
+4. Prezintă pachetele numerotate (1️⃣ Pachet 1, 2️⃣ Pachet 2, etc.) cu preț, durată și ce face special fiecare
+5. La final, întreabă ce lipsește (dată, nr copii, locație, tip eveniment)
+6. NU inventa prețuri, NU adăuga pachete care nu sunt mai jos
+7. Fii SCURT și la obiect, maxim 4 pachete, nu lista tot
+8. Ton cald, prietenos, ca un om real, nu ca un robot`;
+        } else {
+            instruction = kbGrounding.constraints?.composerInstruction || 'Formulează natural și scurt.';
+        }
+
+        // Use pre-formatted packages if available
+        const factualContent = kbGrounding.formattedPackages || kbGrounding.factualAnswer;
 
         enrichedText = `--- KNOWLEDGE BASE (SURSĂ DE ADEVĂR FACTUALĂ) ---
 Informație verificată pentru: ${kbGrounding.knowledgeKey}
 Categorie: ${kbGrounding.category}
 ${strictHeader ? '\n' + strictHeader : ''}
 
-${kbGrounding.factualAnswer}
+${factualContent}
 
 INSTRUCȚIUNE COMPOSER: ${instruction}
 ---
@@ -103,7 +123,8 @@ ${conversationText}`;
         }
 
         // Validate
-        if (finalReply && finalReply.length > 5 && finalReply.length < 500) {
+        const maxLen = kbGrounding ? 800 : 500;
+        if (finalReply && finalReply.length > 5 && finalReply.length < maxLen) {
             console.log(`[Composer] Humanized reply (${replyStyle}, ${replyContext.specificity}, svc_detection=${replyContext.serviceDetectionStatus}): ${finalReply.substring(0, 80)}...`);
             return {
                 reply: finalReply,

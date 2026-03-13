@@ -68,7 +68,13 @@ export function isSensitiveCategory(category) {
 export function resolveGroundingMode(kbMatch) {
     if (!kbMatch) return null;
 
-    // Sensitive category with high score → force direct answer
+    // Packages → ALWAYS go through composer with grounding
+    // The LLM reads the conversation + KB data and crafts contextual reply
+    if (kbMatch.category === 'packages') {
+        return 'kb_grounded_composer';
+    }
+
+    // Other sensitive categories (pricing, policy) with high score → force direct answer
     if (isSensitiveCategory(kbMatch.category) && kbMatch.score >= 0.75) {
         return 'kb_direct_answer';
     }

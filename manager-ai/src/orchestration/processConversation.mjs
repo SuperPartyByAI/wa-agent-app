@@ -638,6 +638,18 @@ export async function processConversation(conversation_id, message_id = null, op
         let kbGroundingContext = null;
         if (kbMatch && (effectiveKbMode === 'kb_grounded_composer' || effectiveKbMode === 'kb_strict_grounded')) {
             kbGroundingContext = buildGroundingPayload(kbMatch);
+
+            // For packages: inject pre-formatted package text so composer can present them contextually
+            if (kbMatch.category === 'packages') {
+                const { detectPackageIntent, formatPackageReply, hasStructuredPackages } = await import('../knowledge/packagePresenter.mjs');
+                if (hasStructuredPackages(kbMatch)) {
+                    const intent = detectPackageIntent(kbMatchedMessage);
+                    const formattedPkgs = formatPackageReply(kbMatch, intent, conversation_id);
+                    kbGroundingContext.formattedPackages = formattedPkgs;
+                    console.log(`[Pipeline] Package grounding: mode=${intent.mode}, formatted ${formattedPkgs.length} chars`);
+                }
+            }
+
             console.log(`[Pipeline] KB grounding injected: key=${kbMatch.knowledgeKey}, mode=${effectiveKbMode}, sensitive=${kbGroundingContext.sensitive}`);
         }
 

@@ -142,6 +142,14 @@ export function detectPackageIntent(message) {
     if (numberMatch) {
         const nums = numberMatch[1].match(/\d/g).map(Number).filter(n => n >= 1 && n <= 7);
         if (nums.length > 0) {
+            // Check if message also mentions hours (e.g. "pachetul 1 pe 3 ore")
+            const hourMatch = msg.match(/(\d+)\s*ore/i);
+            if (hourMatch) {
+                const hours = parseInt(hourMatch[1]);
+                if (hours >= 1 && hours <= 10 && nums.length === 1) {
+                    return { mode: 'package_duration_pricing', feature: null, priceFilter: null, packageNumbers: nums, hours };
+                }
+            }
             return { mode: 'detail', feature: null, priceFilter: null, packageNumbers: nums };
         }
     }
@@ -247,6 +255,10 @@ export function formatPackageReply(kbMatch, intent, conversationId) {
             reply = formatDurationPricing(packages, intent.hours, transportNote);
             recordEvent('kb_animator_duration_pricing_used', conversationId, { knowledgeKey: kbMatch.knowledgeKey, hours: intent.hours });
             break;
+        case 'package_duration_pricing':
+            reply = formatPackageDurationPricing(packages, intent.packageNumbers[0], intent.hours, transportNote);
+            recordEvent('kb_animator_pkg_duration_used', conversationId, { knowledgeKey: kbMatch.knowledgeKey, pkg: intent.packageNumbers[0], hours: intent.hours });
+            break;
         default:
             reply = formatSummary(packages, transportNote);
     }
@@ -302,6 +314,36 @@ function formatDurationPricing(packages, hours, transportNote) {
     lines.push(`\n${transportNote}.`);
     lines.push('\nInclude: jocuri, baloane modelate, pictură pe față, dansuri, diplome magnetice, boxă portabilă.');
     lines.push('\nVrei să rezervi sau ai nevoie de alte detalii? 😊');
+
+    return lines.join('\n');
+}
+
+// ── PACKAGE + DURATION PRICING MODE ──
+function formatPackageDurationPricing(packages, pkgNum, hours, transportNote) {
+    const pkg = packages[pkgNum - 1];
+    if (!pkg) return formatDurationPricing(packages, hours, transportNote);
+
+    const baseHours = Number.parseInt((pkg.title.match(/(\d+)\s*ore?/i) || [, '2'])[1]) || 2;
+    const extraHours = Math.max(0, hours - baseHours);
+    const totalPrice = pkg.price + (extraHours * EXTRA_HOUR_PRICE);
+
+    const lines = [];
+    lines.push(`${NUM_EMOJI[pkgNum - 1]} *Pachet ${pkgNum}* pe *${hours} ore*:\n`);
+    lines.push(`📦 *${pkg.title}* — ${pkg.price} lei (${baseHours}h incluse)`);
+
+    if (extraHours > 0) {
+        lines.push(`⏰ +${extraHours} ${extraHours === 1 ? 'oră' : 'ore'} extra × ${EXTRA_HOUR_PRICE} lei = ${extraHours * EXTRA_HOUR_PRICE} lei`);
+        lines.push(`\n💰 *Total: ${totalPrice} lei*`);
+    } else {
+        lines.push(`\n💰 *Total: ${pkg.price} lei* (durata inclusă în pachet)`);
+    }
+
+    if (pkg.includes && pkg.includes.length > 0) {
+        lines.push(`\nInclude:\n${pkg.includes.map(i => `  ✓ ${i}`).join('\n')}`);
+    }
+
+    lines.push(`\n${transportNote}.`);
+    lines.push('\nVrei să rezervi? Spune-mi data și numărul de copii! 😊');
 
     return lines.join('\n');
 }

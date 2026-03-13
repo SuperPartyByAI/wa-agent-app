@@ -37,7 +37,7 @@ async function sendViaWhatsApp(conversationId, text) {
     }
 
     // ── HARD ANTI-DUPLICATE: check messages table for recent outbound ──
-    const recentCutoff = new Date(Date.now() - 120_000).toISOString(); // last 2 min
+    const recentCutoff = new Date(Date.now() - 20_000).toISOString(); // last 20 sec
     const { data: recentOut } = await supabase
         .from('messages')
         .select('content, created_at')

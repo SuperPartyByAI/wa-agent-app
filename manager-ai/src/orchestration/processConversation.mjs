@@ -528,14 +528,26 @@ export async function processConversation(conversation_id, message_id = null, op
             let kbReplyDecision = { decision: 'reply_now', reason: 'kb_high_score_bypass' };
 
             if (kbMatch.score >= 0.88) {
-                // Anti-duplicate guard
+                // Smart anti-duplicate: block only if no new client msg after recent outbound
                 const { data: recentOut } = await supabase
-                    .from('messages').select('id')
+                    .from('messages').select('id, created_at')
                     .eq('conversation_id', conversation_id)
                     .eq('direction', 'outbound')
                     .gt('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString())
+                    .order('created_at', { ascending: false })
                     .limit(1);
+                let isDuplicate = false;
                 if (recentOut && recentOut.length > 0) {
+                    // Check if client sent a new message AFTER our last outbound
+                    const { data: newInbound } = await supabase
+                        .from('messages').select('id')
+                        .eq('conversation_id', conversation_id)
+                        .eq('direction', 'inbound')
+                        .gt('created_at', recentOut[0].created_at)
+                        .limit(1);
+                    isDuplicate = !newInbound || newInbound.length === 0;
+                }
+                if (isDuplicate) {
                     kbReplyDecision = { decision: 'blocked_duplicate', reason: 'recent_outbound_exists' };
                     console.log(`[Pipeline] KB direct: anti-duplicate blocked`);
                 } else {
@@ -885,16 +897,27 @@ export async function processConversation(conversation_id, message_id = null, op
             });
 
             if (replyDecisionResult.decision === 'reply_now') {
-                // Anti-duplicate guard: check if we already sent recently (prevents catchup + webhook double-send)
+                // Smart anti-duplicate: block only if no new client msg after recent outbound
                 const { data: recentOutbound } = await supabase
                     .from('messages')
-                    .select('id')
+                    .select('id, created_at')
                     .eq('conversation_id', conversation_id)
                     .eq('direction', 'outbound')
-                    .gt('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString()) // last 3 min
+                    .gt('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString())
+                    .order('created_at', { ascending: false })
                     .limit(1);
+                let isComposerDuplicate = false;
                 if (recentOutbound && recentOutbound.length > 0) {
-                    console.log(`[Pipeline] Anti-duplicate: outbound msg found in last 3min, skipping send`);
+                    const { data: newClientMsg } = await supabase
+                        .from('messages').select('id')
+                        .eq('conversation_id', conversation_id)
+                        .eq('direction', 'inbound')
+                        .gt('created_at', recentOutbound[0].created_at)
+                        .limit(1);
+                    isComposerDuplicate = !newClientMsg || newClientMsg.length === 0;
+                }
+                if (isComposerDuplicate) {
+                    console.log(`[Pipeline] Anti-duplicate: outbound exists with no new client msg, skipping send`);
                     replyStatus = 'blocked';
                     sentBy = 'anti_duplicate';
                     replyDecisionResult = { decision: 'blocked_duplicate', reason: 'recent_outbound_exists' };

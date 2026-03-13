@@ -496,8 +496,12 @@ export async function processConversation(conversation_id, message_id = null, op
         if (kbBypassEligibility) {
             console.log(`[Pipeline] KB direct answer bypassing eligibility block: ${eligibility.reason} (KB score=${kbMatch.score.toFixed(2)})`);
         }
+        // Greeting guard: if client just said "Bună seara" don't dump packages
+        // Let the normal composer reply with "Cu ce vă pot ajuta?" first
+        const GREETING_ONLY = /^(bun[aă]|salut|hey|hello|hi|bun[aă]\s*(seara|ziua|dimineata|dimineața)|sal|hei|ce\s*faci|servus)\s*[!.,?]*$/i;
+        const isGreeting = lastClientMessageText && GREETING_ONLY.test(lastClientMessageText.trim());
 
-        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility)) {
+        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility) && !isGreeting) {
             // Package presenter — detect intent + format reply (summary/detail/compare/pricing/duration)
             const { detectPackageIntent, formatPackageReply, hasStructuredPackages } = await import('../knowledge/packagePresenter.mjs');
             let kbReply;
@@ -689,8 +693,9 @@ export async function processConversation(conversation_id, message_id = null, op
             kbGroundingContext = buildGroundingPayload(kbMatch);
 
             // For packages or pricing/duration queries: use dedicated hybrid composer
+            // But NOT for simple greetings — let normal composer handle those
             const isPricingDuration = kbMatch.category === 'pricing' && /\d+\s*ore/i.test(kbMatchedMessage);
-            if ((kbMatch.category === 'packages' || isPricingDuration) && kbMatch.score >= 0.75) {
+            if ((kbMatch.category === 'packages' || isPricingDuration) && kbMatch.score >= 0.75 && !isGreeting) {
                 const { detectPackageIntent, formatPackageReply, hasStructuredPackages, composeContextualPackageReply } = await import('../knowledge/packagePresenter.mjs');
 
                 // For pricing queries, we need to load the packages KB entry

@@ -48,13 +48,22 @@ export async function composeHumanReply({
     let enrichedText = conversationText;
 
     if (kbGrounding) {
+        const strictHeader = kbGrounding.sensitive
+            ? `CATEGORIE SENSIBILĂ (${kbGrounding.category.toUpperCase()}) — MOD STRICT
+NU adăuga: ${(kbGrounding.constraints?.forbiddenExtrapolations || []).join(', ')}.
+DOAR reformulează informația de mai jos. NU inventa prețuri, pachete, garanții sau condiții noi.`
+            : '';
+
+        const instruction = kbGrounding.constraints?.composerInstruction || 'Formulează natural și scurt.';
+
         enrichedText = `--- KNOWLEDGE BASE (SURSĂ DE ADEVĂR FACTUALĂ) ---
 Informație verificată pentru: ${kbGrounding.knowledgeKey}
 Categorie: ${kbGrounding.category}
+${strictHeader ? '\n' + strictHeader : ''}
 
 ${kbGrounding.factualAnswer}
 
-REGULĂ: Folosește informația de mai sus ca sursă de adevăr. NU inventa peste ea. Formulează natural și scurt.
+INSTRUCȚIUNE COMPOSER: ${instruction}
 ---
 
 ${conversationText}`;

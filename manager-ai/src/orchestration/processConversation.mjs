@@ -12,6 +12,7 @@ import { evaluateReplyQuality } from '../replies/evaluateReplyQuality.mjs';
 import { buildReplyContext } from '../replies/buildReplyContext.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
+import { recordEvent, recordKbMiss } from '../analytics/recordAiEvent.mjs';
 import { detectEventMutation } from '../events/detectEventMutation.mjs';
 import { applyEventMutation } from '../events/applyEventMutation.mjs';
 import { evaluateNextStep } from './evaluateNextStep.mjs';
@@ -454,13 +455,26 @@ export async function processConversation(conversation_id, message_id = null, op
 
         if (kbMatch) {
             console.log(`[Pipeline] KB: key=${kbMatch.knowledgeKey}, score=${kbMatch.score.toFixed(2)}, mode=${kbMatch.mode}, reason=[${kbMatch.matchReason}]`);
+            recordEvent('kb_match_found', conversation_id, {
+                knowledgeKey: kbMatch.knowledgeKey, score: kbMatch.score,
+                mode: kbMatch.mode, category: kbMatch.category
+            });
         } else {
             console.log('[Pipeline] KB: no match found');
+            recordEvent('kb_match_not_found', conversation_id, {
+                message: lastClientMessageText.substring(0, 100),
+                detectedServices: serviceData.selected_services
+            });
+            recordKbMiss(conversation_id, lastClientMessageText, 0, serviceData.selected_services);
         }
 
         // ── 7.2. KB Direct Answer Path ──
+        // Truthfulness: sensitive categories (pricing/packages/policy) → force direct
+        const { resolveGroundingMode, validateGroundedReply, buildGroundingPayload } = await import('../knowledge/groundedValidator.mjs');
+        let effectiveKbMode = kbMatch ? resolveGroundingMode(kbMatch) : null;
+
         // If strong KB match AND eligibility allows → send KB answer directly, skip LLM
-        if (kbMatch && kbMatch.mode === 'kb_direct_answer' && eligibility.eligible) {
+        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && eligibility.eligible) {
             const kbReply = kbMatch.answer;
 
             // Run shouldReplyNow — respects ALL guards
@@ -517,6 +531,9 @@ export async function processConversation(conversation_id, message_id = null, op
             });
 
             console.log(`[Pipeline] KB DIRECT done ${conversation_id}. Key: ${kbMatch.knowledgeKey}, Score: ${kbMatch.score.toFixed(2)}, Reply: ${kbStatus}. ${Date.now() - t_pipeline_start}ms`);
+            recordEvent('kb_direct_answer_used', conversation_id, {
+                knowledgeKey: kbMatch.knowledgeKey, score: kbMatch.score, status: kbStatus
+            });
             return;
         }
 
@@ -584,17 +601,11 @@ export async function processConversation(conversation_id, message_id = null, op
         console.log(`[Pipeline] Service Detection: status=${serviceConfidence.service_detection_status}, confirmation=${serviceConfidence.service_confirmation_allowed}, confirmed=[${serviceConfidence.confirmed_services.join(',')}], ambiguous=[${serviceConfidence.ambiguous_services.join(',')}]`);
 
         // ── 8.5.1. KB Grounded Composer context ──
-        // If KB matched in grounded mode, inject facts for composer
+        // If KB matched in grounded mode, inject structured grounding payload
         let kbGroundingContext = null;
-        if (kbMatch && kbMatch.mode === 'kb_grounded_composer') {
-            kbGroundingContext = {
-                knowledgeKey: kbMatch.knowledgeKey,
-                factualAnswer: kbMatch.answer,
-                category: kbMatch.category,
-                requiredContext: kbMatch.requiredContext,
-                metadata: kbMatch.metadata
-            };
-            console.log(`[Pipeline] KB grounded context injected: key=${kbMatch.knowledgeKey}`);
+        if (kbMatch && (effectiveKbMode === 'kb_grounded_composer' || effectiveKbMode === 'kb_strict_grounded')) {
+            kbGroundingContext = buildGroundingPayload(kbMatch);
+            console.log(`[Pipeline] KB grounding injected: key=${kbMatch.knowledgeKey}, mode=${effectiveKbMode}, sensitive=${kbGroundingContext.sensitive}`);
         }
 
         // ── 8.5.2. Learned corrections as supplementary LLM context ──
@@ -682,6 +693,38 @@ export async function processConversation(conversation_id, message_id = null, op
             suggestedReply = composerResult.reply;
             t_composer_ms = Date.now() - t_comp_start;
             console.log(`[Pipeline] Composer completed in ${t_composer_ms}ms`);
+
+            // ── 8.9.1. Truthfulness validation for grounded composer ──
+            if (kbGroundingContext && kbGroundingContext.sensitive) {
+                const validation = validateGroundedReply(
+                    suggestedReply,
+                    kbGroundingContext.factualAnswer,
+                    kbGroundingContext.category
+                );
+                if (!validation.valid) {
+                    console.log(`[Pipeline] Grounded validation FAILED: ${validation.failReason}. Falling back to kb_direct_answer.`);
+                    suggestedReply = kbMatch.answer; // fallback to safe KB answer
+                    recordEvent('grounded_validation_failed', conversation_id, {
+                        knowledgeKey: kbGroundingContext.knowledgeKey,
+                        failReason: validation.failReason,
+                        originalComposed: composerResult.reply?.substring(0, 100)
+                    });
+                } else {
+                    recordEvent('kb_grounded_composer_used', conversation_id, {
+                        knowledgeKey: kbGroundingContext.knowledgeKey,
+                        score: kbMatch?.score, confidence: validation.confidence
+                    });
+                }
+            } else if (kbGroundingContext) {
+                recordEvent('kb_grounded_composer_used', conversation_id, {
+                    knowledgeKey: kbGroundingContext.knowledgeKey, score: kbMatch?.score
+                });
+            } else {
+                recordEvent('llm_fallback_used', conversation_id, {
+                    message: lastClientMessageText.substring(0, 80),
+                    hasLearnedContext: learnedContext.length > 0
+                });
+            }
         }
 
         // ── 8.10. Evaluate reply quality ──
@@ -723,6 +766,9 @@ export async function processConversation(conversation_id, message_id = null, op
                 }
                 // Clear any pending follow-up since we just replied
                 await clearFollowUp(conversation_id, 'ai_replied_now');
+                recordEvent('decision_reply_now', conversation_id, {
+                    confidence: decision.confidence_score, style: composerResult.replyStyle
+                });
             } else {
                 replyStatus = 'blocked';
                 sentBy = 'reply_engine';

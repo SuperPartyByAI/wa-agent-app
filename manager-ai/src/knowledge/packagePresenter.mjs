@@ -173,12 +173,10 @@ export function formatPackageReply(kbMatch, intent, conversationId) {
 const NUM_EMOJI = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣'];
 
 function formatSummary(packages, transportNote) {
-    // Pick 4 representative packages across price range
-    const representatives = selectRepresentatives(packages);
-
     const lines = ['Avem mai multe variante de animație 🎉\n'];
 
-    representatives.forEach((pkg, i) => {
+    // Show ALL packages, brief format
+    packages.forEach((pkg, i) => {
         const extras = getExtraFeatures(pkg);
         let line = `${NUM_EMOJI[i]} *Pachet ${i + 1}* — ${pkg.price} lei`;
         if (pkg.weekday_only) line += ' _(doar L–V)_';
@@ -189,7 +187,7 @@ function formatSummary(packages, transportNote) {
     });
 
     lines.push(`\n${transportNote}.`);
-    lines.push('\nSpune-mi care te interesează și îți dau toate detaliile! 😊');
+    lines.push('\nSpune-mi numărul pachetului care te interesează și îți dau toate detaliile! 😊');
 
     return lines.join('\n\n');
 }
@@ -198,13 +196,12 @@ function formatSummary(packages, transportNote) {
 function formatDetail(packages, intent, transportNote) {
     let matched = [];
 
-    // Numbered reference (e.g. "pachetul 1 si 2" → packages from summary order)
+    // Numbered reference (e.g. "pachetul 1 si 2" → packages by index in full list)
     if (intent.packageNumbers && intent.packageNumbers.length > 0) {
-        const representatives = selectRepresentatives(packages);
         for (const num of intent.packageNumbers) {
             const idx = num - 1; // 1-based → 0-based
-            if (idx >= 0 && idx < representatives.length) {
-                matched.push({ ...representatives[idx], _displayNum: num });
+            if (idx >= 0 && idx < packages.length) {
+                matched.push({ ...packages[idx], _displayNum: num });
             }
         }
     } else if (intent.feature) {

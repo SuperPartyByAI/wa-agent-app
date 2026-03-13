@@ -788,7 +788,14 @@ export async function processConversation(conversation_id, message_id = null, op
         let sentAt = null;
         let replyDecisionResult = { decision: 'blocked_autoreply_off', reason: 'not_checked' };
 
-        if (eligibility.eligible) {
+        // KB score-based bypass for composer path (same logic as KB direct answer bypass)
+        const kbComposerBypass = kbMatch && kbMatch.score >= 0.75 && kbGroundingContext && !eligibility.eligible
+            && ['blocked_by_decision', 'blocked_low_confidence', 'cycle_review_on_legacy', 'blocked_manual_legacy'].includes(eligibility.reason);
+        if (kbComposerBypass) {
+            console.log(`[Pipeline] KB grounded composer bypassing eligibility: ${eligibility.reason} (KB score=${kbMatch.score.toFixed(2)})`);
+        }
+
+        if (eligibility.eligible || kbComposerBypass) {
             // Central should-reply decision (full context)
             replyDecisionResult = await shouldReplyNow({
                 conversationId: conversation_id,

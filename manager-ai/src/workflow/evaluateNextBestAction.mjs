@@ -88,7 +88,7 @@ export function evaluateNextBestAction(ctx) {
     if (['new_lead', 'greeting'].includes(state)) {
         return {
             action: 'greet_and_discover',
-            question: 'Cu ce vă pot ajuta?',
+            question: 'Suntem aici, cu ce vă putem ajuta azi? Deschidem planurile de petrecere?',
             explanation: 'Conversație la început — salutăm și descoperim nevoile.',
             priority: 'normal',
             commercialReadiness: buildCommercialReadiness(eventPlan)

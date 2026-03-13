@@ -37,12 +37,10 @@ Maxim 1-2 propozitii.`
     if (svcStatus === 'unknown' || svcStatus === 'ambiguous') {
         // DISCOVERY MODE — no services confirmed, must ask
         contextBlock += `\nSERVICII: NEDETECTATE SAU AMBIGUE.`;
-        contextBlock += `\n→ INTERZIS: Nu mentiona NICIUN serviciu concret (nici animator, nici altceva).`;
+        contextBlock += `\n→ INTERZIS: Nu enumera serviciile noastre (fără "avem animator, ursitoare...").`;
         contextBlock += `\n→ INTERZIS: Nu presupune ce vrea clientul.`;
-        contextBlock += `\n→ OBLIGATORIU: Pune o intrebare deschisa si naturala de tipul:`;
-        contextBlock += `\n   "Ce servicii va intereseaza?" sau "Cu ce va putem ajuta?"`;
-        contextBlock += `\n→ Poti ghida usor: "Avem animator, ursitoare, vata de zahar, popcorn, arcada baloane..."`;
-        contextBlock += `\n→ Dar NU presupune ca vrea vreunul din ele.`;
+        contextBlock += `\n→ OBLIGATORIU: Fii cald și natural. Pune o întrebare deschisă simplă:`;
+        contextBlock += `\n   "Suntem aici, cu ce vă putem ajuta?" sau "Despre ce fel de eveniment este vorba?"`;
     } else if (svcStatus === 'partial') {
         // Some confirmed, some ambiguous
         if (replyContext.hasServices) {
@@ -95,12 +93,12 @@ Maxim 1-2 propozitii.`
     // ── Discovery-specific examples ──
     let exampleBlock;
     if (svcStatus === 'unknown' || svcStatus === 'ambiguous') {
-        exampleBlock = `=== EXEMPLE BUNE (DISCOVERY — fara presupuneri) ===
+        exampleBlock = `=== EXEMPLE BUNE (DISCOVERY — fara presupuneri, foarte uman) ===
 
-✅ "Buna! Sigur, va ajutam cu drag 😊 Ce servicii va intereseaza pentru petrecere?"
-✅ "Salut! Cu placere! Ce anume cautati — animator, ursitoare, vata de zahar, popcorn, arcada baloane? 😊"
-✅ "Buna! Ne bucuram ca ne scrieti 😊 Spuneti-ne ce va intereseaza si va ajutam cu informatii!"
-✅ "Hey! Spuneti-ne cu ce va putem ajuta si revenim cu detalii 😊"
+✅ "Bună! Sigur, vă ajutăm cu drag 😊 Despre ce fel de eveniment este vorba?"
+✅ "Salut! Cu mare drag. Ne poți da câteva detalii despre evenimentul tău? 😊"
+✅ "Bună! Ne bucurăm că ne scrieți 😊 Spuneți-ne ce planuri aveți și vedem cum vă putem ajuta!"
+✅ "Hey! Aveți deja ceva în minte pentru petrecere sau abia ați început planificarea? 😊"
 
 === EXEMPLE PROASTE (INTERZISE in modul discovery) ===
 

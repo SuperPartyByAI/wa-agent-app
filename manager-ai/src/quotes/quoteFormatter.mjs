@@ -25,7 +25,8 @@ export function formatQuoteForWhatsApp(quote, eventPlan) {
         const details = [];
         if (eventPlan.event_date) details.push(`📅 ${eventPlan.event_date}`);
         if (eventPlan.location) details.push(`📍 ${eventPlan.location}`);
-        if (eventPlan.guest_count) details.push(`👧 ${eventPlan.guest_count} copii`);
+        const childrenCount = eventPlan.children_count_estimate || eventPlan.guest_count;
+        if (childrenCount) details.push(`👧 ${childrenCount} copii`);
         if (details.length > 0) lines.push(details.join('  '));
         lines.push('');
     }

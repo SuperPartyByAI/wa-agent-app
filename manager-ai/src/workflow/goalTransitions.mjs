@@ -1,135 +1,198 @@
 /**
- * Goal Transition Evaluator
+ * Goal Transition Evaluator — Business-Real Edition
  *
- * Pure logic — no DB calls. Determines if/how the goal state should transition
- * based on event plan, LLM analysis, mutation, and service data.
+ * Pure logic — determines if/when to transition between goal states
+ * based on event plan completeness, services, commercial readiness.
+ * No DB calls.
  */
 
 /**
- * Evaluate whether the goal state should transition.
+ * Evaluate whether the conversation should transition to a new goal state.
  *
- * @param {object} params
- * @param {string} params.currentState    - current goal state key
- * @param {object} params.eventPlan       - from loadOrCreateEventPlan()
- * @param {object} params.analysis        - LLM analysis output
- * @param {object} params.mutation        - from detectEventMutation()
- * @param {object} params.services        - { selected: [], confirmed: [], detection_status }
- * @param {boolean} params.isGreeting     - true if last message is a simple greeting
- * @param {string} params.lastClientMessage - raw text of last client message
- * @returns {{ shouldTransition: boolean, newState: string, reason: string, confidence: number }}
+ * @param {object} ctx
+ * @param {string} ctx.currentState - current goal state
+ * @param {object} ctx.eventPlan - ai_event_plans row
+ * @param {object} ctx.analysis - LLM analysis output
+ * @param {object} ctx.mutation - detected mutation
+ * @param {object} ctx.services - { selected, confirmed, detection_status }
+ * @param {boolean} ctx.isGreeting - whether the message is a greeting
+ * @param {string} ctx.lastClientMessage - last client message text
+ * @returns {{ shouldTransition: boolean, newState: string, from: string, reason: string, confidence: number }}
  */
-export function evaluateGoalTransition({
-    currentState,
-    eventPlan,
-    analysis,
-    mutation,
-    services,
-    isGreeting = false,
-    lastClientMessage = ''
-}) {
-    const result = { shouldTransition: false, newState: currentState, reason: 'no_change', confidence: 80 };
-    const msg = lastClientMessage.toLowerCase();
+export function evaluateGoalTransition(ctx) {
+    const {
+        currentState,
+        eventPlan,
+        analysis,
+        mutation,
+        services,
+        isGreeting,
+        lastClientMessage
+    } = ctx;
 
-    // ── Cancellation intent ──
-    if (mutation?.mutation_type === 'cancel_event') {
-        return { shouldTransition: true, newState: 'cancelled', reason: 'cancel_intent_detected', confidence: 90 };
+    const selected = services?.selected || [];
+    const msg = (lastClientMessage || '').toLowerCase();
+
+    const result = { shouldTransition: false, newState: currentState, from: currentState, reason: '', confidence: 80 };
+
+    // ── CANCEL detection (any state) ──
+    if (mutation?.mutation_type === 'cancel_event' || /\b(anulez|anulam|renuntam|renunt|cancel)\b/i.test(msg)) {
+        result.shouldTransition = true;
+        result.newState = 'cancelled';
+        result.reason = 'cancel_intent_detected';
+        return result;
     }
 
-    // ── Reactivation from cancelled ──
-    if (currentState === 'cancelled' && mutation?.mutation_type === 'reactivate_event') {
-        return { shouldTransition: true, newState: 'service_selection', reason: 'reactivation_after_cancel', confidence: 85 };
+    // ── ARCHIVE detection ──
+    if (mutation?.mutation_type === 'archive_event') {
+        result.shouldTransition = true;
+        result.newState = 'archived';
+        result.reason = 'archive_intent_detected';
+        return result;
     }
 
-    // ── Confirmation / booking intent ──
-    const bookingSignals = /\b(confirm[aă]m?|accept[aă]m?|da,?\s*(e\s*)?bine|sunt de acord|merge|perfect,?\s*confirm|pl[aă]tesc|vreau s[aă] rezerv|rezerv[aă]m)\b/i;
-    if (bookingSignals.test(msg) && ['quotation_sent', 'objection_handling'].includes(currentState)) {
-        return { shouldTransition: true, newState: 'booking_pending', reason: 'client_accepted_quote', confidence: 85 };
-    }
-    if (bookingSignals.test(msg) && currentState === 'booking_pending') {
-        return { shouldTransition: true, newState: 'booking_confirmed', reason: 'client_confirmed_booking', confidence: 90 };
-    }
-
-    // ── Objection / price negotiation ──
-    const objectionSignals = /\b(scump|mult|nu-mi permit|alt pre[tț]|reduc|discount|ofert[aă] mai|prea mare|nu [eî]mi convine|mai ieftin)\b/i;
-    if (objectionSignals.test(msg) && ['quotation_sent', 'package_recommendation', 'quotation_draft'].includes(currentState)) {
-        return { shouldTransition: true, newState: 'objection_handling', reason: 'price_objection_detected', confidence: 80 };
-    }
-
-    // ── Reschedule intent ──
-    const rescheduleSignals = /\b(mut[aă]m|reprogramez|schimb[aă]m? data|alt[aă] dat[aă]|amân[aă]m)\b/i;
-    if (rescheduleSignals.test(msg) && ['booking_confirmed', 'booking_pending'].includes(currentState)) {
-        return { shouldTransition: true, newState: 'reschedule_pending', reason: 'reschedule_intent', confidence: 80 };
-    }
-
-    // ── Quote request ──
-    const quoteSignals = /\b(ofert[aă]|propunere|pre[tț].*total|c[aâ]t.*cost[aă].*tot|vreau ofert[aă]|trime[tț].*ofert)\b/i;
-    if (quoteSignals.test(msg) && ['package_recommendation', 'event_qualification'].includes(currentState)) {
-        if (eventPlan?.readiness_for_quote) {
-            return { shouldTransition: true, newState: 'quotation_draft', reason: 'client_requested_quote_ready', confidence: 90 };
-        }
-        // Not ready yet — stay and collect more info
-    }
-
-    // ── State-specific forward transitions ──
+    // ── State-specific transitions ──
     switch (currentState) {
         case 'new_lead':
-            if (isGreeting) {
-                return { shouldTransition: true, newState: 'greeting', reason: 'greeting_detected', confidence: 95 };
+            if (isGreeting && selected.length === 0) {
+                result.shouldTransition = true;
+                result.newState = 'greeting';
+                result.reason = 'greeting_detected';
+            } else if (selected.length > 0) {
+                result.shouldTransition = true;
+                result.newState = 'service_selection';
+                result.reason = 'services_detected_immediately';
             }
-            if (services?.selected?.length > 0) {
-                return { shouldTransition: true, newState: 'service_selection', reason: 'services_detected_on_first_message', confidence: 85 };
-            }
-            return { shouldTransition: true, newState: 'discovery', reason: 'first_message_no_service', confidence: 80 };
+            break;
 
         case 'greeting':
-            if (services?.selected?.length > 0) {
-                return { shouldTransition: true, newState: 'service_selection', reason: 'services_mentioned_after_greeting', confidence: 85 };
-            }
-            if (msg.length > 5 && !isGreeting) {
-                return { shouldTransition: true, newState: 'discovery', reason: 'client_stated_intent', confidence: 75 };
+            if (selected.length > 0) {
+                result.shouldTransition = true;
+                result.newState = 'service_selection';
+                result.reason = 'services_detected_after_greeting';
+            } else if (msg.length > 10) {
+                result.shouldTransition = true;
+                result.newState = 'discovery';
+                result.reason = 'client_described_needs';
             }
             break;
 
         case 'discovery':
-            if (services?.selected?.length > 0) {
-                return { shouldTransition: true, newState: 'service_selection', reason: 'services_detected', confidence: 85 };
+            if (selected.length > 0) {
+                result.shouldTransition = true;
+                result.newState = 'service_selection';
+                result.reason = 'services_identified_from_discovery';
             }
             break;
 
-        case 'service_selection': {
-            const hasDate = !!eventPlan?.event_date;
-            const hasLocation = !!eventPlan?.location;
-            const hasServices = (eventPlan?.requested_services?.length || services?.selected?.length || 0) > 0;
-            if (hasServices && (hasDate || hasLocation)) {
-                return { shouldTransition: true, newState: 'event_qualification', reason: 'event_details_started', confidence: 80 };
-            }
-            // Service confirmed explicitly
-            if (services?.detection_status === 'confirmed') {
-                return { shouldTransition: true, newState: 'event_qualification', reason: 'services_confirmed', confidence: 85 };
+        case 'service_selection':
+            if (eventPlan && (eventPlan.event_date || eventPlan.location || eventPlan.children_count_estimate)) {
+                result.shouldTransition = true;
+                result.newState = 'event_qualification';
+                result.reason = 'event_details_started';
             }
             break;
-        }
 
         case 'event_qualification':
-            if (eventPlan?.readiness_for_quote) {
-                return { shouldTransition: true, newState: 'package_recommendation', reason: 'ready_for_recommendation', confidence: 85 };
+            if (eventPlan?.readiness_for_recommendation) {
+                result.shouldTransition = true;
+                result.newState = 'package_recommendation';
+                result.reason = 'recommendation_ready';
             }
             break;
 
         case 'package_recommendation':
-            // If client selected a package
-            if (eventPlan?.selected_package) {
-                return { shouldTransition: true, newState: 'quotation_draft', reason: 'package_selected', confidence: 85 };
+            if (eventPlan?.readiness_for_quote || eventPlan?.selected_package) {
+                result.shouldTransition = true;
+                result.newState = 'quotation_draft';
+                result.reason = 'quote_ready_or_package_selected';
+                result.confidence = 85;
             }
             break;
 
         case 'quotation_draft':
-            // Quote sent action handled elsewhere
+            if (/\b(trimite|send|da-mi|vezi)\b/i.test(msg)) {
+                result.shouldTransition = true;
+                result.newState = 'quotation_sent';
+                result.reason = 'quote_send_requested';
+            }
+            break;
+
+        case 'quotation_sent':
+            if (/\b(confirm|accept|da|perfect|ok|merge|bun|super|gata)\b/i.test(msg)) {
+                result.shouldTransition = true;
+                // If commercial fields are complete, go to booking_ready
+                if (eventPlan?.readiness_for_booking) {
+                    result.newState = 'booking_ready';
+                    result.reason = 'accepted_with_complete_commercial';
+                } else {
+                    result.newState = 'booking_pending';
+                    result.reason = 'accepted_needs_commercial_details';
+                }
+            } else if (/\b(scump|mult|ieftin|reduc|discount|alt pret|negoci|obiect)\b/i.test(msg)) {
+                result.shouldTransition = true;
+                result.newState = 'objection_handling';
+                result.reason = 'objection_detected';
+            }
+            break;
+
+        case 'objection_handling':
+            if (/\b(ok|accept|bun|merge|da|perfect)\b/i.test(msg)) {
+                result.shouldTransition = true;
+                result.newState = 'booking_pending';
+                result.reason = 'objection_resolved';
+            }
+            break;
+
+        case 'booking_pending':
+            // Transition to booking_ready when all commercial fields are filled
+            if (eventPlan?.readiness_for_booking) {
+                result.shouldTransition = true;
+                result.newState = 'booking_ready';
+                result.reason = 'commercial_details_complete';
+                result.confidence = 90;
+            }
+            break;
+
+        case 'booking_ready':
+            if (/\b(confirm|finaliz|gata|perfect|da)\b/i.test(msg)) {
+                result.shouldTransition = true;
+                result.newState = 'booking_confirmed';
+                result.reason = 'booking_confirmed_by_client';
+                result.confidence = 95;
+            }
+            break;
+
+        case 'booking_confirmed':
+            if (/\b(reprogramr|amân|schimb.*dat|alt.*dat)\b/i.test(msg)) {
+                result.shouldTransition = true;
+                result.newState = 'reschedule_pending';
+                result.reason = 'reschedule_requested';
+            }
             break;
 
         case 'reschedule_pending':
-            if (eventPlan?.event_date && mutation?.mutation_type === 'change_date') {
-                return { shouldTransition: true, newState: 'booking_pending', reason: 'new_date_set', confidence: 80 };
+            if (eventPlan?.event_date) {
+                result.shouldTransition = true;
+                result.newState = 'booking_pending';
+                result.reason = 'new_date_provided';
+            }
+            break;
+
+        case 'cancelled':
+            // Can be reactivated if client re-engages
+            if (selected.length > 0 || msg.length > 20) {
+                result.shouldTransition = true;
+                result.newState = 'discovery';
+                result.reason = 'client_re_engaged_after_cancel';
+            }
+            break;
+
+        case 'archived':
+            if (selected.length > 0 || msg.length > 20) {
+                result.shouldTransition = true;
+                result.newState = 'discovery';
+                result.reason = 'client_re_engaged_after_archive';
             }
             break;
     }

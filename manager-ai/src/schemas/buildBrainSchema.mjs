@@ -342,8 +342,9 @@ export function buildBrainSchema({
             service_selection: '🎯 Selectare Servicii', event_qualification: '📋 Calificare Eveniment',
             package_recommendation: '📦 Recomandare Pachete', quotation_draft: '📝 Ofertă Draft',
             quotation_sent: '📤 Ofertă Trimisă', objection_handling: '🤝 Obiecții',
-            booking_pending: '⏳ Rezervare Pending', booking_confirmed: '✅ Confirmat',
-            reschedule_pending: '🔄 Reprogramare', cancelled: '❌ Anulat', completed: '✅ Finalizat'
+            booking_pending: '⏳ Așteptăm Comercial', booking_ready: '🟢 Gata Rezervare',
+            booking_confirmed: '✅ Confirmat', reschedule_pending: '🔄 Reprogramare',
+            cancelled: '❌ Anulat', archived: '📦 Arhivat', completed: '✅ Finalizat'
         };
         const goalItems = [
             { label: 'Stare', value: stateLabels[goalState.current_state] || goalState.current_state }
@@ -358,32 +359,79 @@ export function buildBrainSchema({
     if (nextBestAction) {
         const nbaItems = [
             { label: 'Acțiune', value: nextBestAction.action || '-' },
-            { label: 'Explicație', value: (nextBestAction.explanation || '').substring(0, 120) }
+            { label: 'Explicație', value: (nextBestAction.explanation || '').substring(0, 150) }
         ];
         if (nextBestAction.question) {
             nbaItems.push({ label: 'Întrebare', value: nextBestAction.question });
         }
+        if (nextBestAction.commercialReadiness) {
+            const cr = nextBestAction.commercialReadiness;
+            const parts = [];
+            if (cr.paymentReady) parts.push('✅ Plata');
+            else parts.push('⏳ Plata');
+            if (cr.invoiceReady) parts.push('✅ Factură');
+            else parts.push('⏳ Factură');
+            if (cr.advanceReady) parts.push('✅ Avans');
+            else parts.push('⏳ Avans');
+            nbaItems.push({ label: 'Comercial', value: parts.join(' | ') });
+        }
         schema.push({ type: 'section', title: '🎯 Următoarea Acțiune', items: nbaItems });
     }
 
-    // ── Event Plan Card ──
+    // ── Event Plan Card (Business-Real) ──
     if (eventPlan && eventPlan.id) {
         const planItems = [];
+
+        // Status
+        planItems.push({ label: 'Status', value: eventPlan.status || 'draft' });
+
+        // Services
         if ((eventPlan.requested_services || []).length > 0) {
             planItems.push({ label: 'Servicii', value: eventPlan.requested_services.join(', ') });
         }
+
+        // Event details
         if (eventPlan.event_date) planItems.push({ label: 'Data', value: eventPlan.event_date });
+        if (eventPlan.event_time) planItems.push({ label: 'Ora', value: eventPlan.event_time });
         if (eventPlan.location) planItems.push({ label: 'Locație', value: eventPlan.location });
-        if (eventPlan.guest_count) planItems.push({ label: 'Invitați', value: String(eventPlan.guest_count) });
+        if (eventPlan.children_count_estimate) planItems.push({ label: 'Nr. copii (est.)', value: String(eventPlan.children_count_estimate) });
+        if (eventPlan.adults_count_estimate) planItems.push({ label: 'Nr. adulți (est.)', value: String(eventPlan.adults_count_estimate) });
         if (eventPlan.child_age) planItems.push({ label: 'Vârsta copil', value: String(eventPlan.child_age) });
 
-        const readyEmoji = eventPlan.readiness_for_quote ? '✅' : '⏳';
-        planItems.push({ label: 'Gata de ofertă', value: `${readyEmoji} ${eventPlan.readiness_for_quote ? 'Da' : 'Nu'}` });
+        // Readiness flags
+        const r = (v) => v ? '✅' : '⏳';
+        planItems.push({ label: 'Gata recomandare', value: `${r(eventPlan.readiness_for_recommendation)} ${eventPlan.readiness_for_recommendation ? 'Da' : 'Nu'}` });
+        planItems.push({ label: 'Gata ofertă', value: `${r(eventPlan.readiness_for_quote)} ${eventPlan.readiness_for_quote ? 'Da' : 'Nu'}` });
+        planItems.push({ label: 'Gata rezervare', value: `${r(eventPlan.readiness_for_booking)} ${eventPlan.readiness_for_booking ? 'Da' : 'Nu'}` });
 
+        // Commercial closing
+        if (eventPlan.payment_method_preference && eventPlan.payment_method_preference !== 'unknown') {
+            planItems.push({ label: 'Plata', value: eventPlan.payment_method_preference });
+        }
+        if (eventPlan.invoice_requested && eventPlan.invoice_requested !== 'unknown') {
+            planItems.push({ label: 'Factură', value: eventPlan.invoice_requested === 'true' ? 'Da' : 'Nu' });
+        }
+        if (eventPlan.advance_status && eventPlan.advance_status !== 'unknown') {
+            let advStr = eventPlan.advance_status;
+            if (eventPlan.advance_amount) advStr += ` (${eventPlan.advance_amount} RON)`;
+            planItems.push({ label: 'Avans', value: advStr });
+        }
+        if (eventPlan.billing_details_status && eventPlan.billing_details_status !== 'missing') {
+            planItems.push({ label: 'Facturare', value: eventPlan.billing_details_status });
+        }
+
+        // Missing fields
         if ((eventPlan.missing_fields || []).length > 0) {
             planItems.push({ label: 'Lipsă', value: eventPlan.missing_fields.join(', ') });
         }
         planItems.push({ label: 'Completare', value: `${eventPlan.confidence || 0}%` });
+
+        // Archive / retention state
+        if (eventPlan.hidden_from_active_ui) planItems.push({ label: '⚠️ Ascuns din UI', value: 'Da' });
+        if (eventPlan.exclude_from_payroll) planItems.push({ label: '⚠️ Exclus payroll', value: 'Da' });
+        if (eventPlan.archived_at) planItems.push({ label: '📦 Arhivat la', value: eventPlan.archived_at });
+        if (eventPlan.operator_locked) planItems.push({ label: '🔒 Blocat operator', value: 'Da' });
+
         schema.push({ type: 'section', title: '📅 Plan Eveniment', items: planItems });
     }
 
@@ -395,3 +443,4 @@ export function buildBrainSchema({
 
     return schema;
 }
+

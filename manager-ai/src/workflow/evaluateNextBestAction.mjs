@@ -1,214 +1,276 @@
 /**
- * Next Best Action Engine
+ * Next Best Action Engine — Business-Real Edition
  *
- * Determines the optimal next action for the AI agent based on:
+ * Determines the AI's optimal next action based on:
  * - Goal state
- * - Event plan completeness
- * - Quote state
- * - Knowledge base match
- * - Escalation / human takeover status
+ * - Event plan completeness & readiness
+ * - Commercial closing fields (payment/invoice/advance)
+ * - Quote status
+ * - KB matches
+ * - Human takeover / escalation
+ *
+ * Pure logic — no DB calls.
  */
 
 /**
- * @param {object} params
- * @param {object} params.goalState       - from loadGoalState()
- * @param {object} params.eventPlan       - from loadOrCreateEventPlan()
- * @param {object} params.quoteState      - latest ai_quotes row or null
- * @param {object} params.kbMatch         - from knowledgeMatcher
- * @param {object} params.escalation      - from evaluateEscalation()
- * @param {boolean} params.humanTakeover  - is operator active?
- * @param {object} params.services        - detected services info
- * @returns {{ action: string, question: string|null, explanation: string, priority: string }}
+ * Priority order for missing fields when calculating next action.
+ * Fields asked first are more impactful for the sales flow.
  */
-export function evaluateNextBestAction({
-    goalState,
-    eventPlan,
-    quoteState,
-    kbMatch,
-    escalation,
-    humanTakeover = false,
-    services
-}) {
-    const state = goalState?.current_state || 'new_lead';
-    const plan = eventPlan || {};
+const FIELD_PRIORITY = [
+    { key: 'requested_services', action: 'discover_services', question: 'Ce servicii vă interesează?' },
+    { key: 'event_date', action: 'ask_event_date', question: 'Pentru ce dată doriți?' },
+    { key: 'location', action: 'ask_location', question: 'Unde va fi evenimentul?' },
+    { key: 'children_count_estimate', action: 'ask_children_count', question: 'Cam câți copii vor fi la petrecere?' },
+    { key: 'child_age', action: 'ask_child_age', question: 'Ce vârstă are copilul/sărbătoritul?' },
+    { key: 'event_time', action: 'ask_event_time', question: 'La ce oră ar fi evenimentul?' },
+    { key: 'selected_package', action: 'recommend_packages', question: 'Doriți să vedeți pachetele disponibile?' },
+    { key: 'payment_method_preference', action: 'clarify_payment_method', question: 'Cum preferați să faceți plata? (cash/card/transfer)' },
+    { key: 'invoice_requested', action: 'ask_invoice_needed', question: 'Doriți factură?' },
+    { key: 'advance_status', action: 'request_advance_confirmation', question: 'Vom avea nevoie de un avans pentru confirmare. Este ok?' }
+];
 
-    // ── Human takeover → defer ──
+/**
+ * Evaluate next best action.
+ *
+ * @param {object} ctx
+ * @param {object} ctx.goalState - { current_state, ... }
+ * @param {object} ctx.eventPlan - ai_event_plans row
+ * @param {object} ctx.quoteState - latest quote (if any)
+ * @param {object} ctx.kbMatch - KB match result (if any)
+ * @param {object} ctx.escalation - { needs_escalation, ... }
+ * @param {boolean} ctx.humanTakeover - whether operator has taken over
+ * @param {object} ctx.services - { selected, detection_status }
+ * @returns {{ action: string, question: string, explanation: string, priority: string, commercialReadiness: object }}
+ */
+export function evaluateNextBestAction(ctx) {
+    const { goalState, eventPlan, quoteState, kbMatch, escalation, humanTakeover, services } = ctx;
+    const state = goalState?.current_state || 'new_lead';
+    const missing = eventPlan?.missing_fields || [];
+
+    // ── Priority overrides ──
+
+    // 1. Human takeover — defer
     if (humanTakeover) {
         return {
             action: 'defer_to_operator',
-            question: null,
-            explanation: 'Operatorul a preluat conversația.',
-            priority: 'low'
+            question: '',
+            explanation: 'Operatorul a preluat conversația. AI-ul stă deoparte.',
+            priority: 'override',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
         };
     }
 
-    // ── Escalation needed → escalate ──
+    // 2. Escalation
     if (escalation?.needs_escalation) {
         return {
             action: 'escalate_to_operator',
-            question: null,
-            explanation: `Escalare: ${escalation.escalation_reason}`,
-            priority: 'high'
+            question: '',
+            explanation: `Escalare: ${escalation.escalation_reason || 'motiv necunoscut'}`,
+            priority: 'override',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
         };
     }
 
-    // ── KB factual query → answer from KB ──
-    if (kbMatch && kbMatch.score >= 0.75) {
+    // 3. KB answer available with high confidence
+    if (kbMatch && kbMatch.score >= 0.75 && ['discovery', 'greeting', 'service_selection'].includes(state)) {
         return {
             action: 'answer_from_knowledge_base',
-            question: null,
-            explanation: `Răspuns factual din KB: ${kbMatch.knowledgeKey} (scor ${kbMatch.score.toFixed(2)})`,
-            priority: 'high'
+            question: '',
+            explanation: `Răspuns din KB: ${kbMatch.knowledgeKey || 'match'} (scor=${kbMatch.score.toFixed(2)})`,
+            priority: 'high',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
         };
     }
 
     // ── State-specific actions ──
-    switch (state) {
-        case 'new_lead':
-        case 'greeting':
-            return {
-                action: 'greet_and_discover',
-                question: 'Cu ce vă putem ajuta?',
-                explanation: 'Client nou — întrebăm ce servicii dorește.',
-                priority: 'medium'
-            };
 
-        case 'discovery':
-            return {
-                action: 'discover_services',
-                question: 'Ce tip de eveniment planificați? Ce servicii vă interesează?',
-                explanation: 'Nu cunoaștem încă serviciile dorite.',
-                priority: 'medium'
-            };
-
-        case 'service_selection':
-            return {
-                action: 'confirm_services',
-                question: `Am înțeles că doriți: ${(plan.requested_services || []).join(', ')}. Este corect?`,
-                explanation: 'Servicii detectate, așteptăm confirmare.',
-                priority: 'medium'
-            };
-
-        case 'event_qualification': {
-            // Find what's missing
-            const missing = plan.missing_fields || [];
-            const missingLabels = {
-                event_date: 'data evenimentului',
-                location: 'locația',
-                guest_count: 'câți copii/invitați',
-                child_age: 'vârsta copilului',
-                event_time: 'ora'
-            };
-
-            if (missing.length > 0) {
-                const firstMissing = missing[0];
-                const label = missingLabels[firstMissing] || firstMissing;
-                return {
-                    action: `ask_${firstMissing}`,
-                    question: `Ne puteți spune ${label}?`,
-                    explanation: `Lipsesc ${missing.length} detalii: ${missing.join(', ')}`,
-                    priority: 'high'
-                };
-            }
-
-            // All filled → move to recommendation
-            return {
-                action: 'recommend_packages',
-                question: null,
-                explanation: 'Toate detaliile sunt completate. Putem recomanda pachete.',
-                priority: 'high'
-            };
-        }
-
-        case 'package_recommendation': {
-            const svcList = (plan.requested_services || []).join(', ');
-            return {
-                action: 'recommend_packages',
-                question: null,
-                explanation: `Recomandăm pachete pentru: ${svcList}. Așteptăm selecție.`,
-                priority: 'high'
-            };
-        }
-
-        case 'quotation_draft': {
-            if (quoteState?.status === 'draft') {
-                return {
-                    action: 'send_quote',
-                    question: 'Să vă trimit propunerea detaliată?',
-                    explanation: 'Ofertă draft pregătită. Așteptăm aprobarea de trimis.',
-                    priority: 'high'
-                };
-            }
-            return {
-                action: 'generate_quote_draft',
-                question: null,
-                explanation: 'Generăm oferta pe baza planului de eveniment.',
-                priority: 'high'
-            };
-        }
-
-        case 'quotation_sent':
-            return {
-                action: 'wait_for_client_decision',
-                question: null,
-                explanation: 'Ofertă trimisă. Așteptăm răspunsul clientului.',
-                priority: 'low'
-            };
-
-        case 'objection_handling':
-            return {
-                action: 'handle_objection',
-                question: null,
-                explanation: 'Clientul are obiecții. Oferim alternative sau clarificări.',
-                priority: 'high'
-            };
-
-        case 'booking_pending':
-            return {
-                action: 'confirm_booking',
-                question: 'Confirmăm totul? Vă trimit un rezumat.',
-                explanation: 'Client a acceptat. Așteptăm confirmare finală.',
-                priority: 'high'
-            };
-
-        case 'booking_confirmed':
-            return {
-                action: 'send_confirmation_recap',
-                question: null,
-                explanation: 'Rezervare confirmată. Trimitem recap.',
-                priority: 'medium'
-            };
-
-        case 'reschedule_pending':
-            return {
-                action: 'ask_new_date',
-                question: 'Pe ce dată doriți să reprogramăm?',
-                explanation: 'Client vrea reprogramare. Întrebăm noua dată.',
-                priority: 'high'
-            };
-
-        case 'cancelled':
-            return {
-                action: 'acknowledge_cancellation',
-                question: null,
-                explanation: 'Evenimentul a fost anulat.',
-                priority: 'low'
-            };
-
-        case 'completed':
-            return {
-                action: 'none',
-                question: null,
-                explanation: 'Conversație finalizată.',
-                priority: 'low'
-            };
-
-        default:
-            return {
-                action: 'discover_services',
-                question: 'Cu ce vă putem ajuta?',
-                explanation: 'Stare necunoscută — revenim la discovery.',
-                priority: 'medium'
-            };
+    // Greeting / New lead
+    if (['new_lead', 'greeting'].includes(state)) {
+        return {
+            action: 'greet_and_discover',
+            question: 'Cu ce vă pot ajuta?',
+            explanation: 'Conversație la început — salutăm și descoperim nevoile.',
+            priority: 'normal',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
     }
+
+    // Discovery
+    if (state === 'discovery') {
+        return {
+            action: 'discover_services',
+            question: 'Ce tip de eveniment planificați? Ce servicii v-ar interesa?',
+            explanation: 'Încă nu știm ce vrea clientul — descoperim.',
+            priority: 'normal',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Service selection
+    if (state === 'service_selection') {
+        return {
+            action: 'confirm_services',
+            question: `Am înțeles că doriți: ${(services?.selected || []).join(', ')}. Corect?`,
+            explanation: 'Servicii detectate, confirmăm cu clientul.',
+            priority: 'normal',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Event qualification — ask most important missing field
+    if (state === 'event_qualification') {
+        // Find highest priority missing field
+        for (const fp of FIELD_PRIORITY) {
+            if (missing.includes(fp.key) && fp.key !== 'selected_package' && fp.key !== 'payment_method_preference' && fp.key !== 'invoice_requested' && fp.key !== 'advance_status') {
+                return {
+                    action: fp.action,
+                    question: fp.question,
+                    explanation: `Lipsește ${fp.key} — întrebăm clientul.`,
+                    priority: 'normal',
+                    commercialReadiness: buildCommercialReadiness(eventPlan)
+                };
+            }
+        }
+        // All event fields filled — recommend packages
+        return {
+            action: 'recommend_packages',
+            question: 'Am toate detaliile. Doriți să vedeți pachetele disponibile?',
+            explanation: 'Detalii eveniment complete — trecem la recomandare.',
+            priority: 'normal',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Package recommendation
+    if (state === 'package_recommendation') {
+        return {
+            action: 'recommend_packages',
+            question: 'Vă recomandăm pachetele potrivite pentru evenimentul dumneavoastră.',
+            explanation: 'Readiness_for_recommendation = true — prezentăm pachete.',
+            priority: 'normal',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Quotation draft
+    if (state === 'quotation_draft') {
+        if (quoteState?.status === 'draft') {
+            return {
+                action: 'send_quote',
+                question: 'Am pregătit oferta. Doriți să o trimitem?',
+                explanation: 'Ofertă draft gata — așteptăm ok de la operator sau trimitere.',
+                priority: 'high',
+                commercialReadiness: buildCommercialReadiness(eventPlan)
+            };
+        }
+        return {
+            action: 'generate_quote_draft',
+            question: '',
+            explanation: 'Generăm ofertă draft pe baza planului.',
+            priority: 'high',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Quotation sent — wait
+    if (state === 'quotation_sent') {
+        return {
+            action: 'wait_for_client_decision',
+            question: '',
+            explanation: 'Ofertă trimisă — așteptăm decizia clientului.',
+            priority: 'low',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Objection handling
+    if (state === 'objection_handling') {
+        return {
+            action: 'handle_objection',
+            question: '',
+            explanation: 'Clientul are obiecții — procesăm și propunem alternativă.',
+            priority: 'high',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Booking pending — ask commercial fields
+    if (state === 'booking_pending') {
+        for (const fp of FIELD_PRIORITY) {
+            if (missing.includes(fp.key) && ['payment_method_preference', 'invoice_requested', 'advance_status'].includes(fp.key)) {
+                return {
+                    action: fp.action,
+                    question: fp.question,
+                    explanation: `Detaliu comercial lipsă: ${fp.key}`,
+                    priority: 'high',
+                    commercialReadiness: buildCommercialReadiness(eventPlan)
+                };
+            }
+        }
+        return {
+            action: 'confirm_booking',
+            question: 'Avem toate detaliile comerciale. Confirmăm rezervarea?',
+            explanation: 'Detalii comerciale complete — trecem la confirmare.',
+            priority: 'high',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Booking ready
+    if (state === 'booking_ready') {
+        return {
+            action: 'confirm_booking',
+            question: 'Totul este pregătit. Confirmăm rezervarea?',
+            explanation: 'Toate detaliile comerciale OK — gata de confirmare finală.',
+            priority: 'high',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Booking confirmed
+    if (state === 'booking_confirmed') {
+        return {
+            action: 'send_confirmation_recap',
+            question: '',
+            explanation: 'Rezervare confirmată — trimitem recap.',
+            priority: 'normal',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Cancelled / archived / completed
+    if (['cancelled', 'archived', 'completed'].includes(state)) {
+        return {
+            action: 'none',
+            question: '',
+            explanation: `Conversație ${state} — nicio acțiune necesară.`,
+            priority: 'none',
+            commercialReadiness: buildCommercialReadiness(eventPlan)
+        };
+    }
+
+    // Default fallback
+    return {
+        action: 'handoff_to_operator',
+        question: '',
+        explanation: `Stare necunoscută: ${state}`,
+        priority: 'low',
+        commercialReadiness: buildCommercialReadiness(eventPlan)
+    };
+}
+
+/**
+ * Build a summary of commercial readiness from the event plan.
+ */
+function buildCommercialReadiness(plan) {
+    if (!plan) return { paymentReady: false, invoiceReady: false, advanceReady: false };
+
+    return {
+        paymentReady: !!plan.payment_method_preference && plan.payment_method_preference !== 'unknown',
+        invoiceReady: !!plan.invoice_requested && plan.invoice_requested !== 'unknown',
+        advanceReady: !!plan.advance_status && !['unknown', 'none'].includes(plan.advance_status),
+        advanceAmount: plan.advance_amount || null,
+        billingStatus: plan.billing_details_status || 'missing',
+        paymentNotes: plan.payment_notes || null
+    };
 }

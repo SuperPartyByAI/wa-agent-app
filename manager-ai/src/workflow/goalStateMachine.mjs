@@ -30,7 +30,7 @@ export const GOAL_STATES = {
     },
     event_qualification: {
         description: 'Servicii confirmate, colectăm detalii eveniment',
-        allowedNext: ['package_recommendation', 'service_selection', 'cancelled'],
+        allowedNext: ['package_recommendation', 'service_selection', 'cancelled', 'archived'],
         nextBestAction: 'ask_missing_event_details',
     },
     package_recommendation: {
@@ -40,38 +40,48 @@ export const GOAL_STATES = {
     },
     quotation_draft: {
         description: 'Ofertă generată, în așteptare',
-        allowedNext: ['quotation_sent', 'package_recommendation', 'objection_handling', 'cancelled'],
+        allowedNext: ['quotation_sent', 'package_recommendation', 'objection_handling', 'cancelled', 'archived'],
         nextBestAction: 'send_or_refine_quote',
     },
     quotation_sent: {
         description: 'Ofertă trimisă clientului',
-        allowedNext: ['objection_handling', 'booking_pending', 'quotation_draft', 'cancelled'],
+        allowedNext: ['objection_handling', 'booking_pending', 'booking_ready', 'quotation_draft', 'cancelled', 'archived'],
         nextBestAction: 'wait_for_client_decision',
     },
     objection_handling: {
         description: 'Client are obiecții (preț, dată, etc.)',
-        allowedNext: ['quotation_draft', 'package_recommendation', 'booking_pending', 'cancelled'],
+        allowedNext: ['quotation_draft', 'package_recommendation', 'booking_pending', 'cancelled', 'archived'],
         nextBestAction: 'handle_objection',
     },
     booking_pending: {
-        description: 'Client a acceptat, așteptăm confirmare finală',
-        allowedNext: ['booking_confirmed', 'reschedule_pending', 'cancelled'],
+        description: 'Client a acceptat, așteptăm detalii comerciale (plată/factură/avans)',
+        allowedNext: ['booking_ready', 'booking_confirmed', 'reschedule_pending', 'cancelled', 'archived'],
+        nextBestAction: 'clarify_commercial_details',
+    },
+    booking_ready: {
+        description: 'Toate detaliile comerciale completate, gata de confirmare',
+        allowedNext: ['booking_confirmed', 'booking_pending', 'cancelled', 'archived'],
         nextBestAction: 'confirm_booking',
     },
     booking_confirmed: {
         description: 'Rezervare confirmată',
-        allowedNext: ['reschedule_pending', 'cancelled', 'completed'],
+        allowedNext: ['reschedule_pending', 'cancelled', 'completed', 'archived'],
         nextBestAction: 'send_confirmation_recap',
     },
     reschedule_pending: {
         description: 'Client vrea să reprogrameze',
-        allowedNext: ['event_qualification', 'booking_pending', 'cancelled'],
+        allowedNext: ['event_qualification', 'booking_pending', 'cancelled', 'archived'],
         nextBestAction: 'ask_new_date',
     },
     cancelled: {
-        description: 'Eveniment anulat',
-        allowedNext: ['discovery', 'service_selection'],
+        description: 'Eveniment anulat (soft — păstrat în CRM/istoric)',
+        allowedNext: ['discovery', 'service_selection', 'archived'],
         nextBestAction: 'acknowledge_cancellation',
+    },
+    archived: {
+        description: 'Conversație/eveniment arhivat (soft — reține istoric, exclus din activ)',
+        allowedNext: ['discovery', 'service_selection'],
+        nextBestAction: 'none',
     },
     completed: {
         description: 'Conversație finalizată',

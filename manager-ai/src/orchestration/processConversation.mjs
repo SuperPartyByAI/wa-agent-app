@@ -688,6 +688,7 @@ export async function processConversation(conversation_id, message_id = null, op
             planUpdates.missing_fields = planEval.missingFields;
             planUpdates.confirmed_fields = planEval.confirmedFields;
             planUpdates.confidence = planEval.confidence;
+            planUpdates.readiness_for_recommendation = planEval.readinessForRecommendation;
             planUpdates.readiness_for_quote = planEval.readinessForQuote;
             planUpdates.readiness_for_booking = planEval.readinessForBooking;
 

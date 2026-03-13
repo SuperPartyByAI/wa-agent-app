@@ -123,7 +123,7 @@ export async function buildQuoteDraft(eventPlan, options = {}) {
 
     // ── Assumptions ──
     if (!eventPlan.event_date) missingInfoNotes.push('Data evenimentului nu a fost specificată.');
-    if (!eventPlan.guest_count) missingInfoNotes.push('Numărul de invitați nu a fost specificat.');
+    if (!eventPlan.children_count_estimate && !eventPlan.guest_count) missingInfoNotes.push('Numărul de copii nu a fost specificat.');
     assumptions.push(`Transport: zona ${transportZone} — ${transportCost > 0 ? transportCost + ' lei' : 'inclus'}.`);
 
     // ── Build quote ──

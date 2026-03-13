@@ -29,17 +29,30 @@ IMPORTANT: Foloseste aceasta memorie in raspunsul sugerat. Daca locatia sau serv
         if ((eventPlan.requested_services || []).length > 0) parts.push(`Servicii cerute: ${eventPlan.requested_services.join(', ')}`);
         if (eventPlan.event_date) parts.push(`Data: ${eventPlan.event_date}`);
         if (eventPlan.location) parts.push(`Locatie: ${eventPlan.location}`);
-        if (eventPlan.guest_count) parts.push(`Invitati: ${eventPlan.guest_count}`);
+        if (eventPlan.children_count_estimate) parts.push(`Copii (est.): ${eventPlan.children_count_estimate}`);
         if (eventPlan.child_age) parts.push(`Varsta copil: ${eventPlan.child_age}`);
         if (eventPlan.event_type) parts.push(`Tip: ${eventPlan.event_type}`);
         if (eventPlan.selected_package) parts.push(`Pachet selectat: ${JSON.stringify(eventPlan.selected_package)}`);
+        // Commercial status
+        if (eventPlan.payment_method_preference && eventPlan.payment_method_preference !== 'unknown') {
+            parts.push(`Metoda plata: ${eventPlan.payment_method_preference}`);
+        }
+        if (eventPlan.invoice_requested && eventPlan.invoice_requested !== 'unknown') {
+            parts.push(`Factura: ${eventPlan.invoice_requested === 'true' ? 'DA' : 'NU'}`);
+        }
+        if (eventPlan.advance_status && eventPlan.advance_status !== 'unknown') {
+            parts.push(`Avans: ${eventPlan.advance_status}${eventPlan.advance_amount ? ' (' + eventPlan.advance_amount + ' RON)' : ''}`);
+        }
         if ((eventPlan.missing_fields || []).length > 0) parts.push(`CAMPURI LIPSA: ${eventPlan.missing_fields.join(', ')}`);
+        parts.push(`Gata recomandare: ${eventPlan.readiness_for_recommendation ? 'DA' : 'NU'}`);
         parts.push(`Gata de oferta: ${eventPlan.readiness_for_quote ? 'DA' : 'NU'}`);
+        parts.push(`Gata de rezervare: ${eventPlan.readiness_for_booking ? 'DA' : 'NU'}`);
         parts.push(`Completare: ${eventPlan.confidence || 0}%`);
 
         planBlock = `\n=== PLAN EVENIMENT CURENT ===
 ${parts.join('\n')}
 IMPORTANT: Nu intreba informatii deja completate. Cere DOAR campurile lipsa. Daca planul e gata de oferta, ofera sa faci propunere.
+Daca trebuie detalii comerciale (plata/factura/avans), intreaba natural, nu agresiv.
 === SFARSIT PLAN ===\n`;
     }
 
@@ -50,7 +63,7 @@ IMPORTANT: Nu intreba informatii deja completate. Cere DOAR campurile lipsa. Dac
 Etapa curenta: ${goalState.current_state}
 ${goalState.next_best_action ? 'Actiune recomandata: ' + goalState.next_best_action : ''}
 ${goalState.next_best_question ? 'Intrebare de pus: ' + goalState.next_best_question : ''}
-IMPORTANT: Comporta-te conform etapei. Nu sari peste pasi. Daca esti in event_qualification, cere detalii, nu oferi pachete. Daca esti in package_recommendation, recomanda pachete cu preturi din KB.
+IMPORTANT: Comporta-te conform etapei. Nu sari peste pasi. Daca esti in event_qualification, cere detalii, nu oferi pachete. Daca esti in package_recommendation, recomanda pachete cu preturi din KB. Daca esti in booking_pending, cere detalii comerciale (plata/factura/avans).
 === SFARSIT STARE ===\n`;
     }
 

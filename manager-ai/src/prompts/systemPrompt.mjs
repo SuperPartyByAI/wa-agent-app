@@ -1,4 +1,46 @@
 import { buildCatalogPromptBlock } from '../services/postProcessServices.mjs';
+import { ACTION_REGISTRY } from '../actions/actionRegistry.mjs';
+
+/**
+ * Builds the tools block for the system prompt dynamically.
+ * Prefers Context Pack snapshot if available, falls back to live registry.
+ */
+function buildToolsBlock(contextPack) {
+    const registry = contextPack?.action_registry_snapshot || {};
+    // Use context pack if it has tools, otherwise use live registry
+    const source = Object.keys(registry).length > 0 ? registry : null;
+    
+    if (!source) {
+        // Fallback: build from live ACTION_REGISTRY
+        return buildToolsFromLiveRegistry();
+    }
+
+    // Build from context pack snapshot
+    let idx = 1;
+    const lines = [];
+    for (const [name, entry] of Object.entries(source)) {
+        const args = [...(entry.requiredArgs || []), ...(entry.optionalArgs || [])];
+        const argsStr = args.length > 0 ? `arguments: { ${args.map(a => `"${a}": "..."`).join(', ')} }` : 'arguments: {}';
+        lines.push(`${idx}. "${name}": ${entry.description}\n   - ${argsStr}`);
+        idx++;
+    }
+    return lines.join('\n\n');
+}
+
+/**
+ * Fallback: builds the tools block directly from the live ACTION_REGISTRY.
+ */
+function buildToolsFromLiveRegistry() {
+    let idx = 1;
+    const lines = [];
+    for (const [name, entry] of Object.entries(ACTION_REGISTRY)) {
+        const props = Object.keys(entry.schema?.properties || {});
+        const argsStr = props.length > 0 ? `arguments: { ${props.map(p => `"${p}": "..."`).join(', ')} }` : 'arguments: {}';
+        lines.push(`${idx}. "${name}": ${entry.description}\n   - ${argsStr}`);
+        idx++;
+    }
+    return lines.join('\n\n');
+}
 
 /**
  * Builds the complete SYSTEM_PROMPT for the LLM.
@@ -6,7 +48,7 @@ import { buildCatalogPromptBlock } from '../services/postProcessServices.mjs';
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null } = {}) {
+export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
 
     // Build memory context block if we have existing memory
@@ -110,24 +152,9 @@ Returneaza un obiect JSON STRICT conform acestui format cu 2 chei principale:
 }
 
 === UNELTE DISPONIBILE PENTRU tool_action.name ===
-1. "reply_only": Foloseste cand doar discuti, raspunzi la intrebari generale, sau ceri detalii fara a avea date concrete de salvat.
-   - arguments: { "reason": "Motiv scurt intern" }
-
-2. "update_event_plan": Foloseste ACEASTA unealta cand clientul iti ofera informatii noi (data, locatie, nr copii, pachet ales, metoda plata, factura, avans).
-   - arguments: Extrage DOAR campurile pe care le-ai aflat acum (event_date, event_time, location, children_count_estimate, child_name, duration_hours, animator_count, selected_package, payment_method_preference, invoice_requested, advance_status).
-   
-3. "generate_quote_draft": Foloseste cand stadiul conversatiei este package_recommendation si clientul alege/confirma un pachet.
-   - arguments: { "target_package": "codul pachetului (ex: super_3_confetti)" }
-
-4. "confirm_booking_from_ai_plan": Foloseste cand clientul ZICE EXPLICIT "Da, confirm", "E perfect asa", si TOATE datele comerciale sunt deja gata.
-   - arguments: { "ai_event_plan_id": "Lasa gol daca nu stii, backend-ul il completeaza" }
-
-5. "archive_plan": Foloseste cand clientul anuleaza ferm, refuza oferta, sau conversatia s-a stins ("nu mai vreau", "anulam").
-   - arguments: { "reason": "Motivul anularii" }
-
-6. "handoff_to_operator": Foloseste cand clientul cere un om, se plange grav, sau cere lucruri juridice/financiare complexe.
-   - arguments: { "reason": "De ce e nevoie de om" }
+${buildToolsBlock(contextPack)}
 === SFARSIT UNELTE ===
+${contextPack ? `[context_pack v${contextPack.action_registry_version} | SHA:${(contextPack.deployed_commit_sha || '').substring(0, 8)} | prompt:${contextPack.prompt_version}]` : ''}
 
 REGULI GENERALE:
 - Alege CEA MAI BUNA UNEALTA (tool) care se potriveste intentiei curente.

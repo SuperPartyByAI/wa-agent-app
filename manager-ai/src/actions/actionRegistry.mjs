@@ -77,9 +77,8 @@ export const ACTION_REGISTRY = {
         schema: {
             type: 'object',
             properties: {
-                ai_event_plan_id: { type: 'string', description: 'The ID of the plan to confirm' }
-            },
-            required: ['ai_event_plan_id']
+                ai_event_plan_id: { type: 'string', description: 'Optional. The ID of the plan to confirm. If omitted, the system will infer it from the active context.' }
+            }
         },
         allowedGoalStates: [
             'booking_ready',

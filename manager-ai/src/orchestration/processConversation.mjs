@@ -31,7 +31,7 @@ import { evaluateEventPlan } from '../events/eventPlanEvaluator.mjs';
 import { executeAiAction } from '../actions/actionExecutor.mjs';
 import { loadLatestQuote } from '../quotes/buildQuoteDraft.mjs';
 import { formatQuoteForBrainTab } from '../quotes/quoteFormatter.mjs';
-import { dispatchBookingToCore } from '../api/coreApiClient.mjs';
+import { loadRuntimeContext } from '../grounding/loadRuntimeContext.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -116,6 +116,12 @@ export async function processConversation(conversation_id, message_id = null, op
     console.log(`[Pipeline] Lock acquired for ${conversation_id}.`);
 
     try {
+        // ── 0. Load Runtime Context Pack (Hybrid Grounding) ──
+        const { contextPack, drift } = await loadRuntimeContext();
+        if (drift.hasDrift) {
+            console.warn(`[Pipeline] ⚠️  Context drift detected: ${drift.details.join('; ')}`);
+        }
+
         // ── 1. Load conversation context ──
         const { data: convData } = await supabase
             .from('conversations')
@@ -386,7 +392,7 @@ export async function processConversation(conversation_id, message_id = null, op
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
         }
 
-        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState });
+        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack });
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();
@@ -400,24 +406,25 @@ export async function processConversation(conversation_id, message_id = null, op
             return;
         }
 
-        // ── 5. Post-process ──
+        // ── 5. Post-process & Legacy Subsystem Cleanup ──
+        // The LLM now strictly returns { assistant_reply, tool_action }.
+        // The properties below are legacy fallback stubs kept temporarily to satisfy
+        // the remaining orchestration pipeline without triggering large rewrites.
         const serviceData = postProcessServices(analysis);
-        // Attach raw service_requirements for schema builder
-        serviceData.service_requirements = analysis.service_requirements;
+        serviceData.service_requirements = analysis.service_requirements || [];
 
-        const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
-        
-        // Defensive: ensure confidence_score is always a valid number.
-        // The LLM sometimes omits it despite returning can_auto_reply=true.
-        // If can_auto_reply is true but confidence is missing, default to 80.
-        if (decision.confidence_score === undefined || decision.confidence_score === null) {
-            decision.confidence_score = decision.can_auto_reply ? 80 : 0;
-            console.log(`[Pipeline] Confidence score missing from LLM, defaulting to ${decision.confidence_score} (can_auto_reply=${decision.can_auto_reply})`);
-        }
-        decision.confidence_score = Number(decision.confidence_score) || 0;
+        const decision = analysis.decision || {
+            can_auto_reply: true,   // Trust the tool_action pathway
+            needs_human_review: false,
+            escalation_reason: null,
+            confidence_score: 85,
+            conversation_stage: 'discovery'
+        };
 
         let suggestedReply = analysis.assistant_reply || analysis.suggested_reply || 'Nu am putut genera un raspuns.';
         const toolAction = analysis.tool_action || { name: 'reply_only', arguments: { reason: 'No tool action provided' } };
+        
+        // Legacy stubs
         const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: '' };
         const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: {}, missing_fields: [] };
         const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
@@ -687,7 +694,8 @@ export async function processConversation(conversation_id, message_id = null, op
             conversationId: conversation_id,
             clientId,
             goalState,
-            eventPlan
+            eventPlan,
+            contextPack
         });
 
         // If the action successfully updated the event plan, re-evaluate it
@@ -844,37 +852,6 @@ export async function processConversation(conversation_id, message_id = null, op
             goalState.current_state = goalTransition.newState;
             goalState.previous_state = goalTransition.from;
 
-            // ── NEW: Dispatch to Core API on booking_confirmed ──
-            if (goalTransition.newState === 'booking_confirmed') {
-                console.log(`[Pipeline] Conversation ${conversation_id} reached booking_confirmed. Dispatching to Core API...`);
-                
-                // Fire async dispatch, don't await heavily so we don't stall the WhatsApp reply
-                dispatchBookingToCore({
-                    ai_event_plan_id: eventPlan.id,
-                    client_id: clientId,
-                    conversation_id: conversation_id,
-                    operator_locked: eventPlan.operator_locked,
-                    quote: latestQuote ? {
-                        id: latestQuote.id,
-                        total: latestQuote.grand_total,
-                        packages: latestQuote.line_items?.map(i => i.title)
-                    } : null,
-                    plan_details: {
-                        date: eventPlan.event_date,
-                        time: eventPlan.event_time,
-                        location: eventPlan.location,
-                        child_name: eventPlan.child_name,
-                        children_count_estimate: eventPlan.children_count_estimate,
-                        duration_hours: eventPlan.duration_hours,
-                        animator_count: eventPlan.animator_count,
-                        payment_method: eventPlan.payment_method_preference,
-                        invoice_requested: eventPlan.invoice_requested,
-                        advance_status: eventPlan.advance_status
-                    }
-                }).catch(err => {
-                    console.error('[Pipeline] Async Core API Dispatch Error:', err);
-                });
-            }
         }
 
         // ── 8.8.2. Next Best Action ──

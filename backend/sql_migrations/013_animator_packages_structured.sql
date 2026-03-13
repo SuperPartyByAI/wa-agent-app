@@ -160,7 +160,14 @@ SET
     question_patterns = ARRAY[
         'pachete animatie', 'animator copii', 'animatie petrecere',
         'ce aveti pentru petrecere', 'animator', 'animatie',
-        'ce pachete aveti', 'ce variante aveti', 'pachete animator'
+        'ce pachete aveti', 'ce variante aveti', 'pachete animator',
+        'ce include pachetul', 'ce include', 'ce contine pachetul',
+        'pachetul de 490', 'pachetul de 540', 'pachetul de 590',
+        'pachetul de 840', 'pachetul de 1290',
+        '490 lei', '540 lei', '590 lei', '840 lei', '1290 lei',
+        'include la animator', 'aveti cu popcorn', 'aveti cu vata',
+        'aveti cu confetti', 'aveti cu ursitoare', 'aveti cu tort',
+        'super 3', 'super 5'
     ],
     required_context = ARRAY['event_type', 'child_count', 'event_date', 'location'],
     updated_at = now()

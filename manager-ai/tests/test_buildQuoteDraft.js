@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 
-import { buildQuoteDraft } from './src/quotes/buildQuoteDraft.mjs';
+import { buildQuoteDraft } from '../src/quotes/buildQuoteDraft.mjs';
 
 async function test() {
     const eventPlan = {

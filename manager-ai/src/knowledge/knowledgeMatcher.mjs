@@ -121,7 +121,8 @@ function scoreServiceMatch(entryTags, detectedServices) {
 function scoreCategoryMatch(normMsg, entryCategory) {
     const catKeywords = {
         pricing: ['pret', 'preturi', 'costa', 'tarif', 'oferta', 'cat costa'],
-        services: ['pachete', 'aveti', 'oferiti', 'animatie', 'animator', 'baloane', 'vata', 'popcorn', 'ursitoare'],
+        services: ['animatie', 'animator', 'baloane', 'vata', 'popcorn', 'ursitoare'],
+        packages: ['pachete', 'pachet', 'aveti', 'oferiti', 'variante', 'include', 'contine', 'confetti', 'tort', 'banner'],
         faq: ['zone', 'acoperiti', 'veniti', 'cum', 'unde', 'cand', 'rezerv'],
         policy: ['politica', 'reguli', 'conditii', 'anulare', 'rambursare']
     };

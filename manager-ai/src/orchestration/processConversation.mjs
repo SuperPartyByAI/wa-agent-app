@@ -475,7 +475,17 @@ export async function processConversation(conversation_id, message_id = null, op
 
         // If strong KB match AND eligibility allows → send KB answer directly, skip LLM
         if (kbMatch && effectiveKbMode === 'kb_direct_answer' && eligibility.eligible) {
-            const kbReply = kbMatch.answer;
+            // Package presenter — detect intent + format reply (summary/detail/compare/pricing)
+            const { detectPackageIntent, formatPackageReply, hasStructuredPackages } = await import('../knowledge/packagePresenter.mjs');
+            let kbReply;
+
+            if (hasStructuredPackages(kbMatch)) {
+                const intent = detectPackageIntent(lastClientMessageText);
+                kbReply = formatPackageReply(kbMatch, intent, conversation_id);
+                console.log(`[Pipeline] Package presenter: mode=${intent.mode}, feature=${intent.feature}, price=${intent.priceFilter}`);
+            } else {
+                kbReply = kbMatch.answer;
+            }
 
             // Run shouldReplyNow — respects ALL guards
             const kbReplyDecision = await shouldReplyNow({

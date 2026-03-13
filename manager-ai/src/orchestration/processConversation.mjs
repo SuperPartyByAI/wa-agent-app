@@ -34,6 +34,8 @@ import { loadLatestQuote } from '../quotes/buildQuoteDraft.mjs';
 import { formatQuoteForBrainTab } from '../quotes/quoteFormatter.mjs';
 import { loadRuntimeContext } from '../grounding/loadRuntimeContext.mjs';
 import { evaluateSafetyClass } from '../policy/evaluateSafetyClass.mjs';
+import { shouldIncludeInWave1, isWave1Eligible } from '../rollout/wave1Controller.mjs';
+import { evaluateRollback } from '../rollout/rollbackEvaluator.mjs';
 import {
     AI_SHADOW_MODE_ENABLED, AI_SAFE_AUTOREPLY_ENABLED, AI_FULL_AUTOREPLY_ENABLED
 } from '../config/env.mjs';
@@ -1047,13 +1049,29 @@ export async function processConversation(conversation_id, message_id = null, op
             replyDecisionResult = { decision: 'shadow_hold', reason: `shadow_mode: ${safetyResult.safetyClass}` };
             console.log(`[Pipeline] Shadow mode: holding reply (safety=${safetyResult.safetyClass})`);
         }
-        // Safe autoreply mode: only send if safety class allows
-        else if (operationalMode === 'safe_autoreply_mode' && safetyResult.safetyClass !== 'safe_autoreply_allowed') {
-            replyStatus = 'pending_review';
-            sentBy = 'safety_hold';
-            replyDecisionResult = { decision: 'safety_hold', reason: safetyResult.reasons.join('; ') };
-            console.log(`[Pipeline] Safe autoreply: holding for review (safety=${safetyResult.safetyClass})`);
-        } else {
+        // Safe autoreply mode: cohort + eligibility + safety check
+        else if (operationalMode === 'safe_autoreply_mode') {
+            // Wave 1 cohort check
+            const cohort = shouldIncludeInWave1(conversation_id, clientId, 'whatsapp');
+            const wave1Elig = isWave1Eligible({
+                safetyClass: safetyResult.safetyClass,
+                decision, toolAction, goalState, escalation,
+                relationshipData, mutation,
+                ambiguityDetected: decision.needs_human_review,
+                identityUncertain: false
+            });
+            console.log(`[Pipeline] Wave1: cohort=${cohort.included} (${cohort.reason}), eligible=${wave1Elig.eligible} (${wave1Elig.blockers.join('; ') || 'all_clear'})`);
+
+            if (!cohort.included || !wave1Elig.eligible || safetyResult.safetyClass !== 'safe_autoreply_allowed') {
+                replyStatus = cohort.included ? 'pending_review' : 'shadow';
+                sentBy = !cohort.included ? 'cohort_excluded' : 'safety_hold';
+                replyDecisionResult = { decision: cohort.included ? 'safety_hold' : 'cohort_excluded',
+                    reason: !cohort.included ? cohort.reason : (wave1Elig.blockers.join('; ') || safetyResult.reasons.join('; ')) };
+                console.log(`[Pipeline] Wave1 hold: ${replyDecisionResult.decision} — ${replyDecisionResult.reason}`);
+            }
+        }
+        // Wave 1 / safe autoreply send path (only when included + eligible + safe)
+        if (operationalMode === 'safe_autoreply_mode' && replyStatus === 'pending') {
 
         // KB score-based bypass for composer path (same as KB direct answer bypass)
         const kbComposerBypass = kbMatch && kbMatch.score >= 0.75 && kbGroundingContext && !eligibility.eligible;

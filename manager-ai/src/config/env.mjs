@@ -48,3 +48,16 @@ export const AI_WAVE1_MIN_SAMPLE_SIZE = parseInt(process.env.AI_WAVE1_MIN_SAMPLE
 export const AI_WAVE2_MIN_APPROVAL_RATE = parseInt(process.env.AI_WAVE2_MIN_APPROVAL_RATE || '90', 10);
 export const AI_WAVE2_MAX_EDIT_RATE = parseInt(process.env.AI_WAVE2_MAX_EDIT_RATE || '15', 10);
 export const AI_WAVE2_MIN_SAMPLE_SIZE = parseInt(process.env.AI_WAVE2_MIN_SAMPLE_SIZE || '50', 10);
+
+// ─── Phase 4: Wave 1 Live Rollout ───
+export const AI_WAVE1_ENABLED = process.env.AI_WAVE1_ENABLED === 'true'; // default OFF
+export const AI_WAVE1_TRAFFIC_PERCENT = parseInt(process.env.AI_WAVE1_TRAFFIC_PERCENT || '5', 10);
+export const AI_WAVE1_ALLOWED_CHANNELS = (process.env.AI_WAVE1_ALLOWED_CHANNELS || 'whatsapp').split(',').map(s => s.trim());
+export const AI_WAVE1_AUTO_ROLLBACK_ENABLED = process.env.AI_WAVE1_AUTO_ROLLBACK_ENABLED !== 'false'; // default ON
+export const AI_WAVE1_ROLLBACK_EVAL_WINDOW_HOURS = parseInt(process.env.AI_WAVE1_ROLLBACK_EVAL_WINDOW_HOURS || '4', 10);
+export const AI_WAVE1_ROLLBACK_MIN_SAMPLE = parseInt(process.env.AI_WAVE1_ROLLBACK_MIN_SAMPLE || '5', 10);
+export const AI_WAVE1_MAX_DUPLICATES_ROLLBACK = parseInt(process.env.AI_WAVE1_MAX_DUPLICATES_ROLLBACK || '0', 10);
+export const AI_WAVE1_MAX_DANGEROUS_RATE_ROLLBACK = parseInt(process.env.AI_WAVE1_MAX_DANGEROUS_RATE_ROLLBACK || '5', 10);
+export const AI_WAVE1_MAX_WRONG_TOOL_RATE_ROLLBACK = parseInt(process.env.AI_WAVE1_MAX_WRONG_TOOL_RATE_ROLLBACK || '10', 10);
+export const AI_WAVE1_MAX_MISUNDERSTOOD_RATE_ROLLBACK = parseInt(process.env.AI_WAVE1_MAX_MISUNDERSTOOD_RATE_ROLLBACK || '10', 10);
+export const AI_WAVE1_MAX_CLARIFICATION_FAILURE_ROLLBACK = parseInt(process.env.AI_WAVE1_MAX_CLARIFICATION_FAILURE_ROLLBACK || '15', 10);

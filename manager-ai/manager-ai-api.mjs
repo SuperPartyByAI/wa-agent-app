@@ -208,6 +208,8 @@ import { computeShadowAnalytics } from './src/analytics/shadowAnalytics.mjs';
 import { evaluateFullGate, checkSchemaReady } from './src/rollout/rolloutGate.mjs';
 import { getCurrentRolloutState, transitionRolloutState, autoEvaluateRollout, getRolloutHistory } from './src/rollout/rolloutStateMachine.mjs';
 import { getOperatorReviewData } from './src/feedback/operatorReviewData.mjs';
+import { computeScorecard } from './src/analytics/operatorScorecard.mjs';
+import { executeAutoRollback, evaluateRollback } from './src/rollout/rollbackEvaluator.mjs';
 
 // ─── Audit Endpoints for Controlled Activation Pilot ───
 
@@ -371,6 +373,92 @@ app.get('/api/ai/review/:decision_id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// ─── Phase 4: Scorecard + Intervention + Rollback ───
+app.get('/api/ai/scorecard', async (req, res) => {
+    try {
+        const hours = parseInt(req.query.hours || '24', 10);
+        const stage = req.query.stage || null;
+        const groupBy = req.query.group_by || 'overall';
+        const scorecard = await computeScorecard({ hours, stage, groupBy });
+        res.json(scorecard);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/ai/rollout/pause', async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const result = await transitionRolloutState('shadow_only', reason || 'operator_pause', 'operator');
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/ai/rollout/resume', async (req, res) => {
+    try {
+        const state = await getCurrentRolloutState();
+        if (state.current_state === 'rollout_blocked') {
+            return res.status(400).json({ error: 'Cannot resume from rollout_blocked. Use /rollout/force to reset to shadow_only first.' });
+        }
+        const { target, reason } = req.body;
+        const result = await transitionRolloutState(target || 'wave1_candidate', reason || 'operator_resume', 'operator');
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/ai/rollout/force', async (req, res) => {
+    try {
+        const { target_state, reason } = req.body;
+        if (!target_state || !reason) {
+            return res.status(400).json({ error: 'target_state and reason required' });
+        }
+        if (target_state === 'wave2_candidate' || target_state === 'wave2_enabled') {
+            return res.status(403).json({ error: 'Cannot force Wave 2 states' });
+        }
+        const result = await transitionRolloutState(target_state, reason, 'admin');
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/ai/rollout/incidents', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('ai_rollout_state')
+            .select('*')
+            .eq('changed_by', 'system_rollback')
+            .order('created_at', { ascending: false })
+            .limit(20);
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/ai/rollback/trigger', async (req, res) => {
+    try {
+        const result = await executeAutoRollback();
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/ai/rollback/check', async (req, res) => {
+    try {
+        const hours = parseInt(req.query.hours || '4', 10);
+        const result = await evaluateRollback(hours);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
@@ -380,7 +468,6 @@ app.listen(PORT, '0.0.0.0', () => {
         : 'LEGACY';
     console.log(`🚀 ManagerAi API is running on port ${PORT}`);
     console.log(`   Operational Mode: ${mode}`);
-    console.log(`   AI_AUTOREPLY_ENABLED: ${process.env.AI_AUTOREPLY_ENABLED === 'true' ? '✅ ON' : '❌ OFF (safe mode)'}`);
-    console.log(`   AI_SHADOW_MODE: ${process.env.AI_SHADOW_MODE_ENABLED === 'true' ? '👁️ ON' : '❌ OFF'}`);
-    console.log(`   AI_SAFE_AUTOREPLY: ${process.env.AI_SAFE_AUTOREPLY_ENABLED === 'true' ? '🟢 ON' : '❌ OFF'}`);
+    console.log(`   Wave1: ${process.env.AI_WAVE1_ENABLED === 'true' ? '🟢 ON' : '❌ OFF'} (${process.env.AI_WAVE1_TRAFFIC_PERCENT || 5}% traffic)`);
+    console.log(`   Auto-Rollback: ${process.env.AI_WAVE1_AUTO_ROLLBACK_ENABLED !== 'false' ? '✅ ON' : '❌ OFF'}`);
 });

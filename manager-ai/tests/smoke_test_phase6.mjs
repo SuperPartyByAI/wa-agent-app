@@ -57,8 +57,8 @@ async function main() {
     // ═══ TEST 2: Readiness detects missing condition correctly ═══
     const { data: ctx } = await supabase.from('ai_runtime_context')
         .select('version, deployed_commit_sha, is_active')
-        .eq('is_active', true).limit(1).maybeSingle();
-    const hasCtx = !!ctx;
+        .order('published_at', { ascending: false }).limit(1).maybeSingle();
+    const hasCtx = !!ctx && !!ctx.version;
     const readyForShadow = schemaResult.ready && hasCtx;
     logResult(2, 'Readiness detects context pack + schema', readyForShadow, {
         schema_ready: schemaResult.ready,

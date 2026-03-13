@@ -5,7 +5,13 @@ dotenv.config();
 export const SUPABASE_URL = process.env.SUPABASE_URL;
 export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// ─── Local LLM (Ollama) ───
+// ─── Gemini API (primary) ───
+export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
+export const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
+export const GEMINI_TIMEOUT_MS = parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10);
+
+// ─── Local LLM (Ollama fallback) ───
 export const LLM_BASE_URL = process.env.LOCAL_LLM_BASE_URL || 'http://localhost:11434';
 export const LLM_MODEL = process.env.LOCAL_LLM_MODEL || 'qwen2.5:7b';
 export const LLM_TIMEOUT_MS = parseInt(process.env.LLM_TIMEOUT_MS || '180000', 10);

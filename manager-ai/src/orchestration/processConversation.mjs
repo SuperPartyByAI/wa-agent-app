@@ -837,7 +837,7 @@ export async function processConversation(conversation_id, message_id = null, op
             quoteState: latestQuote,
             kbMatch,
             escalation,
-            humanTakeover: replyDecisionResult?.humanTakeoverActive || false,
+            humanTakeover: operatorStatus ? !operatorStatus.ai_enabled : false,
             services: {
                 selected: serviceData.selected_services,
                 detection_status: serviceConfidence?.service_detection_status

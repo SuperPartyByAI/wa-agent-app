@@ -32,7 +32,7 @@ export async function composeContextualPackageReply(formattedPackages, conversat
     const CONTEXT_PROMPT = `Ești agent de vânzări la o firmă de animație petreceri copii.
 Citește conversația de mai jos și scrie DOAR:
 1. INTRO (1-2 rânduri): salut cald + confirmă orice detaliu menționat de client (dată, număr copii, tip eveniment, locație). Dacă nu a dat detalii, salut scurt.
-2. OUTRO (1 rând): recomandare scurtă sau întrebare despre ce lipsește (dată, nr copii, tip eveniment).
+2. OUTRO (1-2 rânduri): întreabă ce lipsește din: dată, număr copii, durată dorită, tip eveniment. Menționează că ora extra costă 170 lei/oră dacă clientul vrea mai mult decât durata din pachet.
 
 NU lista pachete sau prețuri. NU inventa detalii. Ton cald, natural, ca un om.
 
@@ -250,7 +250,8 @@ function formatSummary(packages, transportNote) {
     });
 
     lines.push(`\n${transportNote}.`);
-    lines.push('\nSpune-mi numărul pachetului care te interesează și îți dau toate detaliile! 😊');
+    lines.push('\n⏰ Oră extra: *+170 lei/oră*');
+    lines.push('\nSpune-mi numărul pachetului și pe câte ore ai nevoie, și îți fac calculul exact! 😊');
 
     return lines.join('\n\n');
 }

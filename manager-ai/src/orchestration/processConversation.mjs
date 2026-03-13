@@ -838,6 +838,20 @@ export async function processConversation(conversation_id, message_id = null, op
             });
 
             if (replyDecisionResult.decision === 'reply_now') {
+                // Anti-duplicate guard: check if we already sent recently (prevents catchup + webhook double-send)
+                const { data: recentOutbound } = await supabase
+                    .from('messages')
+                    .select('id')
+                    .eq('conversation_id', conversation_id)
+                    .eq('direction', 'outbound')
+                    .gt('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString()) // last 3 min
+                    .limit(1);
+                if (recentOutbound && recentOutbound.length > 0) {
+                    console.log(`[Pipeline] Anti-duplicate: outbound msg found in last 3min, skipping send`);
+                    replyStatus = 'blocked';
+                    sentBy = 'anti_duplicate';
+                    replyDecisionResult = { decision: 'blocked_duplicate', reason: 'recent_outbound_exists' };
+                } else {
                 console.log(`[Pipeline] Auto-reply ALLOWED (confidence=${decision.confidence_score}, style=${composerResult.replyStyle}, reason=${replyDecisionResult.reason}). Sending...`);
                 const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
                 if (sent) {
@@ -850,6 +864,7 @@ export async function processConversation(conversation_id, message_id = null, op
                 recordEvent('decision_reply_now', conversation_id, {
                     confidence: decision.confidence_score, style: composerResult.replyStyle
                 });
+                } // end anti-duplicate else
             } else {
                 replyStatus = 'blocked';
                 sentBy = 'reply_engine';

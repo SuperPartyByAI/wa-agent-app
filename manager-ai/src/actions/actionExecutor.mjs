@@ -69,6 +69,10 @@ export async function executeAiAction(toolAction, context) {
                     return { success: false, message: 'Event plan is locked by an operator.', audit };
                 }
                 
+                // Diagnostic: log what fields the LLM extracted
+                const updateKeys = Object.keys(args).filter(k => args[k] !== undefined && args[k] !== null);
+                console.log(`[Executor] update_event_plan args: ${JSON.stringify(args)} (${updateKeys.length} fields: ${updateKeys.join(', ')})`);
+                
                 await updateEventPlan(eventPlan.id, conversationId, args, 'ai', 'action_executor');
                 return { success: true, message: 'Event plan updated safely.', audit };
 

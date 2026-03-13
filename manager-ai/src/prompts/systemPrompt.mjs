@@ -160,5 +160,10 @@ REGULI GENERALE:
 - Alege CEA MAI BUNA UNEALTA (tool) care se potriveste intentiei curente.
 - Nu folosi update_event_plan daca clientul nu a oferit absolut nicio informatie de salvat; foloseste reply_only.
 - Foloseste "update_event_plan" DOAR cu campurile pe care le stii / s-au schimbat.
+- CRITIC: Cand folosesti update_event_plan, PUNE in arguments FIECARE CAMP extras din mesaj.
+  Exemplu: daca clientul zice "vreau pe 20 aprilie in Bucuresti", arguments TREBUIE sa contina:
+  { "event_date": "2026-04-20", "location": "București" }
+  NU lasa arguments gol — daca ai ales update_event_plan, PUNE datele in arguments!
+- Formate acceptate: event_date=YYYY-MM-DD, event_time=HH:MM, children_count_estimate=numar, location=text, selected_package=text, invoice_requested=true/false, payment_method_preference=text, advance_status=text.
 - Trebuie sa raspunzi DOAR acel format JSON cu 2 randuri, nimic inainte sau dupa.`;
 }

@@ -7,6 +7,30 @@
  */
 
 /**
+ * Check if event plan has at least one entity field populated.
+ */
+function hasEntityData(plan) {
+    if (!plan) return false;
+    return !!(plan.event_date || plan.location || plan.children_count_estimate ||
+              plan.child_name || plan.event_time || plan.duration_hours || plan.event_type);
+}
+
+/**
+ * Check if event plan has multiple entity fields — enough for event_qualification.
+ * Requires at least 2 of: date, location, children count, event type.
+ */
+function hasSignificantEntityData(plan) {
+    if (!plan) return false;
+    let count = 0;
+    if (plan.event_date) count++;
+    if (plan.location) count++;
+    if (plan.children_count_estimate) count++;
+    if (plan.event_type) count++;
+    if (plan.child_name) count++;
+    return count >= 2;
+}
+
+/**
  * Evaluate whether the conversation should transition to a new goal state.
  *
  * @param {object} ctx
@@ -54,7 +78,7 @@ export function evaluateGoalTransition(ctx) {
     // ── State-specific transitions ──
     switch (currentState) {
         case 'new_lead':
-            if (isGreeting && selected.length === 0) {
+            if (isGreeting && selected.length === 0 && !hasEntityData(eventPlan)) {
                 result.shouldTransition = true;
                 result.newState = 'greeting';
                 result.reason = 'greeting_detected';
@@ -62,6 +86,16 @@ export function evaluateGoalTransition(ctx) {
                 result.shouldTransition = true;
                 result.newState = 'service_selection';
                 result.reason = 'services_detected_immediately';
+            } else if (hasSignificantEntityData(eventPlan)) {
+                // Client provided multiple details (date + location, etc.) — skip to event_qualification
+                result.shouldTransition = true;
+                result.newState = 'event_qualification';
+                result.reason = 'multiple_entity_details_provided';
+            } else if (hasEntityData(eventPlan)) {
+                // Client mentioned some event details without specific services
+                result.shouldTransition = true;
+                result.newState = 'discovery';
+                result.reason = 'entity_data_detected_without_services';
             }
             break;
 
@@ -70,6 +104,10 @@ export function evaluateGoalTransition(ctx) {
                 result.shouldTransition = true;
                 result.newState = 'service_selection';
                 result.reason = 'services_detected_after_greeting';
+            } else if (hasEntityData(eventPlan)) {
+                result.shouldTransition = true;
+                result.newState = 'discovery';
+                result.reason = 'entity_data_after_greeting';
             } else if (msg.length > 10) {
                 result.shouldTransition = true;
                 result.newState = 'discovery';
@@ -82,6 +120,10 @@ export function evaluateGoalTransition(ctx) {
                 result.shouldTransition = true;
                 result.newState = 'service_selection';
                 result.reason = 'services_identified_from_discovery';
+            } else if (hasSignificantEntityData(eventPlan)) {
+                result.shouldTransition = true;
+                result.newState = 'event_qualification';
+                result.reason = 'entity_details_accumulated_in_discovery';
             }
             break;
 

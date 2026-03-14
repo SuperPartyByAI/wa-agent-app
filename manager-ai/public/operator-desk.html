@@ -315,7 +315,7 @@ function avInit(name) {
 
 // INIT HELPER
 function checkH(){fetch(`${API}/health`).then(r=>r.json()).then(d=>{
-  const h=document.getElementById('hDot');h.textContent=`${d.status} · v2.1`;h.style.color=d.status==='ok'?'var(--gr)':'var(--rd)';
+  const h=document.getElementById('hDot');h.textContent=`${d.status} · v2.2 (UI Nou)`;h.style.color=d.status==='ok'?'var(--gr)':'var(--rd)';
 }).catch(e=>{const h=document.getElementById('hDot');h.textContent='Offline';h.style.color='var(--rd)';})}
 
 document.querySelectorAll('.fb').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.fb').forEach(x=>x.classList.remove('act'));f.classList.add('act');filt=f.dataset.f;renderList()}));
@@ -413,18 +413,22 @@ async function selConv(id){
       }
 
     // 3. Full Conversation + AI Draft appended inline
+    // 3. Full Conversation (Clickable Client Messages)
     html += `
       <div class="msgs" id="mA" style="background:var(--bg); flex:1">
-      ${msgs.length?[...msgs].reverse().map(m=>{const w=m.sender_type==='client'?'mc':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='mc'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}
-      
-      <!-- AI Draft Inline Block -->
-      <div class="ab" style="background:var(--bg2);padding:16px;border-radius:var(--r);margin-top:14px;border:1px solid var(--bd);">
-        <div class="al" style="font-size:11px;color:var(--tx);margin-bottom:8px">🤖 Draft Răspuns AI:
-          ${tool?`<span class="ta">🔧 ${esc(tool)}</span>`:''}
-          ${conf?`<span class="sf sf-ok" style="background:transparent;border:1px solid var(--bd);color:var(--tx3)">${conf}% acuratețe</span>`:''}
-        </div>
-        <textarea class="at" id="aiTx" style="height:70px;font-size:13px;border-color:#3b4054" ${!aiR && !tool ? 'placeholder="Scrie un răspuns manual..."' : ''}>${esc(aiR)}</textarea>
-      </div>
+      ${msgs.length?[...msgs].reverse().map(m=>{
+        const w=m.sender_type==='client'?'mc':m.sender_type==='ai'?'ai':'ag';
+        const isC = w==='mc';
+        const dJson = isC ? encodeURIComponent(JSON.stringify({
+            txt: m.ai_reply || '',
+            tool: m.tool_action || '',
+            safe: m.safety_class || '',
+            conf: m.confidence || '',
+            dec: m.ai_decision_id || curDec
+        })) : '';
+        const clk = isC ? `onclick="xpD(this, '${dJson}')" style="cursor:pointer; transition:transform 0.1s" onmouseover="this.style.transform='scale(1.01)'" onmouseout="this.style.transform='scale(1)'"` : '';
+        return`<div class="m ${w}" ${clk}><div class="mw">${isC?'👤 Client (Apasă pentru Draft AI)' : w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`
+      }).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}
     </div>`;
 
     cp.innerHTML = html;
@@ -432,36 +436,74 @@ async function selConv(id){
   }catch(e){cp.innerHTML=`<div class="es" style="color:var(--rd)">Eroare: ${e.message}</div>`}
 }
 
-// REAL OPERATOR ACTIONS
-async function doAct(type){
-  const txt=document.getElementById('aiTx')?.value||'';
+// TIMELINE INLINE DRAFT
+let cDbx = null;
+function xpD(el, j) {
+    if (cDbx) cDbx.remove();
+    if (!j) return;
+    const p = JSON.parse(decodeURIComponent(j));
+    if (!p.txt && !p.tool) { toast('Nu există draft pentru acest mesaj.', false); return; }
+    
+    const bx = document.createElement('div');
+    bx.className = 'ab inline-draft';
+    bx.style.cssText = 'background:var(--bg2);padding:14px;border-radius:var(--r);margin-top:4px;margin-bottom:16px;border:1px solid var(--ac);margin-left:auto;width:95%;box-shadow:0 4px 12px rgba(0,0,0,0.1);animation:si 0.2s ease-out;';
+    
+    bx.innerHTML = `
+        <div class="al" style="font-size:11px;color:var(--tx);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+          <div>🤖 Draft Răspuns AI:
+            ${p.tool?`<span class="ta">🔧 ${esc(p.tool)}</span>`:''}
+            ${p.conf?`<span class="sf sf-ok" style="background:transparent;border:1px solid var(--bd);color:var(--tx3)">${p.conf}% acuratețe</span>`:''}
+          </div>
+          <button onclick="this.parentElement.parentElement.remove()" style="background:transparent;border:none;color:var(--tx3);cursor:pointer;font-size:16px">×</button>
+        </div>
+        <textarea class="at rxInl" style="height:70px;font-size:13px;border-color:#3b4054">${esc(p.txt)}</textarea>
+        <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn ok" onclick="doActI('approve', '${p.dec}', this)">✅ Aprobă Răspunsul</button>
+            <button class="btn wr" onclick="doActI('save_edit', '${p.dec}', this)">🎓 Corectează Manual</button>
+        </div>
+    `;
+    el.parentNode.insertBefore(bx, el.nextSibling);
+    cDbx = bx;
+}
+
+// REAL OPERATOR ACTIONS (INLINE)
+async function doActI(type, did, btn){
+  const txt = btn.parentElement.parentElement.querySelector('.rxInl').value||'';
   try{
     let ep,body;
     if(type==='approve'){
-      ep='/api/operator/action/approve';body={conversation_id:selId,decision_id:curDec,reply_text:txt};
+      ep='/api/operator/action/approve';body={conversation_id:selId,decision_id:did||curDec,reply_text:txt};
     }else if(type==='save_edit'){
-      ep='/api/operator/action/edit';body={conversation_id:selId,decision_id:curDec,original_reply:inbox.find(i=>i.id===selId)?.ai_reply||'',edited_reply:txt};
-    }else if(type==='clarify'){
-      ep='/api/operator/action/clarify';body={conversation_id:selId,decision_id:curDec,reason:'Operatorul a cerut clarificare'};
-    }else if(type==='handoff'){
-      ep='/api/operator/action/handoff';body={conversation_id:selId,decision_id:curDec,reason:'Handoff manual de la operator'};
+      ep='/api/operator/action/edit';body={conversation_id:selId,decision_id:did||curDec,original_reply:'',edited_reply:txt};
     }else return;
     const r=await fetch(`${API}${ep}`,{method:'POST',headers:H(),body:JSON.stringify(body)});
     const d=await r.json();
-    if(d.ok){toast({approve:'✓ Aprobat — efect real',save_edit:'💾 Editare salvată — corecție înregistrată',clarify:'? Marcat: necesită clarificare',handoff:'→ Trimis la operator — autoreply blocat'}[type]||'Salvat');await loadInbox()}
+    if(d.ok){toast({approve:'✓ Aprobat — efect real',save_edit:'💾 Editare salvată — corecție înregistrată'}[type]||'Salvat');if(cDbx)cDbx.remove();await loadInbox()}
     else toast('Eroare: '+(d.error||'necunoscut'),false);
   }catch(e){toast('Eroare: '+e.message,false)}
 }
+
 
 // MEMORY
 function tgMem(show,cid){const p=document.getElementById('rP');if(show){p.classList.remove('hid');p.style.display='flex';loadMem(cid||curCl)}else{p.classList.add('hid');p.style.display='none'}}
 async function loadMem(cid){if(!cid)return;const b=document.getElementById('mB');b.innerHTML='<div style="color:var(--tx3);padding:14px">Se încarcă...</div>';
   try{const r=await fetch(`${API}/api/admin/memory/${cid}`,{headers:H()});const d=await r.json();const mem=d.memory||{},plans=d.event_plans||[],quotes=d.quotes||[];
     document.getElementById('mN').textContent=mem.client_name||'Client';
-    b.innerHTML=`<div class="ms"><h4>Profil</h4>${mf('Nume',mem.client_name||'—')}${mf('Locație',mem.location||mem.preferences?.location||'—')}${mf('Servicii',(mem.services_requested||[]).join(', ')||'—')}${mf('Recurent',mem.is_recurring?'✓ Da':'Nu')}</div>
+    const autoActs=(d.ai_decisions||[]).filter(x=>x.reply_status==='sent'||x.operational_mode==='safe_autoreply_mode');
+    b.innerHTML=`
+      <div class="ms" style="border-left: 3px solid var(--ac)">
+        <h4>⚡️ Dashboard Activitate Automată AI</h4>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">Acțiunile trimise direct de AI fără validarea ta.</div>
+        ${autoActs.length ? autoActs.map(x=>`<div class="mf" style="flex-direction:column;align-items:flex-start;gap:6px;background:var(--bg);padding:10px;border-radius:6px;margin-bottom:8px">
+            <div class="l" style="font-size:10px;color:var(--ac)">${new Date(x.created_at).toLocaleString('ro-RO')} · ${x.confidence_score||'?'}% Siguranță</div>
+            <div class="v" style="font-size:12px;color:var(--tx);white-space:normal;line-height:1.4">${esc(x.suggested_reply||x.tool_action_suggested)}</div>
+        </div>`).join('') : '<div style="font-size:12px;color:var(--tx3);text-align:center;padding:10px">Nicio acțiune autonomă recentă.</div>'}
+      </div>
+      
+      <div class="ms"><h4>📋 Profil Client</h4>${mf('Nume',mem.client_name||'—')}${mf('Locație',mem.location||mem.preferences?.location||'—')}${mf('Servicii',(mem.services_requested||[]).join(', ')||'—')}</div>
       ${plans.length?`<div class="ms"><h4>Planuri (${plans.length})</h4>${plans.map(p=>`<div class="mf"><div class="l">${p.event_type||'Eveniment'} · ${p.status}</div><div class="v">${p.event_date||'—'} ${p.location||''}</div></div>`).join('')}</div>`:''}
-      ${quotes.length?`<div class="ms"><h4>Cotații</h4>${quotes.map(q=>`<div class="mf"><div class="v">${q.grand_total||q.total_amount||'—'} RON · ${q.status||'?'}</div></div>`).join('')}</div>`:''}
-      <div class="ms na"><h4>Notă</h4><textarea id="nT" placeholder="Scrie o notă..."></textarea><button class="nb" onclick="addNote('${cid}')">Salvează notă</button></div>`}
+      <div class="ms na"><h4>Notă internă</h4><textarea id="nT" placeholder="Scrie o notă..."></textarea><button class="nb" style="width:100%" onclick="addNote('${cid}')">📝 Salvează</button></div>
+    `}
   catch(e){b.innerHTML=`<div style="color:var(--rd);padding:14px">${e.message}</div>`}}
 function mf(l,v){return`<div class="mf"><div class="l">${esc(l)}</div><div class="v">${esc(String(v))}</div></div>`}
 async function addNote(cid){const n=document.getElementById('nT')?.value;if(!n)return;try{await fetch(`${API}/api/admin/memory/${cid}/note`,{method:'POST',headers:H(),body:JSON.stringify({note:n,changed_by:'operator'})});toast('Notă salvată');document.getElementById('nT').value=''}catch(e){toast('Eroare',false)}}

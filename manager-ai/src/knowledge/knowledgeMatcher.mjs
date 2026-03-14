@@ -288,12 +288,16 @@ export async function extractActiveRoles(clientMessage, eventPlan = {}) {
         // Upgrade legacy roles on the fly to structural format
         const structuredRole = role.policy_config ? role.policy_config : legacyRoleEntryToConfig(role);
 
-        // 1. Check if the role's service key / sub-tags are requested in the plan
+        if (!structuredRole.active) {
+            continue; // Ignore inactive roles entirely
+        }
+
+        // 1. Check if the role's service key / sub-tags are requested in the plan or directly present in text
         const roleTags = (structuredRole.triggers.service_tags || []).map(s => normalize(s));
         for (const tag of roleTags) {
-            if (requestedServices.has(tag)) {
+            if (requestedServices.has(tag) || (normMsg.length >= MIN_MSG_LENGTH && normMsg.includes(tag))) {
                 isMatch = true;
-                break;
+                break; // Service tag match has highest activation priority
             }
         }
 
@@ -310,6 +314,9 @@ export async function extractActiveRoles(clientMessage, eventPlan = {}) {
             matchedRoles.push(structuredRole);
         }
     }
+
+    // Sort by priority (higher priority wins/comes first)
+    matchedRoles.sort((a, b) => (b.priority || 100) - (a.priority || 100));
 
     return matchedRoles;
 }

@@ -28,10 +28,15 @@ export function validateRoleConfigPayload(payload) {
     // Normalize Pricing
     const pricing = payload.pricing_rules || {};
     const normalizedPricing = {
+        pricing_model: String(pricing.pricing_model || 'hourly').trim().toLowerCase(),
         base_price: Math.max(0, parseInt(pricing.base_price || 0, 10)),
         currency: String(pricing.currency || 'RON').trim().toUpperCase(),
         included_duration_hours: Math.max(0, parseFloat(pricing.included_duration_hours || 1)),
         extra_hour_price: Math.max(0, parseInt(pricing.extra_hour_price || 0, 10)),
+        fixed_price: Math.max(0, parseInt(pricing.fixed_price || 0, 10)),
+        price_per_linear_meter: Math.max(0, parseInt(pricing.price_per_linear_meter || 0, 10)),
+        allow_model_choice: !!pricing.allow_model_choice,
+        allowed_models: Array.isArray(pricing.allowed_models) ? pricing.allowed_models.map(m => String(m).trim()).filter(Boolean) : [],
         transport_rules: {
             bucharest: parseInt(pricing.transport_rules?.bucharest || 0, 10),
             if: parseInt(pricing.transport_rules?.if || 0, 10),

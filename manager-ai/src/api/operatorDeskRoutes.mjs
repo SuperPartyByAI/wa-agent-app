@@ -17,6 +17,31 @@ import SRE from '../lib/serviceRequirementsEngine.mjs';
 const router = Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+// ─── Client Identity Resolver ───
+// Priority: public_alias > full_name > phone > UUID fallback
+function resolveClientName(cl) {
+  if (!cl) return 'Client necunoscut';
+  // 1. public_alias (branded name: Superparty-01, Epic-100)
+  if (cl.public_alias && !cl.public_alias.startsWith('Unknown')) return cl.public_alias;
+  // 2. full_name if it's real (not auto-generated Unknown/Galaxy)
+  if (cl.full_name && !/^(Unknown|Galaxy|W|CALL)-\d+$/i.test(cl.full_name)) return cl.full_name;
+  // 3. Phone number formatted
+  if (cl.real_phone_e164) return formatPhone(cl.real_phone_e164);
+  // 4. public_alias even if branded
+  if (cl.public_alias) return cl.public_alias;
+  if (cl.full_name) return cl.full_name;
+  // 5. UUID last resort
+  return `Client ${(cl.id || '').substring(0, 6)}`;
+}
+
+function formatPhone(phone) {
+  if (!phone) return null;
+  // Format +40751267555 → 0751 267 555
+  const m = phone.match(/^\+40(\d{3})(\d{3})(\d{3})$/);
+  if (m) return `0${m[1]} ${m[2]} ${m[3]}`;
+  return phone;
+}
+
 // ─── Audit ───
 async function audit(action, entityType, entityId, details, userId = 'operator') {
   try {
@@ -43,10 +68,10 @@ router.get('/inbox', async (req, res) => {
       .order('updated_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    // Enrich
+    // Enrich with REAL client identity columns
     const clientIds = [...new Set((convs||[]).map(c => c.client_id).filter(Boolean))];
     const { data: clients } = clientIds.length > 0
-      ? await supabase.from('clients').select('id, display_name, alias, mapped_alias, source').in('id', clientIds.slice(0, 80))
+      ? await supabase.from('clients').select('id, full_name, public_alias, real_phone_e164, avatar_url, source, brand_key').in('id', clientIds.slice(0, 80))
       : { data: [] };
     const clientMap = Object.fromEntries((clients||[]).map(c => [c.id, c]));
 
@@ -101,7 +126,11 @@ router.get('/inbox', async (req, res) => {
       const plan = planMap[c.id];
       return {
         id: c.id, client_id: c.client_id,
-        client_name: cl.display_name || cl.alias || cl.mapped_alias || `Client ${(c.client_id||'').substring(0,6)}`,
+        client_name: resolveClientName(cl),
+        client_phone: formatPhone(cl.real_phone_e164) || null,
+        client_phone_raw: cl.real_phone_e164 || null,
+        client_avatar: cl.avatar_url || null,
+        client_brand: cl.brand_key || null,
         channel: c.channel || cl.source || 'whatsapp',
         status: dec?.reply_status || c.status || 'open',
         updated_at: c.updated_at,

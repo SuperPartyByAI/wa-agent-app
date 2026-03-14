@@ -323,7 +323,14 @@ document.getElementById('sBox').addEventListener('input',e=>renderList(e.target.
 
 // INBOX
 async function loadInbox(){
-  try{const r=await fetch(`${API}/api/operator/inbox?limit=80`,{headers:H()});const d=await r.json();inbox=d.inbox||[];document.getElementById('cBg').textContent=inbox.length;renderList()}
+  try{
+    const r=await fetch(`${API}/api/operator/inbox?limit=80`,{headers:H()});
+    const d=await r.json();
+    inbox=d.inbox||[];
+    const cBg=document.getElementById('cBg');
+    if(cBg) cBg.textContent=inbox.length;
+    renderList();
+  }
   catch(e){console.error(e);toast('Eroare încărcare inbox',false)}
 }
 function renderList(q=''){

@@ -605,17 +605,44 @@ app.get('/api/ai/wave2/conflicts', async (req, res) => {
     }
 });
 
+// ─── Auth Middleware ───
+import { simpleTokenAuth } from './src/middleware/adminAuth.mjs';
+const authMiddleware = simpleTokenAuth();
+
 // ─── Brain Console ───
 import brainConsoleRoutes from './src/api/brainConsoleRoutes.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use('/api/ai/brain', brainConsoleRoutes);
+app.use('/api/ai/brain', authMiddleware, brainConsoleRoutes);
 app.use('/brain', express.static(path.join(__dirname, 'public')));
 
 // ─── Admin Suite ───
 import adminSuiteRoutes from './src/api/adminSuiteRoutes.mjs';
-app.use('/api/admin', adminSuiteRoutes);
+app.use('/api/admin', authMiddleware, adminSuiteRoutes);
 app.use('/admin', express.static(path.join(__dirname, 'public')));
+
+// ─── Rule Loader ───
+import { startAutoReload, getCurrentPolicy } from './src/lib/ruleLoader.mjs';
+startAutoReload(60000); // reload rules from DB every 60s
+
+// ─── Health Endpoint ───
+app.get('/health', async (req, res) => {
+    try {
+        const policy = getCurrentPolicy();
+        const checks = {
+            status: 'ok',
+            uptime: process.uptime(),
+            memory_mb: Math.round(process.memoryUsage().rss / 1048576),
+            policy_version: policy?.version || 'not_loaded',
+            policy_rules: policy?.rules?.length || 0,
+            shadow_mode: process.env.AI_SHADOW_MODE_ENABLED === 'true',
+            timestamp: new Date().toISOString()
+        };
+        res.json(checks);
+    } catch (err) {
+        res.status(503).json({ status: 'degraded', error: err.message });
+    }
+});
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 app.listen(PORT, '0.0.0.0', () => {

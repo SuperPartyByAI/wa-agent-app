@@ -9,7 +9,6 @@
  * Docs: https://supabase.com/docs/guides/auth/jwts
  */
 
-import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;

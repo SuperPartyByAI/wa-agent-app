@@ -9,8 +9,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const API = 'http://89.167.115.150:3001/webhook/whts-up';
 
 const TESTS = [
-  { p: '1', msg: 'Bună seara' },
-  { p: '2', msg: 'ok' }
+  { p: '1', msg: 'Vreau arcadă organică de 3 metri' },
+  { p: '2', msg: 'Vreau arcadă cu cifre volumetrice de 4 metri' },
+  { p: '3', msg: 'Vreau arcadă pe suport' }
 ];
 
 async function createSupabaseData(testPayload) {

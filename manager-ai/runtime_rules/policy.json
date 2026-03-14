@@ -1,6 +1,6 @@
 {
-  "version": "v1773525273192",
-  "loaded_at": "2026-03-14T21:54:33.192Z",
+  "version": "v1773528333247",
+  "loaded_at": "2026-03-14T22:45:33.247Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -228,6 +228,48 @@
       "policy_config": null
     },
     {
+      "id": "c8d1ebef-11e6-4195-bf8d-df4a688e19dc",
+      "knowledge_key": "baloane_info",
+      "category": "services",
+      "service_tags": [
+        "arcada_baloane",
+        "arcada_suport",
+        "arcada_exterior",
+        "suport_arcada_baloane",
+        "cifre_volumetrice"
+      ],
+      "question_patterns": [
+        "baloane",
+        "arcada baloane",
+        "aranjament baloane",
+        "decor baloane",
+        "cifre baloane",
+        "cifre volumetrice"
+      ],
+      "answer_template": "Oferim decoruri din baloane pentru orice eveniment! 🎈\n\n• Arcadă de baloane (diverse modele și dimensiuni)\n• Aranjamente personalizate\n• Cifre volumetrice din baloane\n• Buchet de baloane cu heliu\n\nSpuneți-mi ce tip de eveniment aveți, data și locația, și vă fac o ofertă!",
+      "metadata": {
+        "service_type": "arcada_baloane"
+      },
+      "required_context": [
+        "event_type",
+        "event_date",
+        "location"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 13,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-14T22:45:12.016+00:00",
+      "policy_config": null
+    },
+    {
       "id": "6af30b9d-cdae-47cb-9404-3fab3b77faf7",
       "knowledge_key": "ursitoare_info",
       "category": "services",
@@ -295,48 +337,6 @@
       "times_used": 1,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
       "updated_at": "2026-03-14T19:05:38.445+00:00",
-      "policy_config": null
-    },
-    {
-      "id": "c8d1ebef-11e6-4195-bf8d-df4a688e19dc",
-      "knowledge_key": "baloane_info",
-      "category": "services",
-      "service_tags": [
-        "arcada_baloane",
-        "arcada_suport",
-        "arcada_exterior",
-        "suport_arcada_baloane",
-        "cifre_volumetrice"
-      ],
-      "question_patterns": [
-        "baloane",
-        "arcada baloane",
-        "aranjament baloane",
-        "decor baloane",
-        "cifre baloane",
-        "cifre volumetrice"
-      ],
-      "answer_template": "Oferim decoruri din baloane pentru orice eveniment! 🎈\n\n• Arcadă de baloane (diverse modele și dimensiuni)\n• Aranjamente personalizate\n• Cifre volumetrice din baloane\n• Buchet de baloane cu heliu\n\nSpuneți-mi ce tip de eveniment aveți, data și locația, și vă fac o ofertă!",
-      "metadata": {
-        "service_type": "arcada_baloane"
-      },
-      "required_context": [
-        "event_type",
-        "event_date",
-        "location"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 1,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-14T14:53:35.755+00:00",
       "policy_config": null
     },
     {
@@ -593,6 +593,91 @@
       "policy_config": null
     },
     {
+      "id": "80d18ad5-a0ad-48d4-8227-b49a1843e61f",
+      "knowledge_key": "role_vata_de_zahar",
+      "category": "services",
+      "service_tags": [
+        "vata",
+        "vată",
+        "vata_de_zahar",
+        "cotton_candy"
+      ],
+      "question_patterns": [
+        "vata",
+        "vata de zahar",
+        "vată de zahăr",
+        "cotton candy",
+        "vata pe bat",
+        "vată pe băț"
+      ],
+      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.186263+00:00",
+      "valid_until": null,
+      "times_used": 23,
+      "created_at": "2026-03-14T16:50:09.186263+00:00",
+      "updated_at": "2026-03-14T22:31:09.393+00:00",
+      "policy_config": {
+        "label": "Vată de zahăr",
+        "active": true,
+        "priority": 333,
+        "role_key": "role_vata_de_zahar",
+        "triggers": {
+          "keywords": [
+            "vata",
+            "vata de zahar",
+            "vată de zahăr",
+            "cotton candy",
+            "vata pe bat",
+            "vată pe băț"
+          ],
+          "service_tags": [
+            "vata",
+            "vată",
+            "vata_de_zahar",
+            "cotton_candy"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Avem disponibil serviciul de vată de zahăr preparată pe loc, foarte apreciat la petrecerile pentru copii.",
+          "upsell": "Se combină excelent cu popcorn sau cu un pachet de animație.",
+          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți mașina de vată de zahăr?"
+        },
+        "service_key": "vata_de_zahar",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 490,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 170,
+          "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
       "id": "cf1228e4-3c40-4ecb-91a0-e604cf752f89",
       "knowledge_key": "booking_info_required",
       "category": "faq",
@@ -634,85 +719,6 @@
       "created_at": "2026-03-12T23:57:12.971968+00:00",
       "updated_at": "2026-03-14T15:03:42.998+00:00",
       "policy_config": null
-    },
-    {
-      "id": "66a85482-3c62-4b83-814e-f4b77eb57722",
-      "knowledge_key": "role_arcada_pe_suport",
-      "category": "services",
-      "service_tags": [
-        "arcada_pe_suport",
-        "arcada",
-        "baloane"
-      ],
-      "question_patterns": [
-        "arcada pe suport",
-        "arcada stalpi",
-        "arcada cu suport",
-        "baloane pe suport"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.021188+00:00",
-      "valid_until": null,
-      "times_used": 0,
-      "created_at": "2026-03-14T16:50:09.021188+00:00",
-      "updated_at": "2026-03-14T20:55:26.881+00:00",
-      "policy_config": {
-        "label": "Arcadă pe suport",
-        "active": true,
-        "priority": 90,
-        "role_key": "role_arcada_pe_suport",
-        "triggers": {
-          "keywords": [
-            "arcada pe suport",
-            "arcada stalpi",
-            "arcada cu suport",
-            "baloane pe suport"
-          ],
-          "service_tags": [
-            "arcada_pe_suport",
-            "arcada",
-            "baloane"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Realizăm arcadă pe suport pentru evenimente, cu montaj curat și aspect elegant.",
-          "upsell": "Poate fi combinată cu cifre volumetrice sau decor complet cu baloane.",
-          "closing_question": "Pentru ce dată și în ce locație doriți arcada pe suport?"
-        },
-        "service_key": "arcada_pe_suport",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 350,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 0,
-          "included_duration_hours": 1
-        },
-        "approval_status": "approved"
-      }
     },
     {
       "id": "f68aa6cc-8cd6-4685-9de9-a19fe8a3c709",
@@ -790,87 +796,6 @@
             "outside_if": "manual_quote"
           },
           "extra_hour_price": 200,
-          "included_duration_hours": 1
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
-      "id": "ae236668-49ed-4aa2-b746-165c559d4d61",
-      "knowledge_key": "role_arcada_fara_suport",
-      "category": "services",
-      "service_tags": [
-        "arcada_fara_suport",
-        "arcada",
-        "baloane"
-      ],
-      "question_patterns": [
-        "arcada organica",
-        "arcada organică",
-        "arcada fara suport",
-        "arcada fără suport",
-        "baloane perete"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.105878+00:00",
-      "valid_until": null,
-      "times_used": 0,
-      "created_at": "2026-03-14T16:50:09.105878+00:00",
-      "updated_at": "2026-03-14T20:55:27.121+00:00",
-      "policy_config": {
-        "label": "Arcadă fără suport",
-        "active": true,
-        "priority": 95,
-        "role_key": "role_arcada_fara_suport",
-        "triggers": {
-          "keywords": [
-            "arcada organica",
-            "arcada organică",
-            "arcada fara suport",
-            "arcada fără suport",
-            "baloane perete"
-          ],
-          "service_tags": [
-            "arcada_fara_suport",
-            "arcada",
-            "baloane"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Realizăm arcade organice fără suport, potrivite pentru candy bar, backdrop sau photo corner.",
-          "upsell": "Se poate completa foarte frumos cu panouri, cifre sau decor personalizat.",
-          "closing_question": "Ne spui data, locația și dimensiunea aproximativă dorită?"
-        },
-        "service_key": "arcada_fara_suport",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 300,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 0,
           "included_duration_hours": 1
         },
         "approval_status": "approved"
@@ -970,7 +895,7 @@
         "baloane cu cifre",
         "decor aniversare"
       ],
-      "answer_template": "",
+      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
       "metadata": {},
       "required_context": [],
       "applicability_rules": {},
@@ -984,7 +909,7 @@
       "valid_until": null,
       "times_used": 0,
       "created_at": "2026-03-14T16:50:09.616697+00:00",
-      "updated_at": "2026-03-14T20:55:27.342+00:00",
+      "updated_at": "2026-03-14T21:57:46.015+00:00",
       "policy_config": {
         "label": "Arcadă cu cifre volumetrice",
         "active": true,
@@ -1023,12 +948,20 @@
         "pricing_rules": {
           "currency": "RON",
           "base_price": 500,
+          "fixed_price": 0,
+          "pricing_model": "linear_meter",
+          "allowed_models": [
+            "organica",
+            "anorganica"
+          ],
           "transport_rules": {
             "if": 50,
             "bucharest": 0,
             "outside_if": "manual_quote"
           },
           "extra_hour_price": 0,
+          "allow_model_choice": true,
+          "price_per_linear_meter": 180,
           "included_duration_hours": 1
         },
         "approval_status": "approved"
@@ -1266,10 +1199,94 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 352,
+      "times_used": 359,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-14T21:31:59.84+00:00",
+      "updated_at": "2026-03-14T22:45:09.397+00:00",
       "policy_config": null
+    },
+    {
+      "id": "66a85482-3c62-4b83-814e-f4b77eb57722",
+      "knowledge_key": "role_arcada_pe_suport",
+      "category": "services",
+      "service_tags": [
+        "arcada_pe_suport",
+        "arcada",
+        "baloane"
+      ],
+      "question_patterns": [
+        "arcada pe suport",
+        "arcada stalpi",
+        "arcada cu suport",
+        "baloane pe suport"
+      ],
+      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.021188+00:00",
+      "valid_until": null,
+      "times_used": 16,
+      "created_at": "2026-03-14T16:50:09.021188+00:00",
+      "updated_at": "2026-03-14T22:45:07.406+00:00",
+      "policy_config": {
+        "label": "Arcadă pe suport",
+        "active": true,
+        "priority": 90,
+        "role_key": "role_arcada_pe_suport",
+        "triggers": {
+          "keywords": [
+            "arcada pe suport",
+            "arcada stalpi",
+            "arcada cu suport",
+            "baloane pe suport"
+          ],
+          "service_tags": [
+            "arcada_pe_suport",
+            "arcada",
+            "baloane"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Realizăm arcadă pe suport pentru evenimente, cu montaj curat și aspect elegant.",
+          "upsell": "Poate fi combinată cu cifre volumetrice sau decor complet cu baloane.",
+          "closing_question": "Pentru ce dată și în ce locație doriți arcada pe suport?"
+        },
+        "service_key": "arcada_pe_suport",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 350,
+          "fixed_price": 350,
+          "pricing_model": "fixed_price",
+          "allowed_models": [],
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 0,
+          "allow_model_choice": false,
+          "price_per_linear_meter": 0,
+          "included_duration_hours": 1
+        },
+        "approval_status": "approved"
+      }
     },
     {
       "id": "05b716a0-4a3b-4f04-8bf4-8af2f20bfaff",
@@ -1525,22 +1542,20 @@
       }
     },
     {
-      "id": "80d18ad5-a0ad-48d4-8227-b49a1843e61f",
-      "knowledge_key": "role_vata_de_zahar",
+      "id": "ae236668-49ed-4aa2-b746-165c559d4d61",
+      "knowledge_key": "role_arcada_fara_suport",
       "category": "services",
       "service_tags": [
-        "vata",
-        "vată",
-        "vata_de_zahar",
-        "cotton_candy"
+        "arcada_fara_suport",
+        "arcada",
+        "baloane"
       ],
       "question_patterns": [
-        "vata",
-        "vata de zahar",
-        "vată de zahăr",
-        "cotton candy",
-        "vata pe bat",
-        "vată pe băț"
+        "arcada organica",
+        "arcada organică",
+        "arcada fara suport",
+        "arcada fără suport",
+        "baloane perete"
       ],
       "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
       "metadata": {},
@@ -1552,30 +1567,28 @@
       "source": "manual",
       "owner": "system",
       "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.186263+00:00",
+      "valid_from": "2026-03-14T16:50:09.105878+00:00",
       "valid_until": null,
       "times_used": 12,
-      "created_at": "2026-03-14T16:50:09.186263+00:00",
-      "updated_at": "2026-03-14T21:53:52.001+00:00",
+      "created_at": "2026-03-14T16:50:09.105878+00:00",
+      "updated_at": "2026-03-14T22:45:05.079+00:00",
       "policy_config": {
-        "label": "Vată de zahăr",
+        "label": "Arcadă fără suport",
         "active": true,
-        "priority": 333,
-        "role_key": "role_vata_de_zahar",
+        "priority": 95,
+        "role_key": "role_arcada_fara_suport",
         "triggers": {
           "keywords": [
-            "vata",
-            "vata de zahar",
-            "vată de zahăr",
-            "cotton candy",
-            "vata pe bat",
-            "vată pe băț"
+            "arcada organica",
+            "arcada organică",
+            "arcada fara suport",
+            "arcada fără suport",
+            "baloane perete"
           ],
           "service_tags": [
-            "vata",
-            "vată",
-            "vata_de_zahar",
-            "cotton_candy"
+            "arcada_fara_suport",
+            "arcada",
+            "baloane"
           ],
           "min_confidence": 0.35
         },
@@ -1590,21 +1603,29 @@
           "must_not_override_approved_prices": true
         },
         "copy_blocks": {
-          "intro": "Avem disponibil serviciul de vată de zahăr preparată pe loc, foarte apreciat la petrecerile pentru copii.",
-          "upsell": "Se combină excelent cu popcorn sau cu un pachet de animație.",
-          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți mașina de vată de zahăr?"
+          "intro": "Realizăm arcade organice fără suport, potrivite pentru candy bar, backdrop sau photo corner.",
+          "upsell": "Se poate completa foarte frumos cu panouri, cifre sau decor personalizat.",
+          "closing_question": "Ne spui data, locația și dimensiunea aproximativă dorită?"
         },
-        "service_key": "vata_de_zahar",
+        "service_key": "arcada_fara_suport",
         "pricing_rules": {
           "currency": "RON",
-          "base_price": 490,
+          "base_price": 300,
+          "fixed_price": 0,
+          "pricing_model": "linear_meter",
+          "allowed_models": [
+            "organica",
+            "anorganica"
+          ],
           "transport_rules": {
             "if": 50,
             "bucharest": 0,
             "outside_if": "manual_quote"
           },
-          "extra_hour_price": 170,
-          "included_duration_hours": 2
+          "extra_hour_price": 0,
+          "allow_model_choice": true,
+          "price_per_linear_meter": 200,
+          "included_duration_hours": 1
         },
         "approval_status": "approved"
       }
@@ -1996,5 +2017,5 @@
       "policy_config": null
     }
   ],
-  "checksum": "b8728c0a48ede82faf052b1b2f7a659c9a0b71fb735cf6d280fc132664b4817e"
+  "checksum": "60cf2eaeaf439c633ebbc348855f6ed69aa31e356624ba2c2ca37522be34b724"
 }

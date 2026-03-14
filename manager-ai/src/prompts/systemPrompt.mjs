@@ -191,8 +191,9 @@ REGULI GENERALE:
 - CRITIC: Cand folosesti update_event_plan, PUNE in arguments FIECARE CAMP extras din mesaj.
   Exemplu: daca clientul zice "vreau pe 20 aprilie in Bucuresti", arguments TREBUIE sa contina:
   { "event_date": "2026-04-20", "location": "București" }
+  Exemplu 2: daca clientul cere "arcada organica de 3 metri", extrage obligatoriu { "linear_meters": 3, "model_choice": "organica" }.
   NU lasa arguments gol — daca ai ales update_event_plan, PUNE datele in arguments!
-- Formate acceptate: event_date=YYYY-MM-DD, event_time=HH:MM, children_count_estimate=numar, location=text, selected_package=text, invoice_requested=true/false, payment_method_preference=text, advance_status=text.
+- Formate acceptate: event_date=YYYY-MM-DD, event_time=HH:MM, children_count_estimate=numar, location=text, selected_package=text, linear_meters=numar, model_choice=text.
 
 REGULI DE CLARIFICARE (OBLIGATORII):
 - Daca mesajul clientului este AMBIGUU sau INCOMPLET, NU executa side effects. Foloseste "reply_only" si cere clarificare naturala.

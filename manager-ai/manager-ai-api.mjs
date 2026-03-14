@@ -621,6 +621,10 @@ import adminSuiteRoutes from './src/api/adminSuiteRoutes.mjs';
 app.use('/api/admin', authMiddleware, adminSuiteRoutes);
 app.use('/admin', express.static(path.join(__dirname, 'public')));
 
+// ─── Corrections Pipeline ───
+import correctionsRoutes from './src/api/correctionsRoutes.mjs';
+app.use('/api/admin/corrections', authMiddleware, correctionsRoutes);
+
 // ─── Rule Loader ───
 import { startAutoReload, getCurrentPolicy } from './src/lib/ruleLoader.mjs';
 startAutoReload(60000); // reload rules from DB every 60s

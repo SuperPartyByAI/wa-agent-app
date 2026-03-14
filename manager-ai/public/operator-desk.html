@@ -425,7 +425,7 @@ async function selConv(id){
     // 3. Full Conversation + AI Draft appended inline
     html += `
       <div class="msgs" id="mA" style="background:var(--bg); flex:1">
-      ${msgs.length?msgs.map(m=>{const w=m.sender_type==='client'?'mc':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='mc'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}
+      ${msgs.length?[...msgs].reverse().map(m=>{const w=m.sender_type==='client'?'mc':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='mc'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}
       
       <!-- AI Draft Inline Block -->
       <div class="ab" style="background:var(--bg2);padding:16px;border-radius:var(--r);margin-top:14px;border:1px solid var(--bd);">

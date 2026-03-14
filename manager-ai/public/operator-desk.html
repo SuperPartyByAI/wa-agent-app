@@ -360,6 +360,7 @@ async function selConv(id){
   try{
     const r=await fetch(`${API}/api/admin/crm/clients/${curCl}`,{headers:H()});const d=await r.json();
     const cl=d.client||{},msgs=d.latest_messages||[],plans=d.event_plans||[];
+    window.curDecisions = d.ai_decisions || []; // cache for dashboard
     const newestClientMsg = msgs.find(m => m.sender_type === 'client') || msgs[0];
     const aiR = newestClientMsg?.ai_reply || it?.ai_reply || '';
     const tool = newestClientMsg?.tool_action || it?.tool_action || '';
@@ -489,7 +490,7 @@ function tgMem(show,cid){const p=document.getElementById('rP');if(show){p.classL
 async function loadMem(cid){if(!cid)return;const b=document.getElementById('mB');b.innerHTML='<div style="color:var(--tx3);padding:14px">Se încarcă...</div>';
   try{const r=await fetch(`${API}/api/admin/memory/${cid}`,{headers:H()});const d=await r.json();const mem=d.memory||{},plans=d.event_plans||[],quotes=d.quotes||[];
     document.getElementById('mN').textContent=mem.client_name||'Client';
-    const autoActs=(d.ai_decisions||[]).filter(x=>x.reply_status==='sent'||x.operational_mode==='safe_autoreply_mode');
+    const autoActs=(window.curDecisions||[]).filter(x=>x.reply_status==='sent'||x.operational_mode==='safe_autoreply_mode');
     b.innerHTML=`
       <div class="ms" style="border-left: 3px solid var(--ac)">
         <h4>⚡️ Dashboard Activitate Automată AI</h4>

@@ -324,7 +324,7 @@ document.getElementById('sBox').addEventListener('input',e=>renderList(e.target.
 // INBOX
 async function loadInbox(){
   try{
-    const r=await fetch(`${API}/api/operator/inbox?limit=80`,{headers:H()});
+    const r=await fetch(`${API}/api/operator/inbox?limit=80&_t=${Date.now()}`,{headers:H(), cache: 'no-store'});
     const d=await r.json();
     inbox=d.inbox||[];
     const cBg=document.getElementById('cBg');
@@ -358,7 +358,7 @@ async function selConv(id){
   renderList(document.getElementById('sBox')?.value||'');
   const cp=document.getElementById('cP');cp.innerHTML='<div class="es">Se încarcă...</div>';
   try{
-    const r=await fetch(`${API}/api/admin/crm/clients/${curCl}`,{headers:H()});const d=await r.json();
+    const r=await fetch(`${API}/api/admin/crm/clients/${curCl}?_t=${Date.now()}`,{headers:H(), cache: 'no-store'});const d=await r.json();
     const cl=d.client||{},msgs=d.latest_messages||[],plans=d.event_plans||[];
     window.curDecisions = d.ai_decisions || []; // cache for dashboard
     const newestClientMsg = msgs.find(m => m.sender_type === 'client') || msgs[0];
@@ -488,7 +488,7 @@ async function doActI(type, did, btn){
 // MEMORY
 function tgMem(show,cid){const p=document.getElementById('rP');if(show){p.classList.remove('hid');p.style.display='flex';loadMem(cid||curCl)}else{p.classList.add('hid');p.style.display='none'}}
 async function loadMem(cid){if(!cid)return;const b=document.getElementById('mB');b.innerHTML='<div style="color:var(--tx3);padding:14px">Se încarcă...</div>';
-  try{const r=await fetch(`${API}/api/admin/memory/${cid}`,{headers:H()});const d=await r.json();const mem=d.memory||{},plans=d.event_plans||[],quotes=d.quotes||[];
+  try{const r=await fetch(`${API}/api/admin/memory/${cid}?_t=${Date.now()}`,{headers:H(), cache: 'no-store'});const d=await r.json();const mem=d.memory||{},plans=d.event_plans||[],quotes=d.quotes||[];
     document.getElementById('mN').textContent=mem.client_name||'Client';
     const autoActs=(window.curDecisions||[]).filter(x=>x.reply_status==='sent'||x.operational_mode==='safe_autoreply_mode');
     b.innerHTML=`

@@ -38,6 +38,8 @@ export const ACTION_REGISTRY = {
                 duration_hours: { type: 'number', description: 'Duration of the event in hours' },
                 animator_count: { type: 'number', description: 'Number of animators requested' },
                 selected_package: { type: 'string', description: 'The specific package requested (e.g. super_3_confetti)' },
+                linear_meters: { type: 'number', description: 'Metri liniari pentru arcade de baloane (ex. 3, 4, 5)' },
+                model_choice: { type: 'string', description: 'Modelul, forma sau culorile dorite (ex. organica, rotunda)' },
                 payment_method_preference: { type: 'string', enum: ['transfer', 'cash', 'card', 'necunoscut'] },
                 invoice_requested: { type: 'string', enum: ['true', 'false', 'necunoscut'] },
                 advance_status: { type: 'string', enum: ['requested', 'confirmed', 'necunoscut'] }

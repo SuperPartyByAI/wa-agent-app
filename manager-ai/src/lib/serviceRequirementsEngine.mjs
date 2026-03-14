@@ -246,6 +246,12 @@ export function extractFieldsFromMessage(message) {
     fields.duration_hours = parseInt(durationMatch[1]);
   }
 
+  // Linear Meters
+  const metersMatch = message.match(/(\d+)\s*(?:m|metri|metru|ml)/i);
+  if (metersMatch) {
+    fields.linear_meters = parseInt(metersMatch[1]);
+  }
+
   // Children count
   const kidMatch = message.match(/(\d+)\s*(?:copii|copil|kids|children)/i);
   if (kidMatch) {

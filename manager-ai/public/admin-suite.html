@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Suite — Superparty</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c0c14;--surface:#151525;--surface2:#1c1c34;--border:#2a2a44;--text:#e8e8f4;--dim:#7a7a9e;--accent:#8b5cf6;--accent-glow:rgba(139,92,246,.12);--green:#34d399;--yellow:#fbbf24;--red:#f87171;--orange:#fb923c;--blue:#60a5fa;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+/* Sidebar */
+.sidebar{width:220px;background:linear-gradient(180deg,#151525,#0f0f1f);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:10}
+.sidebar-header{padding:16px;border-bottom:1px solid var(--border)}
+.sidebar-header h1{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sidebar-header h1 span{color:var(--accent)}
+.nav{flex:1;padding:8px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;color:var(--dim);font-size:13px;font-weight:500;transition:all .2s;margin-bottom:2px}
+.nav-item:hover{background:var(--accent-glow);color:var(--text)}
+.nav-item.active{background:var(--accent);color:white}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.nav-item .badge{background:rgba(255,255,255,.15);padding:1px 6px;border-radius:8px;font-size:10px;margin-left:auto}
+.nav-divider{height:1px;background:var(--border);margin:8px 12px}
+/* Main content */
+.main{margin-left:220px;flex:1;min-height:100vh}
+.topbar{padding:12px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)}
+.topbar h2{font-size:16px;font-weight:600}
+.topbar .search{display:flex;gap:8px}
+.topbar input{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text);font-size:13px;width:250px}
+.topbar input:focus{outline:none;border-color:var(--accent)}
+.content{padding:20px 24px;max-width:1400px}
+.panel{display:none}.panel.active{display:block}
+/* Cards & tables same as brain-console */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px;transition:border-color .2s}
+.card:hover{border-color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;color:var(--dim);font-weight:500;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:hover{background:var(--accent-glow)}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
+.tag-green{background:rgba(52,211,153,.15);color:var(--green)}.tag-yellow{background:rgba(251,191,36,.15);color:var(--yellow)}
+.tag-red{background:rgba(248,113,113,.15);color:var(--red)}.tag-blue{background:rgba(96,165,250,.15);color:var(--blue)}
+.tag-purple{background:var(--accent-glow);color:var(--accent)}.tag-orange{background:rgba(251,146,60,.15);color:var(--orange)}
+.btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s}
+.btn-primary{background:var(--accent);color:white}.btn-primary:hover{opacity:.85}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--dim)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;text-align:center}
+.stat-card .number{font-size:28px;font-weight:700;color:var(--accent)}.stat-card .label{font-size:11px;color:var(--dim);text-transform:uppercase;margin-top:4px}
+.loader{text-align:center;padding:40px;color:var(--dim)}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:60px 20px;color:var(--dim)}.empty .icon{font-size:48px;margin-bottom:12px}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;display:inline-block}
+input,select,textarea{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit}
+textarea{resize:vertical;min-height:80px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+.form-group{margin-bottom:12px}.form-group label{display:block;font-size:11px;color:var(--dim);margin-bottom:4px;text-transform:uppercase}
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);display:none;justify-content:center;align-items:center;z-index:100}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:700px;width:90%;max-height:85vh;overflow-y:auto}
+.modal h2{font-size:16px;margin-bottom:16px}
+.detail-row{display:flex;gap:8px;margin-bottom:8px;font-size:13px}.detail-row .dl{color:var(--dim);min-width:140px}.detail-row .dv{color:var(--text);word-break:break-word}
+.msg-bubble{padding:8px 12px;border-radius:8px;margin:4px 0;font-size:13px;max-width:80%}
+.msg-client{background:var(--surface2);margin-right:auto}.msg-ai{background:var(--accent-glow);border:1px solid rgba(139,92,246,.3);margin-left:auto}
+.memory-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px}
+.memory-block h4{font-size:12px;color:var(--accent);margin-bottom:6px;text-transform:uppercase}
+.memory-block pre{font-size:12px;color:var(--dim);white-space:pre-wrap;word-break:break-word}
+.coverage-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:relative;margin-bottom:8px}
+.tabs-inline{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+.tab-inline{padding:8px 14px;font-size:12px;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:all .2s}
+.tab-inline:hover{color:var(--text)}.tab-inline.active{color:var(--accent);border-bottom-color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header"><h1>⚡ <span>Admin</span> Suite</h1></div>
+  <div class="nav">
+    <div class="nav-item active" data-module="dashboard"><span class="icon">📊</span>Dashboard</div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" data-module="crm"><span class="icon">👥</span>CRM / Clients<span class="badge" id="navCrmCount">-</span></div>
+    <div class="nav-item" data-module="memory"><span class="icon">🧠</span>Memory Inspector</div>
+    <div class="nav-item" data-module="brain"><span class="icon">🤖</span>AI Brain</div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" data-module="pricing"><span class="icon">💰</span>Pricing & Rules</div>
+    <div class="nav-item" data-module="employees"><span class="icon">👔</span>Employees</div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" data-module="rollout"><span class="icon">🛡️</span>Rollout / Safety</div>
+    <div class="nav-item" data-module="audit"><span class="icon">📋</span>Audit / Incidents</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <h2 id="pageTitle">Dashboard</h2>
+    <div class="search"><input type="text" id="globalSearch" placeholder="Search clients, conversations..." onkeydown="if(event.key==='Enter')searchGlobal()"></div>
+  </div>
+  <div class="content">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="panel active" id="mod-dashboard"><div class="loader"><div class="spinner"></div></div></div>
+
+    <!-- ═══ CRM ═══ -->
+    <div class="panel" id="mod-crm"><div class="loader"><div class="spinner"></div></div></div>
+
+    <!-- ═══ MEMORY INSPECTOR ═══ -->
+    <div class="panel" id="mod-memory">
+      <div class="form-group"><label>Client ID</label><div style="display:flex;gap:8px"><input type="text" id="memClientId" placeholder="Enter client UUID..."><button class="btn btn-primary" onclick="loadMemory()">Inspect</button></div></div>
+      <div id="memoryContent"></div>
+    </div>
+
+    <!-- ═══ AI BRAIN ═══ -->
+    <div class="panel" id="mod-brain">
+      <div class="card" style="text-align:center;padding:32px">
+        <div style="font-size:48px;margin-bottom:12px">🧠</div>
+        <h3>AI Brain Console</h3>
+        <p style="color:var(--dim);margin:8px 0 16px">Full Brain Console with Inbox, Rules, Patterns, Coverage and Stats</p>
+        <a href="/brain/brain-console.html" class="btn btn-primary" target="_blank">Open Brain Console →</a>
+      </div>
+      <div id="brainQuickStats"></div>
+    </div>
+
+    <!-- ═══ PRICING ═══ -->
+    <div class="panel" id="mod-pricing"><div class="loader"><div class="spinner"></div></div></div>
+
+    <!-- ═══ EMPLOYEES ═══ -->
+    <div class="panel" id="mod-employees"><div class="loader"><div class="spinner"></div></div></div>
+
+    <!-- ═══ ROLLOUT / SAFETY ═══ -->
+    <div class="panel" id="mod-rollout"><div class="loader"><div class="spinner"></div></div></div>
+
+    <!-- ═══ AUDIT ═══ -->
+    <div class="panel" id="mod-audit"><div class="loader"><div class="spinner"></div></div></div>
+
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal"><div class="modal" id="modalContent"></div></div>
+
+<script>
+const API = '/api/admin';
+const BRAIN = '/api/ai/brain';
+
+// ── Navigation ──
+document.querySelectorAll('.nav-item').forEach(n=>{
+  n.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    n.classList.add('active');
+    const mod=n.dataset.module;
+    document.getElementById('mod-'+mod).classList.add('active');
+    document.getElementById('pageTitle').textContent=n.textContent.trim();
+    loadModule(mod);
+  });
+});
+
+function loadModule(m){const l={dashboard:loadDashboard,crm:loadCRM,memory:()=>{},brain:loadBrainQuick,pricing:loadPricing,employees:loadEmployees,rollout:loadRollout,audit:loadAudit};if(l[m])l[m]()}
+async function api(path,opts={}){const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts});return r.json()}
+function timeAgo(d){const s=Math.floor((new Date()-new Date(d))/1e3);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago'}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function openModal(h){document.getElementById('modalContent').innerHTML=h;document.getElementById('modal').classList.add('open')}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+function searchGlobal(){
+  const q=document.getElementById('globalSearch').value.trim();
+  if(!q)return;
+  // Switch to CRM and search
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  document.querySelector('[data-module="crm"]').classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('mod-crm').classList.add('active');
+  document.getElementById('pageTitle').textContent='CRM / Clients';
+  loadCRM(q);
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
+async function loadDashboard(){
+  const d=await api(API+'/dashboard');
+  document.getElementById('mod-dashboard').innerHTML=`
+    <div class="grid-4" style="margin-bottom:20px">
+      <div class="stat-card"><div class="number">${d.crm?.clients||0}</div><div class="label">Clients</div></div>
+      <div class="stat-card"><div class="number">${d.crm?.conversations||0}</div><div class="label">Conversations</div></div>
+      <div class="stat-card"><div class="number">${d.memory?.entries||0}</div><div class="label">Memory Entries</div></div>
+      <div class="stat-card"><div class="number">${d.brain?.decisions||0}</div><div class="label">AI Decisions</div></div>
+    </div>
+    <div class="grid-4" style="margin-bottom:20px">
+      <div class="stat-card"><div class="number" style="color:var(--green)">${d.brain?.active_rules||0}</div><div class="label">Active Rules</div></div>
+      <div class="stat-card"><div class="number" style="color:var(--blue)">${d.brain?.coverage_zones||0}</div><div class="label">Coverage Zones</div></div>
+      <div class="stat-card"><div class="number">${d.pricing?.event_plans||0}</div><div class="label">Event Plans</div></div>
+      <div class="stat-card"><div class="number">${d.pricing?.quotes||0}</div><div class="label">Quotes</div></div>
+    </div>
+    <div class="grid-3">
+      <div class="stat-card"><div class="number">${d.employees?.total||0}</div><div class="label">Employees</div></div>
+      <div class="stat-card"><div class="number">${d.analytics?.events||0}</div><div class="label">Analytics Events</div></div>
+      <div class="stat-card"><div class="number" style="color:var(--orange)">${d.analytics?.kb_misses||0}</div><div class="label">KB Misses</div></div>
+    </div>`;
+  document.getElementById('navCrmCount').textContent=d.crm?.clients||0;
+}
+
+// ═══════════════════════════════════════
+// CRM
+// ═══════════════════════════════════════
+async function loadCRM(search=''){
+  const q=search||document.getElementById('globalSearch')?.value||'';
+  const d=await api(API+'/crm/clients?limit=50'+(q?'&search='+encodeURIComponent(q):''));
+  const el=document.getElementById('mod-crm');
+  if(!d.clients?.length){el.innerHTML='<div class="empty"><div class="icon">👥</div><p>No clients found</p></div>';return}
+  let h=`<div style="margin-bottom:12px;color:var(--dim);font-size:12px">${d.total} clients total</div>
+    <table><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Source</th><th>Created</th><th></th></tr></thead><tbody>`;
+  for(const c of d.clients){
+    h+=`<tr>
+      <td><b>${c.full_name||c.public_alias||'—'}</b></td>
+      <td style="font-size:12px">${c.real_phone_e164||'—'}</td>
+      <td style="font-size:12px">${c.email||'—'}</td>
+      <td><span class="tag tag-blue">${c.source||'?'}</span></td>
+      <td style="font-size:11px">${timeAgo(c.created_at)}</td>
+      <td><button class="btn btn-sm btn-outline" onclick="viewClient('${c.id}')">View</button> <button class="btn btn-sm btn-outline" onclick="openMemoryForClient('${c.id}')">🧠</button></td>
+    </tr>`}
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+async function viewClient(id){
+  const d=await api(API+'/crm/clients/'+id);
+  const c=d.client;
+  let msgsH=d.latest_messages?.slice(0,15).map(m=>`<div class="msg-bubble msg-${m.sender_type==='client'?'client':'ai'}">${m.content}</div>`).join('')||'<i>No messages</i>';
+  let plansH=d.event_plans?.map(p=>`<div class="detail-row"><span class="dl">${p.event_type||'event'} ${p.event_date||''}</span><span class="dv"><span class="tag tag-blue">${p.status}</span> ${(p.requested_services||[]).join(', ')}</span></div>`).join('')||'<i>No plans</i>';
+  let quotesH=d.quotes?.map(q=>`<div class="detail-row"><span class="dl">Quote #${q.id?.substring(0,8)}</span><span class="dv"><span class="tag tag-${q.status==='accepted'?'green':q.status==='rejected'?'red':'yellow'}">${q.status}</span> ${q.grand_total||0} RON</span></div>`).join('')||'<i>No quotes</i>';
+
+  openModal(`
+    <h2>${c.full_name||c.public_alias||'Client'}</h2>
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="detail-row"><span class="dl">Phone</span><span class="dv">${c.real_phone_e164||'—'}</span></div>
+      <div class="detail-row"><span class="dl">Email</span><span class="dv">${c.email||'—'}</span></div>
+      <div class="detail-row"><span class="dl">Source</span><span class="dv">${c.source||'—'}</span></div>
+      <div class="detail-row"><span class="dl">Alias</span><span class="dv">${c.public_alias||'—'}</span></div>
+    </div>
+    ${d.memory?`<h3 style="margin:12px 0 8px">🧠 Memory</h3>
+    <div class="memory-block"><h4>Memory JSON</h4><pre>${JSON.stringify(d.memory.memory_json,null,2)||'null'}</pre></div>
+    <div class="memory-block"><h4>Preferences</h4><pre>${JSON.stringify(d.memory.preferences_json,null,2)||'null'}</pre></div>
+    <div class="memory-block"><h4>Restrictions</h4><pre>${JSON.stringify(d.memory.restrictions_json,null,2)||'null'}</pre></div>`:'<p style="color:var(--dim);margin:12px 0">No memory data</p>'}
+    <h3 style="margin:12px 0 8px">📋 Event Plans</h3>${plansH}
+    <h3 style="margin:12px 0 8px">💰 Quotes</h3>${quotesH}
+    <h3 style="margin:12px 0 8px">💬 Latest Messages</h3>
+    <div style="max-height:200px;overflow-y:auto;padding:8px;background:var(--bg);border-radius:8px">${msgsH}</div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="openMemoryForClient('${id}');closeModal()">🧠 Full Memory</button>
+      <button class="btn btn-outline" onclick="closeModal()">Close</button>
+    </div>`);
+}
+
+function openMemoryForClient(id){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  document.querySelector('[data-module="memory"]').classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('mod-memory').classList.add('active');
+  document.getElementById('pageTitle').textContent='Memory Inspector';
+  document.getElementById('memClientId').value=id;
+  loadMemory();
+}
+
+// ═══════════════════════════════════════
+// MEMORY INSPECTOR
+// ═══════════════════════════════════════
+async function loadMemory(){
+  const cid=document.getElementById('memClientId').value.trim();
+  if(!cid){document.getElementById('memoryContent').innerHTML='<p style="color:var(--dim)">Enter a client ID above</p>';return}
+  const d=await api(API+'/memory/'+cid);
+  const el=document.getElementById('memoryContent');
+  if(!d.memory&&!d.event_plans?.length){el.innerHTML='<div class="empty"><div class="icon">🧠</div><p>No memory data for this client</p></div>';return}
+
+  let h='';
+  if(d.memory){
+    h+=`<h3 style="margin:16px 0 8px">📝 Client Memory</h3>
+    <div class="grid-2">
+      <div class="memory-block"><h4>Memory JSON</h4><pre>${JSON.stringify(d.memory.memory_json,null,2)||'null'}</pre>
+        <button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="editMemoryField('${cid}','memory_json')">✏️ Edit</button></div>
+      <div class="memory-block"><h4>Preferences</h4><pre>${JSON.stringify(d.memory.preferences_json,null,2)||'null'}</pre>
+        <button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="editMemoryField('${cid}','preferences_json')">✏️ Edit</button></div>
+      <div class="memory-block"><h4>Restrictions</h4><pre>${JSON.stringify(d.memory.restrictions_json,null,2)||'null'}</pre>
+        <button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="editMemoryField('${cid}','restrictions_json')">✏️ Edit</button></div>
+      <div class="memory-block"><h4>Decision Makers</h4><pre>${JSON.stringify(d.memory.decision_makers_json,null,2)||'null'}</pre>
+        <button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="editMemoryField('${cid}','decision_makers_json')">✏️ Edit</button></div>
+    </div>
+    <div class="detail-row" style="margin-top:8px"><span class="dl">Priority</span><span class="dv"><span class="tag tag-purple">${d.memory.priority_level||'normal'}</span></span></div>
+    <div class="detail-row"><span class="dl">Notes</span><span class="dv">${d.memory.internal_notes_summary||'—'}</span></div>
+    <div class="detail-row"><span class="dl">Updated</span><span class="dv">${d.memory.updated_at?timeAgo(d.memory.updated_at):'—'}</span></div>`;
+  }
+
+  if(d.event_plans?.length){
+    h+=`<h3 style="margin:20px 0 8px">📋 Event Plans (${d.event_plans.length})</h3>`;
+    for(const p of d.event_plans){
+      h+=`<div class="card"><div style="display:flex;justify-content:space-between"><b>${p.event_type||'event'} — ${p.occasion||''}</b><span class="tag tag-blue">${p.status}</span></div>
+        <div class="grid-3" style="margin-top:8px;font-size:12px">
+          <div><span style="color:var(--dim)">Date:</span> ${p.event_date||'TBD'}</div>
+          <div><span style="color:var(--dim)">Location:</span> ${p.location||'TBD'}</div>
+          <div><span style="color:var(--dim)">Confidence:</span> ${p.confidence||'—'}</div>
+        </div>
+        <div style="margin-top:6px;font-size:12px"><span style="color:var(--dim)">Services:</span> ${(p.requested_services||[]).join(', ')||'—'}</div>
+        <div style="margin-top:4px;font-size:12px"><span style="color:var(--dim)">Missing:</span> ${JSON.stringify(p.missing_fields)||'[]'}</div>
+      </div>`;
+    }
+  }
+
+  if(d.goal_states?.length){
+    h+=`<h3 style="margin:20px 0 8px">🎯 Goal States (${d.goal_states.length})</h3>`;
+    for(const g of d.goal_states.slice(0,3)){
+      h+=`<div class="card"><pre style="font-size:11px;color:var(--dim)">${JSON.stringify(g,null,2)}</pre></div>`;
+    }
+  }
+
+  if(d.quotes?.length){
+    h+=`<h3 style="margin:20px 0 8px">💰 Quotes (${d.quotes.length})</h3>`;
+    for(const q of d.quotes){
+      h+=`<div class="card"><div style="display:flex;justify-content:space-between"><b>Quote #${q.id?.substring(0,8)}</b><span class="tag tag-${q.status==='accepted'?'green':'yellow'}">${q.status}</span></div>
+        <div style="font-size:13px;margin-top:4px">${q.grand_total||0} RON</div></div>`;
+    }
+  }
+
+  if(d.mutations?.length){
+    h+=`<h3 style="margin:20px 0 8px">🔄 Recent Mutations (${d.mutations.length})</h3>
+      <table><thead><tr><th>Time</th><th>Field</th><th>Change</th></tr></thead><tbody>`;
+    for(const m of d.mutations.slice(0,10)){
+      h+=`<tr><td style="font-size:11px">${timeAgo(m.created_at)}</td><td>${m.field_name||'—'}</td><td style="font-size:12px">${m.old_value?'<s>'+String(m.old_value).substring(0,30)+'</s> → ':''}<b>${String(m.new_value||'').substring(0,50)}</b></td></tr>`;
+    }
+    h+='</tbody></table>';
+  }
+
+  if(d.audit_trail?.length){
+    h+=`<h3 style="margin:20px 0 8px">📋 Audit Trail (${d.audit_trail.length})</h3>
+      <table><thead><tr><th>Time</th><th>Action</th><th>Changes</th><th>By</th><th>Reason</th></tr></thead><tbody>`;
+    for(const a of d.audit_trail){
+      h+=`<tr><td style="font-size:11px">${timeAgo(a.created_at)}</td><td>${a.action}</td><td style="font-size:11px">${JSON.stringify(a.changes).substring(0,60)}</td><td>${a.changed_by}</td><td>${a.reason||'—'}</td></tr>`;
+    }
+    h+='</tbody></table>';
+  }
+
+  el.innerHTML=h;
+}
+
+function editMemoryField(cid,field){
+  openModal(`
+    <h2>Edit Memory: ${field}</h2>
+    <div class="form-group"><label>New Value (JSON)</label><textarea id="memEditVal" rows="6" placeholder='{}'></textarea></div>
+    <div class="form-group"><label>Reason for change</label><input id="memEditReason" placeholder="Why are you correcting this?"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMemoryEdit('${cid}','${field}')">Save Correction</button>
+    </div>`);
+}
+
+async function saveMemoryEdit(cid,field){
+  let val;
+  try{val=JSON.parse(document.getElementById('memEditVal').value)}catch(e){alert('Invalid JSON');return}
+  const reason=document.getElementById('memEditReason').value;
+  await api(API+'/memory/'+cid,{method:'PUT',body:JSON.stringify({field,value:val,reason})});
+  closeModal();loadMemory();
+}
+
+// ═══════════════════════════════════════
+// AI BRAIN (Quick Stats)
+// ═══════════════════════════════════════
+async function loadBrainQuick(){
+  const d=await api(BRAIN+'/stats?hours=24');
+  document.getElementById('brainQuickStats').innerHTML=`
+    <div class="grid-4" style="margin-top:16px">
+      <div class="stat-card"><div class="number">${d.decisions?.total||0}</div><div class="label">Decisions 24h</div></div>
+      <div class="stat-card"><div class="number">${d.active_rules||0}</div><div class="label">Active Rules</div></div>
+      <div class="stat-card"><div class="number">${d.coverage?.total_zones||0}</div><div class="label">Zones</div></div>
+      <div class="stat-card"><div class="number">${d.corrections||0}</div><div class="label">Corrections</div></div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════
+// PRICING
+// ═══════════════════════════════════════
+async function loadPricing(){
+  const d=await api(API+'/pricing/catalog');
+  const kb=await api(API+'/pricing/kb');
+  const el=document.getElementById('mod-pricing');
+
+  let h=`<div class="tabs-inline"><div class="tab-inline active" onclick="showPricingTab('catalog',this)">Service Catalog (${d.total_services})</div><div class="tab-inline" onclick="showPricingTab('kb',this)">Knowledge Base (${kb.total})</div></div>`;
+
+  h+=`<div id="pricingCatalog"><table><thead><tr><th>Service</th><th>Display Name</th><th>Required Fields</th><th>Tags</th><th>Autonomy</th></tr></thead><tbody>`;
+  for(const s of d.catalog||[]){
+    h+=`<tr><td><b>${s.service_key}</b></td><td>${s.display_name}</td><td style="font-size:11px">${(s.required_fields||[]).join(', ')}</td>
+      <td>${(s.tags||[]).map(t=>'<span class="tag tag-blue">'+t+'</span> ').join('')}</td>
+      <td>${s.autonomy_allowed?'<span class="tag tag-green">YES</span>':'<span class="tag tag-red">NO</span>'}</td></tr>`}
+  h+='</tbody></table></div>';
+
+  h+=`<div id="pricingKb" style="display:none"><table><thead><tr><th>Key</th><th>Category</th><th>Status</th><th>Patterns</th><th>Updated</th></tr></thead><tbody>`;
+  for(const k of kb.entries||[]){
+    h+=`<tr><td><b>${k.knowledge_key}</b></td><td><span class="tag tag-blue">${k.category||'—'}</span></td>
+      <td><span class="tag tag-${k.status==='approved'?'green':'yellow'}">${k.status}</span></td>
+      <td>${k.question_patterns?.length||0}</td><td style="font-size:11px">${k.updated_at?timeAgo(k.updated_at):'—'}</td></tr>`}
+  h+='</tbody></table></div>';
+  el.innerHTML=h;
+}
+
+function showPricingTab(tab,btn){
+  document.querySelectorAll('.tab-inline').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
+  document.getElementById('pricingCatalog').style.display=tab==='catalog'?'':'none';
+  document.getElementById('pricingKb').style.display=tab==='kb'?'':'none';
+}
+
+// ═══════════════════════════════════════
+// EMPLOYEES
+// ═══════════════════════════════════════
+async function loadEmployees(){
+  const d=await api(API+'/employees');
+  const el=document.getElementById('mod-employees');
+  if(!d.employees?.length){
+    el.innerHTML=`<div class="empty"><div class="icon">👔</div><p>No employees yet</p></div>
+    <div style="text-align:center;margin-top:16px"><button class="btn btn-primary" onclick="showAddEmployee()">+ Add Employee</button></div>`;
+    return}
+  let h=`<div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:var(--dim)">${d.total} employees</span><button class="btn btn-primary" onclick="showAddEmployee()">+ Add Employee</button></div>
+    <table><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Payroll</th><th></th></tr></thead><tbody>`;
+  for(const e of d.employees){
+    h+=`<tr><td><b>${e.full_name||'—'}</b></td><td>${e.role||'—'}</td>
+      <td><span class="tag tag-${e.status==='active'?'green':'red'}">${e.status||'unknown'}</span></td>
+      <td>${e.exclude_from_payroll?'<span class="tag tag-red">EXCLUDED</span>':'<span class="tag tag-green">INCLUDED</span>'}</td>
+      <td><button class="btn btn-sm btn-outline" onclick="editEmployee('${e.id}')">Edit</button></td></tr>`}
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+function showAddEmployee(){
+  openModal(`<h2>Add Employee</h2>
+    <div class="grid-2">
+      <div class="form-group"><label>Full Name</label><input id="empName"></div>
+      <div class="form-group"><label>Role</label><input id="empRole" placeholder="animator, operator..."></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label>Email</label><input id="empEmail"></div>
+      <div class="form-group"><label>Phone</label><input id="empPhone"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="empNotes"></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="createEmployee()">Create</button></div>`);
+}
+
+async function createEmployee(){
+  await api(API+'/employees',{method:'POST',body:JSON.stringify({full_name:document.getElementById('empName').value,role:document.getElementById('empRole').value,email:document.getElementById('empEmail').value,phone:document.getElementById('empPhone').value,notes:document.getElementById('empNotes').value,status:'active'})});
+  closeModal();loadEmployees();
+}
+
+// ═══════════════════════════════════════
+// ROLLOUT / SAFETY
+// ═══════════════════════════════════════
+async function loadRollout(){
+  const d=await api(API+'/rollout/overview');
+  const el=document.getElementById('mod-rollout');
+  const f=d.feature_flags||{};
+  const dec=d.decisions_24h||{};
+
+  let h=`<div class="grid-2" style="margin-bottom:16px">
+    <div class="card"><h3 style="margin-bottom:8px">⚡ Current State</h3>
+      <div class="detail-row"><span class="dl">Rollout</span><span class="dv"><span class="tag tag-purple">${d.rollout_state?.current_state||'unknown'}</span></span></div>
+      <div class="detail-row"><span class="dl">Shadow Mode</span><span class="dv">${f.shadow_mode?'<span class="tag tag-green">ON</span>':'<span class="tag tag-red">OFF</span>'}</span></div>
+      <div class="detail-row"><span class="dl">Safe Autoreply</span><span class="dv">${f.safe_autoreply?'<span class="tag tag-green">ON</span>':'<span class="tag tag-red">OFF</span>'}</span></div>
+      <div class="detail-row"><span class="dl">Wave 1</span><span class="dv">${f.wave1?'<span class="tag tag-green">ON</span>':'<span class="tag tag-red">OFF</span>'}</span></div>
+      <div class="detail-row"><span class="dl">Wave 2</span><span class="dv">${f.wave2?'<span class="tag tag-green">ON</span>':'<span class="tag tag-red">OFF</span>'}</span></div>
+      <div class="detail-row"><span class="dl">Auto Rollback</span><span class="dv">${f.auto_rollback?'<span class="tag tag-green">ON</span>':'<span class="tag tag-red">OFF</span>'}</span></div>
+    </div>
+    <div class="card"><h3 style="margin-bottom:8px">📊 Decisions (24h)</h3>
+      <div class="grid-2">
+        <div class="stat-card"><div class="number">${dec.total}</div><div class="label">Total</div></div>
+        <div class="stat-card"><div class="number">${dec.avg_confidence}</div><div class="label">Avg Confidence</div></div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="detail-row"><span class="dl">Safe</span><span class="dv"><span class="tag tag-green">${dec.safe}</span></span></div>
+        <div class="detail-row"><span class="dl">Review</span><span class="dv"><span class="tag tag-yellow">${dec.review}</span></span></div>
+        <div class="detail-row"><span class="dl">Blocked</span><span class="dv"><span class="tag tag-red">${dec.blocked}</span></span></div>
+        <div class="detail-row"><span class="dl">With Verdict</span><span class="dv">${dec.with_verdict}</span></div>
+      </div>
+    </div>
+  </div>`;
+
+  // KB Misses
+  const misses=await api(API+'/rollout/kb-misses');
+  h+=`<h3 style="margin:16px 0 8px">❓ KB Misses (${misses.total||0} total)</h3>
+    <table><thead><tr><th>Time</th><th>Client Message</th><th>Best Score</th><th>Detected Services</th></tr></thead><tbody>`;
+  for(const m of (misses.misses||[]).slice(0,15)){
+    h+=`<tr><td style="font-size:11px">${timeAgo(m.created_at)}</td><td><span class="truncate">${m.client_message||'—'}</span></td>
+      <td>${m.best_score||'—'}</td><td style="font-size:11px">${JSON.stringify(m.detected_services||[])}</td></tr>`}
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+// ═══════════════════════════════════════
+// AUDIT
+// ═══════════════════════════════════════
+async function loadAudit(){
+  const d=await api(API+'/audit?limit=50');
+  const el=document.getElementById('mod-audit');
+  if(!d.logs?.length){el.innerHTML='<div class="empty"><div class="icon">📋</div><p>No audit logs yet. Changes will appear here.</p></div>';return}
+  let h=`<div style="margin-bottom:12px;color:var(--dim);font-size:12px">${d.total} total entries</div>
+    <table><thead><tr><th>Time</th><th>Module</th><th>Action</th><th>Entity</th><th>By</th><th>Reason</th></tr></thead><tbody>`;
+  for(const l of d.logs){
+    h+=`<tr><td style="font-size:11px">${timeAgo(l.created_at)}</td><td><span class="tag tag-purple">${l.module}</span></td>
+      <td>${l.action}</td><td>${l.entity_type||'—'} ${(l.entity_id||'').substring(0,8)}</td><td>${l.changed_by}</td><td style="font-size:12px;color:var(--dim)">${l.reason||'—'}</td></tr>`}
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+// ── Init ──
+loadDashboard();
+</script>
+</body>
+</html>

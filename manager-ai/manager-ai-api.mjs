@@ -612,6 +612,11 @@ const __dirname = path.dirname(__filename);
 app.use('/api/ai/brain', brainConsoleRoutes);
 app.use('/brain', express.static(path.join(__dirname, 'public')));
 
+// ─── Admin Suite ───
+import adminSuiteRoutes from './src/api/adminSuiteRoutes.mjs';
+app.use('/api/admin', adminSuiteRoutes);
+app.use('/admin', express.static(path.join(__dirname, 'public')));
+
 const PORT = parseInt(process.env.PORT || '3000', 10);
 app.listen(PORT, '0.0.0.0', () => {
     const mode = process.env.AI_SHADOW_MODE_ENABLED === 'true' ? 'SHADOW'

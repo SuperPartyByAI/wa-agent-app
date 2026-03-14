@@ -315,7 +315,7 @@ function avInit(name) {
 
 // INIT HELPER
 function checkH(){fetch(`${API}/health`).then(r=>r.json()).then(d=>{
-  const h=document.getElementById('hDot');h.textContent=`${d.status} · v${d.policy_version||'?'}`;h.style.color=d.status==='ok'?'var(--gr)':'var(--rd)';
+  const h=document.getElementById('hDot');h.textContent=`${d.status} · v2.1`;h.style.color=d.status==='ok'?'var(--gr)':'var(--rd)';
 }).catch(e=>{const h=document.getElementById('hDot');h.textContent='Offline';h.style.color='var(--rd)';})}
 
 document.querySelectorAll('.fb').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.fb').forEach(x=>x.classList.remove('act'));f.classList.add('act');filt=f.dataset.f;renderList()}));
@@ -360,11 +360,11 @@ async function selConv(id){
   try{
     const r=await fetch(`${API}/api/admin/crm/clients/${curCl}`,{headers:H()});const d=await r.json();
     const cl=d.client||{},msgs=d.latest_messages||[],plans=d.event_plans||[];
-    const newestMsg = msgs.length ? msgs[0] : null;
-    const aiR = newestMsg?.ai_reply || it?.ai_reply || '';
-    const tool = newestMsg?.tool_action || it?.tool_action || '';
-    const safe = newestMsg?.safety_class || it?.safety_class || '';
-    const conf = newestMsg?.confidence || it?.confidence || '';
+    const newestClientMsg = msgs.find(m => m.sender_type === 'client') || msgs[0];
+    const aiR = newestClientMsg?.ai_reply || it?.ai_reply || '';
+    const tool = newestClientMsg?.tool_action || it?.tool_action || '';
+    const safe = newestClientMsg?.safety_class || it?.safety_class || '';
+    const conf = newestClientMsg?.confidence || it?.confidence || '';
     const ap=plans.find(p=>['draft','active'].includes(p.status));
 
     // Get field analysis if plan exists

@@ -221,16 +221,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:
 
 <div class="top">
   <div class="logo">AI Operator Desk <span>· Superparty</span></div>
-  <div class="tabs">
-    <div class="tab act" data-tab="conv">Conversații <span class="bg" id="cBg">0</span></div>
-    <div class="tab" data-tab="fields">Registru câmpuri</div>
-    <div class="tab" data-tab="rules">Reguli AI</div>
-    <div class="tab" data-tab="admin">Administrare ↗</div>
-  </div>
   <div class="top-r">
     <div class="hp" id="hDot">OK</div>
-    <a class="el" href="admin-suite.html" target="_blank">Suită</a>
-    <a class="el" href="../brain/brain-console.html" target="_blank">Brain</a>
+    <a class="el" href="admin-suite.html" target="_blank">Admin Suite ↗</a>
+    <a class="el" href="../brain/brain-console.html" target="_blank">Brain Console ↗</a>
   </div>
 </div>
 
@@ -248,13 +242,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:
 
   <div class="center" id="cP"><div class="es" id="emS">Selectează o conversație</div></div>
   <div class="right hid" id="rP">
-    <div class="rh"><h3 id="mN">Memorie client</h3><button class="rx" onclick="tgMem(0)">✕</button></div>
+    <div class="rh"><h3 id="mN">Profil & Memorie</h3><button class="rx" onclick="tgMem(0)">✕</button></div>
     <div class="rb" id="mB"></div>
   </div>
-
-  <div class="tv" id="fieldsV"></div>
-  <div class="tv" id="rulesV"></div>
-  <div class="tv" id="adminV"></div>
 </div>
 
 <!-- FIELD MODAL -->
@@ -323,16 +313,11 @@ function avInit(name) {
   return `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${avColors[ci]};border-radius:50%;font-size:inherit">${ini}</span>`;
 }
 
-// TABS
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('act'));t.classList.add('act');
-  const n=t.dataset.tab;
-  document.getElementById('lP').style.display=n==='conv'?'flex':'none';
-  document.getElementById('cP').style.display=n==='conv'?'flex':'none';
-  document.getElementById('rP').style.display=n==='conv'&&!document.getElementById('rP').classList.contains('hid')?'flex':'none';
-  ['fieldsV','rulesV','adminV'].forEach(v=>document.getElementById(v).classList.toggle('act',v===n+'V'));
-  if(n==='fields')loadFields();if(n==='rules')loadRules();if(n==='admin')renderAdmin();
-}));
+// INIT HELPER
+function checkH(){fetch(`${API}/health`).then(r=>r.json()).then(d=>{
+  const h=document.getElementById('hDot');h.textContent=`${d.status} · v${d.policy_version||'?'}`;h.style.color=d.status==='ok'?'var(--gr)':'var(--rd)';
+}).catch(e=>{const h=document.getElementById('hDot');h.textContent='Offline';h.style.color='var(--rd)';})}
+
 document.querySelectorAll('.fb').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.fb').forEach(x=>x.classList.remove('act'));f.classList.add('act');filt=f.dataset.f;renderList()}));
 document.getElementById('sBox').addEventListener('input',e=>renderList(e.target.value));
 
@@ -380,87 +365,71 @@ async function selConv(id){
       }catch(e){}
     }
 
-    // Use identity from inbox item (already resolved server-side)
-    const cName = it?.client_name || cl.full_name || cl.public_alias || 'Client';
-    const cPhone = it?.client_phone || null;
-    const cAvatar = it?.client_avatar || cl.avatar_url || null;
-    const cBrand = it?.client_brand || cl.brand_key || null;
-    const isRecurrent = (d.conversations||[]).length > 1;
-
-    // Build the 8 Sections strictly
-    // 1. Identity
+    // Build the "Zen" Unified Sections
+    // 1. Unified Identity & Context Header
     let html = `
       <div class="dh">
         <div class="dh-l">
-          <div class="dh-av">${avHtml(cAvatar, cName, 40)}</div>
+          <div class="dh-av">${avHtml(cAvatar, cName, 46)}</div>
           <div>
-            <h2>${esc(cName)}</h2>
-            <span class="sub">
-              ${cPhone?`<span class="ph">📞 ${esc(cPhone)}</span> · `:''}
-              ${isRecurrent ? '<span style="color:var(--ac);font-weight:600">🔄 Recurent</span> · ' : 'Nou · '}
-              ${cl.source||'whatsapp'} · ${msgs.length} msg
+            <h2 style="font-size:16px">${esc(cName)}</h2>
+            <span class="sub" style="font-size:11px">
+              ${cPhone?`<span class="ph" style="color:var(--tx)">📞 ${esc(cPhone)}</span> · `:''}
+              ${isRecurrent ? '<span style="color:var(--ac);font-weight:700">🔄 Recurent</span> · ' : '<span style="color:var(--gr);font-weight:700">Nou</span> · '}
+              ${msgs.length} mesaje
             </span>
           </div>
         </div>
-        <span class="ml" onclick="tgMem(1,'${curCl}')">📋 Profil Client</span>
-      </div>`;
-
-    // 2. Quick Summary
-    html += `
-      <div class="block">
-        <div class="block-hd">Rezumat Rutare</div>
-        <div class="es-card">
-          <div class="es-i"><span class="es-l">Serviciu</span><span class="es-v">${ap ? esc(ap.event_type||'Detectare...') : (tool ? 'Acțiune Generală' : 'Fără plan')}</span></div>
-          <div class="es-i"><span class="es-l">Intenție AI</span><span class="es-v">${it?.operator_verdict==='approved'?'✓ Aprobat': (tool ? esc(tool) : 'Chat')}</span></div>
-          <div class="es-i"><span class="es-l">Status Plan</span><span class="es-v">${ap?.status==='draft'?'Draft':(ap?.status||'N/A')}</span></div>
-          <div class="es-i"><span class="es-l">Siguranță</span><span class="es-v ${safe?.includes('block')?'b-blocked':safe?.includes('review')?'b-pending':''}">${safe ? esc(safe.replace(/_/g,' ')) : 'Verificat'}</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span class="es-v ${safe?.includes('block')?'b-blocked':safe?.includes('review')?'b-pending':'b-info'}" style="padding:4px 8px;border-radius:4px">${safe ? esc(safe.replace(/_/g,' ')) : (ap ? 'Detectare rutare...' : (tool ? 'Acțiune Generală' : 'Fără plan'))}</span>
+            <span style="font-size:9px;color:var(--tx3)">${it?.operator_verdict==='approved'?'✓ Verificat Operator':'Rutare Automată AI'}</span>
+          </div>
+          <button class="btn bm" onclick="tgMem(1,'${curCl}')">📋 Profil Client</button>
         </div>
       </div>`;
 
-    // 3 & 4. Knowns & Missing Fields
-    if (ad.filled?.length || ad.missing_required?.length) {
-      html += `<div class="block">`;
+    // 2. Compact Context Pills (Ce stim / Ce lipseste)
+    if (ad.filled?.length || ad.missing_required?.length || ad.next_question) {
+      html += `<div class="block" style="background:var(--bg2);padding:10px 14px;border-bottom:1px solid var(--bd);">`;
+      
+      html += `<div class="qk-list">`;
       if (ad.filled?.length) {
-        html += `<div class="block-hd">Ce știm deja</div><div class="qk-list" style="margin-bottom:14px">`;
-        html += ad.filled.map(f => `<div class="qk-i">✓ ${esc(f.label)}: <strong>${esc(String(f.value))}</strong></div>`).join('');
-        html += `</div>`;
+        html += ad.filled.map(f => `<div class="qk-i">✓ <strong>${esc(f.label)}:</strong> ${esc(String(f.value))}</div>`).join('');
       }
       if (ad.missing_required?.length) {
-        html += `<div class="block-hd">Ce mai lipsește</div><div class="qk-list">`;
-        html += ad.missing_required.map(f => `<div class="qk-m">⚠ ${esc(f.label)}</div>`).join('');
-        html += `</div>`;
+        html += ad.missing_required.map(f => `<div class="qk-m">⚠ Lipsă: <strong>${esc(f.label)}</strong></div>`).join('');
+      }
+      html += `</div>`;
+
+      if (ad.next_question) {
+        html += `<div style="margin-top:10px;padding:8px 12px;background:rgba(108,140,255,0.08);border-left:3px solid var(--ac);font-size:12px;color:var(--ac);font-weight:500;"><strong>Întrebarea care urmează:</strong> „${esc(ad.next_question)}"</div>`;
       }
       html += `</div>`;
     }
 
-    // 5. Next Recommended Question
-    if (ad.next_question) {
-      html += `
-      <div class="block" style="border-bottom:none">
-        <div class="block-hd">Întrebarea recomandată acum</div>
-        <div class="nq-card">${esc(ad.next_question)}</div>
-      </div>`;
-    }
-
-    // 6. Full Conversation
+    // 3. Full Conversation
     html += `
-      <div class="block-hd" style="padding:14px 14px 0 14px;margin:0">Conversația completă</div>
-      <div class="msgs" id="mA">${msgs.length?msgs.map(m=>{const w=m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='cl'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}</div>`;
+      <div class="msgs" id="mA" style="background:var(--bg); flex:1">${msgs.length?msgs.map(m=>{const w=m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='cl'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}</div>`;
 
-    // 7. AI Proposed Reply & Actions
+    // 4. AI Training & Reply Box
     html += `
-      <div class="ab">
-        <div class="al">🤖 Răspuns AI propus
+      <div class="ab" style="background:var(--bg2);padding:16px;">
+        <div class="al" style="font-size:11px;color:var(--tx);margin-bottom:8px">🤖 Draft Răspuns AI:
           ${tool?`<span class="ta">🔧 ${esc(tool)}</span>`:''}
-          ${conf?`<span class="sf sf-ok">${conf}% încredere</span>`:''}
+          ${conf?`<span class="sf sf-ok" style="background:transparent;border:1px solid var(--bd);color:var(--tx3)">${conf}% acuratețe</span>`:''}
         </div>
-        <textarea class="at" id="aiTx" ${!aiR && !tool ? 'placeholder="Scrie un răspuns manual..."' : ''}>${esc(aiR)}</textarea>
-        <div class="aa">
-          <button class="btn ba" onclick="doAct('approve')">✓ Aprobă</button>
-          <button class="btn be" onclick="document.getElementById('aiTx').focus()">✎ Editează</button>
-          <button class="btn bc" onclick="doAct('clarify')">? Clarificare</button>
-          <button class="btn bh" onclick="doAct('handoff')">→ Respinge / Operator</button>
-          <button class="btn br" onclick="doAct('save_edit')">💾 Salvează editare</button>
+        <textarea class="at" id="aiTx" style="height:70px;font-size:13px;border-color:#3b4054" ${!aiR && !tool ? 'placeholder="Scrie un răspuns manual..."' : ''}>${esc(aiR)}</textarea>
+        
+        <div class="aa" style="display:flex;gap:10px;margin-top:6px;justify-content:space-between;align-items:center">
+          <div style="display:flex;gap:8px">
+            <button class="btn ba" style="font-size:12px;padding:10px 16px" onclick="doAct('approve')">✅ Aprobă Răspunsul</button>
+            <button class="btn br" style="background:transparent;border:2px solid var(--ac);color:var(--ac);font-size:12px;padding:8px 14px" onclick="doAct('save_edit')">🎓 Corectează și Învață AI-ul</button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn be" style="background:var(--pu2);color:var(--pu);border:1px solid var(--pu);font-size:11px" onclick="openRMFromChat()">🧠 Regulă nouă din context</button>
+            <button class="btn bh" style="background:transparent;border:1px solid var(--rd);color:var(--rd)" onclick="doAct('handoff')">🛑 Preiau Manual</button>
+          </div>
         </div>
       </div>`;
 
@@ -503,138 +472,25 @@ async function loadMem(cid){if(!cid)return;const b=document.getElementById('mB')
 function mf(l,v){return`<div class="mf"><div class="l">${esc(l)}</div><div class="v">${esc(String(v))}</div></div>`}
 async function addNote(cid){const n=document.getElementById('nT')?.value;if(!n)return;try{await fetch(`${API}/api/admin/memory/${cid}/note`,{method:'POST',headers:H(),body:JSON.stringify({note:n,changed_by:'operator'})});toast('Notă salvată');document.getElementById('nT').value=''}catch(e){toast('Eroare',false)}}
 
-// FIELD REGISTRY
-async function loadFields(){
-  const v=document.getElementById('fieldsV');v.innerHTML='<h2 style="font-size:14px;margin-bottom:4px">Registru câmpuri</h2><div style="color:var(--tx3)">Se încarcă...</div>';
-  try{
-    const r=await fetch(`${API}/api/operator/fields`,{headers:H()});const d=await r.json();const fields=d.fields||[];
-    const auto=fields.filter(f=>f.bind_status==='auto_bind'),sens=fields.filter(f=>f.bind_status==='sensitive'),cust=fields.filter(f=>f.bind_status==='custom'),nomap=fields.filter(f=>f.bind_status==='no_mapping');
+// REMOVED COMPLEX RULES/FIELDS LOGIC FOR ZEN UI
 
-    // Also load services
-    let svcH='';
-    try{const sr=await fetch(`${API}/api/operator/services`,{headers:H()});const sd=await sr.json();
-      if(sd.services?.length){
-        svcH=`<div class="fr-sec"><div class="fr-h">Servicii configurate (${sd.services.length})</div>
-          <div class="fr-sub">Câmpuri obligatorii per categorie de serviciu. Ghidăz ce întreabă AI-ul automat.</div>
-          ${sd.services.map(s=>`<div class="sc"><h4>${esc(s.display_name)} <span>${s.service_key}</span></h4>
-            <div class="fl">${(s.required_fields||[]).map(f=>`<span class="fi fi-r">${esc(f.label||f.field_key)}</span>`).join('')}${(s.optional_fields||[]).map(f=>`<span class="fi fi-o">${esc(f.label||f.field_key)}</span>`).join('')}</div>
-            <div class="stat"><span class="sn">${s.auto_bind||0} auto</span><span class="ss">${s.sensitive||0} sensibile</span><span class="sc_">${s.custom||0} custom</span></div>
-            ${s.questions?.length?`<div class="qs">Întrebări: ${s.questions.slice(0,2).map(q=>q.question).join(' · ')}${s.questions.length>2?' ...':''}</div>`:''}
-          </div>`).join('')}</div>`;
-      }
-    }catch(e){}
-
-    const stMap={'auto_bind':['st-auto','Legare automată'],'sensitive':['st-sens','Sensibil'],'custom':['st-cust','Handler special'],'no_mapping':['st-no','Fără mapare']};
-    v.innerHTML=`
-      <h2 style="font-size:14px;margin-bottom:4px">Registru câmpuri <span style="font-size:10px;color:var(--tx2);font-weight:400">${fields.length} câmpuri active</span></h2>
-      <p style="font-size:10px;color:var(--tx2);margin-bottom:4px">Câmpurile standard cu mapare validă sunt folosite automat de agent. Câmpurile sensibile/custom necesită intervenție.</p>
-      <div style="display:flex;gap:8px;margin-bottom:12px;font-size:9px">
-        <span style="color:var(--gr)">● ${auto.length} legare automată</span>
-        <span style="color:var(--rd)">● ${sens.length} sensibile</span>
-        <span style="color:var(--or)">● ${cust.length} handler special</span>
-        <span style="color:var(--tx3)">● ${nomap.length} fără mapare</span>
-      </div>
-      ${fields.map(f=>`<div class="fr-c">
-        <div class="fr-l">
-          <div class="fr-n">${esc(f.label)}</div>
-          <div class="fr-k">${f.field_key} → ${f.storage_entity}.${f.storage_path} (${f.storage_type})</div>
-          ${f.question_text?`<div class="fr-d">„${esc(f.question_text)}"</div>`:''}
-          <div class="fr-tg">
-            <span class="ft ${stMap[f.bind_status]?.[0]||'ft-opt'}">${stMap[f.bind_status]?.[1]||'?'}</span>
-            ${f.required||f.create_required?'<span class="ft ft-req">Obligatoriu</span>':'<span class="ft ft-opt">Opțional</span>'}
-            <span class="ft ft-map">${f.field_type}</span>
-            ${f.update_allowed?'':'<span class="ft ft-sens">Nu se poate modifica</span>'}
-            ${f.clarify_if_ambiguous?'<span class="ft ft-opt">Clarificare</span>':''}
-          </div>
-        </div>
-        <div class="fr-r">
-          <span class="fr-st ${stMap[f.bind_status]?.[0]||'st-no'}">${stMap[f.bind_status]?.[1]||'?'}</span>
-        </div>
-      </div>`).join('')}
-      <button class="adb" onclick="openFM()">+ Câmp nou</button>
-      ${svcH}`;
-  }catch(e){v.innerHTML=`<h2>Registru câmpuri</h2><div style="color:var(--rd)">${e.message}</div>`}
+function openRMFromChat() {
+  document.getElementById('rmD').value = "Când un client scrie ceva de genul '" + (document.getElementById('sBox')?.value || '...') + "', răspunde mereu așa: " + (document.getElementById('aiTx')?.value || '...');
+  document.getElementById('rM').classList.add('sh');
 }
 
-// FIELD MODAL
-function openFM(id){document.getElementById('fMT').textContent=id?'Editează câmp':'Câmp nou';editFieldId=id||null;document.getElementById('fM').classList.add('sh')}
-function closeFM(){document.getElementById('fM').classList.remove('sh');editFieldId=null}
-async function saveFM(){
-  const fk=document.getElementById('fK').value.trim(),lab=document.getElementById('fL').value.trim();
-  if(!fk||!lab)return toast('Cheia și eticheta sunt obligatorii',false);
-  const sp=document.getElementById('fSP').value.trim();
-  if(document.getElementById('fAc').checked&&!sp)return toast('Câmp activ necesită coloană stocare',false);
-  const body={
-    field_key:fk,label:lab,field_type:document.getElementById('fTy').value,
-    service_keys:document.getElementById('fSvc').value.split(',').map(s=>s.trim()).filter(Boolean),
-    question_text:document.getElementById('fQ').value||null,
-    clarification_text:document.getElementById('fCl').value||null,
-    question_order:parseInt(document.getElementById('fOr').value||'50',10),
-    storage_entity:document.getElementById('fSE').value||'ai_event_plans',
-    storage_path:sp||null,storage_type:document.getElementById('fST').value,
-    allowed_values:document.getElementById('fAV').value?document.getElementById('fAV').value.split(',').map(s=>s.trim()):null,
-    required:document.getElementById('fReq').checked,
-    create_required:document.getElementById('fCR').checked,
-    quote_required:document.getElementById('fQR').checked,
-    update_allowed:document.getElementById('fUA').checked,
-    clarify_if_ambiguous:document.getElementById('fCA').checked,
-    sensitive:document.getElementById('fSn').checked,
-    requires_custom_handler:document.getElementById('fCH').checked,
-    active:document.getElementById('fAc').checked,
-    updated_by:'operator'
-  };
-  try{
-    const ep=editFieldId?`${API}/api/operator/fields/${editFieldId}`:`${API}/api/operator/fields`;
-    const r=await fetch(ep,{method:editFieldId?'PUT':'POST',headers:H(),body:JSON.stringify(body)});
-    const d=await r.json();
-    if(d.ok||d.field){toast(editFieldId?'Câmp actualizat':'Câmp creat');closeFM();loadFields()}
-    else toast('Eroare: '+(d.error||'necunoscut'),false);
-  }catch(e){toast('Eroare: '+e.message,false)}
-}
-
-// RULES
-async function loadRules(){
-  const v=document.getElementById('rulesV');v.innerHTML='<h2 style="font-size:14px;margin-bottom:4px">Reguli AI</h2><div style="color:var(--tx3)">Se încarcă...</div>';
-  try{const r=await fetch(`${API}/api/ai/brain/rules`,{headers:H()});const d=await r.json();const rules=d.rules||d||[];
-    const bL={'CLARIFY_FIRST':'🔍 Clarificare','USE_KB':'📖 KB','HANDOFF':'👤 Operator','AUTO_REPLY':'✓ Auto','BLOCK':'🚫 Blochează','USE_MEMORY':'🧠 Memorie'};
-    const tL={'PRICE_QUESTION':'Preț','COSTUME_QUERY':'Costume','RESCHEDULE':'Reprogramare','COMPLAINT':'Plângere','GENERAL':'General'};
-    v.innerHTML=`<h2 style="font-size:14px;margin-bottom:3px">Reguli AI <span style="font-size:10px;color:var(--tx2);font-weight:400">${rules.length} reguli</span></h2>
-      <p style="font-size:10px;color:var(--tx2);margin-bottom:12px">Cum răspunde AI-ul la diferite mesaje</p>
-      ${rules.map(r=>`<div class="rc"><div class="rc-t"><span class="rc-n">${esc(r.name||'')}</span><div class="tgl"><input type="checkbox" id="rt_${r.id}" ${r.status==='active'?'checked':''} onchange="tglR('${r.id}',this.checked)"><label for="rt_${r.id}"></label></div></div>
-        <div class="rc-d">${esc(r.description||bL[r.behavior]||'')}</div>
-        <div class="rc-tg"><span class="rt">Când: ${tL[r.trigger]||r.trigger||'?'}</span><span class="rt">Face: ${bL[r.behavior]||r.behavior||'?'}</span>${r.priority?`<span class="rt">P${r.priority}</span>`:''}</div></div>`).join('')}
-      <button class="adb" onclick="openRM()">+ Regulă nouă</button>`;
-  }catch(e){v.innerHTML=`<h2>Reguli AI</h2><div style="color:var(--rd)">${e.message}</div>`}}
-async function tglR(id,on){try{await fetch(`${API}/api/ai/brain/rules/${id}`,{method:'PUT',headers:H(),body:JSON.stringify({status:on?'active':'inactive'})});toast(on?'Regulă activată':'Regulă dezactivată')}catch(e){toast('Eroare',false)}}
-function openRM(){document.getElementById('rM').classList.add('sh')}
+// RULES MODAL ONLY (for quick training)
 function closeRM(){document.getElementById('rM').classList.remove('sh')}
 async function saveR(){const n=document.getElementById('rmN').value,d=document.getElementById('rmD').value,t=document.getElementById('rmT').value,b=document.getElementById('rmB').value;
   if(!n||!t||!b)return toast('Completează câmpurile obligatorii',false);
-  try{await fetch(`${API}/api/ai/brain/rules`,{method:'POST',headers:H(),body:JSON.stringify({name:n,description:d,trigger:t,behavior:b,stage:'DISCOVERY',priority:50,status:'active'})});toast('Regulă adăugată');closeRM();loadRules()}catch(e){toast('Eroare',false)}}
-
-// ADMIN
-function renderAdmin(){document.getElementById('adminV').innerHTML=`
-  <h2 style="font-size:14px;margin-bottom:3px">Administrare avansată</h2>
-  <p style="font-size:10px;color:var(--tx2);margin-bottom:10px">Module tehnice — folosește doar când e necesar</p>
-  <div class="ag">
-    <a class="ac" href="admin-suite.html" target="_blank"><h4>📊 Panou principal</h4><p>Rezumat complet</p></a>
-    <a class="ac" href="admin-suite.html#crm" target="_blank"><h4>👥 CRM Clienți</h4><p>Toți clienții</p></a>
-    <a class="ac" href="admin-suite.html#pricing" target="_blank"><h4>💰 Prețuri</h4><p>Catalog, reguli</p></a>
-    <a class="ac" href="admin-suite.html#employees" target="_blank"><h4>👤 Angajați</h4><p>Echipă, roluri</p></a>
-    <a class="ac" href="admin-suite.html#rollout" target="_blank"><h4>🚀 Lansare</h4><p>Shadow, canary</p></a>
-    <a class="ac" href="admin-suite.html#audit" target="_blank"><h4>📋 Audit</h4><p>Loguri, incidente</p></a>
-    <a class="ac" href="../brain/brain-console.html" target="_blank"><h4>🧠 Brain</h4><p>Configurare AI</p></a>
-    <a class="ac" href="${API}/health" target="_blank"><h4>💚 Stare sistem</h4><p>Status server</p></a>
-  </div>`}
-
-// HEALTH
-async function checkH(){try{const r=await fetch(`${API}/health`);const d=await r.json();const h=document.getElementById('hDot');h.textContent=`${d.status} · v${d.policy_version||'?'} · ${d.policy_rules||0} reguli`;h.style.color=d.status==='ok'?'var(--gr)':'var(--rd)'}catch(e){document.getElementById('hDot').textContent='Offline';document.getElementById('hDot').style.color='var(--rd)'}}
+  try{await fetch(`${API}/api/ai/brain/rules`,{method:'POST',headers:H(),body:JSON.stringify({name:n,description:d,trigger:t,behavior:b,stage:'DISCOVERY',priority:50,status:'active'})});toast('Regulă adăugată');closeRM();}catch(e){toast('Eroare',false)}
+}
 
 // AUTH
 if(!TK){const t=prompt('Token de acces:');if(t){localStorage.setItem('admin_token',t);location.reload()}}
 
 // INIT
-checkH();loadInbox();setInterval(checkH,30000);setInterval(loadInbox,60000);
+checkH();loadInbox();setInterval(checkH,60000);setInterval(loadInbox,60000);
 </script>
 </body>
 </html>

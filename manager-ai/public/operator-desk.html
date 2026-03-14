@@ -7,739 +7,553 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0f1117;
-  --bg-card: #181b23;
-  --bg-hover: #1f2330;
-  --bg-selected: #252a38;
-  --border: #2a2e3a;
-  --text: #e4e6ed;
-  --text-muted: #8b8fa3;
-  --text-dim: #5c6070;
-  --accent: #6c8cff;
-  --accent-soft: rgba(108,140,255,0.12);
-  --green: #34d399;
-  --green-soft: rgba(52,211,153,0.12);
-  --orange: #fb923c;
-  --orange-soft: rgba(251,146,60,0.12);
-  --red: #f87171;
-  --red-soft: rgba(248,113,113,0.12);
-  --yellow: #fbbf24;
-  --yellow-soft: rgba(251,191,36,0.12);
-  --purple: #a78bfa;
-  --radius: 10px;
-  --radius-sm: 6px;
+  --bg: #0f1117; --bg-card: #181b23; --bg-hover: #1f2330; --bg-selected: #252a38;
+  --border: #2a2e3a; --text: #e4e6ed; --text-muted: #8b8fa3; --text-dim: #5c6070;
+  --accent: #6c8cff; --accent-soft: rgba(108,140,255,0.12);
+  --green: #34d399; --green-soft: rgba(52,211,153,0.12);
+  --orange: #fb923c; --orange-soft: rgba(251,146,60,0.12);
+  --red: #f87171; --red-soft: rgba(248,113,113,0.12);
+  --yellow: #fbbf24; --yellow-soft: rgba(251,191,36,0.12);
+  --purple: #a78bfa; --purple-soft: rgba(167,139,250,0.12);
+  --radius: 10px; --radius-sm: 6px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; }
 
 /* ─── TOP NAV ─── */
-.topbar { display:flex; align-items:center; height:52px; background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 20px; gap:16px; }
-.topbar .logo { font-size:15px; font-weight:700; color:var(--accent); letter-spacing:-0.3px; }
-.topbar .logo span { color:var(--text-muted); font-weight:400; }
-.tabs { display:flex; gap:2px; margin-left:24px; }
-.tab { padding:8px 16px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-weight:500; color:var(--text-muted); transition:all .15s; user-select:none; }
+.topbar { display:flex; align-items:center; height:48px; background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 16px; gap:12px; }
+.logo { font-size:14px; font-weight:700; color:var(--accent); }
+.logo span { color:var(--text-dim); font-weight:400; font-size:12px; }
+.tabs { display:flex; gap:2px; margin-left:16px; }
+.tab { padding:6px 14px; border-radius:var(--radius-sm); cursor:pointer; font-size:12px; font-weight:500; color:var(--text-muted); transition:all .15s; user-select:none; }
 .tab:hover { color:var(--text); background:var(--bg-hover); }
 .tab.active { color:var(--accent); background:var(--accent-soft); }
-.tab .badge { display:inline-block; background:var(--red); color:#fff; font-size:10px; padding:1px 6px; border-radius:10px; margin-left:6px; font-weight:600; }
-.topbar-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
-.topbar-right .health { font-size:11px; color:var(--green); display:flex; align-items:center; gap:4px; }
-.topbar-right .health::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--green); }
-.admin-link { font-size:12px; color:var(--text-muted); text-decoration:none; padding:6px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); transition:all .15s; }
-.admin-link:hover { color:var(--text); border-color:var(--text-muted); }
+.tab .badge { display:inline-block; background:var(--red); color:#fff; font-size:10px; padding:1px 5px; border-radius:8px; margin-left:4px; font-weight:700; }
+.topbar-r { margin-left:auto; display:flex; align-items:center; gap:10px; }
+.health { font-size:11px; color:var(--green); display:flex; align-items:center; gap:4px; }
+.health::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--green); }
+.ext-link { font-size:11px; color:var(--text-dim); text-decoration:none; padding:4px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); }
+.ext-link:hover { color:var(--text); }
 
-/* ─── MAIN LAYOUT ─── */
-.main { display:flex; height:calc(100vh - 52px); }
+/* ─── LAYOUT ─── */
+.main { display:flex; height:calc(100vh - 48px); }
 
-/* ─── CONVERSATIONS LIST (LEFT) ─── */
-.conv-list { width:340px; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--bg); }
-.conv-search { padding:12px; border-bottom:1px solid var(--border); }
-.conv-search input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card); color:var(--text); font-size:13px; outline:none; }
-.conv-search input:focus { border-color:var(--accent); }
-.conv-filters { display:flex; gap:4px; padding:8px 12px; border-bottom:1px solid var(--border); overflow-x:auto; }
-.conv-filter { padding:4px 10px; border-radius:12px; font-size:11px; font-weight:500; cursor:pointer; border:1px solid var(--border); color:var(--text-muted); background:transparent; white-space:nowrap; transition:all .15s; }
-.conv-filter.active { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
-.conv-items { flex:1; overflow-y:auto; }
-.conv-item { padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
-.conv-item:hover { background:var(--bg-hover); }
-.conv-item.selected { background:var(--bg-selected); border-left:3px solid var(--accent); }
-.conv-item .conv-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
-.conv-item .conv-name { font-size:13px; font-weight:600; }
-.conv-item .conv-time { font-size:11px; color:var(--text-dim); }
-.conv-item .conv-last { font-size:12px; color:var(--text-muted); line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:6px; }
-.conv-item .conv-meta { display:flex; gap:6px; align-items:center; }
-.status-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:0.3px; }
-.status-sent { background:var(--green-soft); color:var(--green); }
-.status-shadow { background:var(--purple); background:rgba(167,139,250,0.12); color:var(--purple); }
-.status-pending { background:var(--orange-soft); color:var(--orange); }
-.status-blocked { background:var(--red-soft); color:var(--red); }
-.status-open { background:var(--yellow-soft); color:var(--yellow); }
+/* LEFT: Conv List */
+.left { width:300px; min-width:240px; border-right:1px solid var(--border); display:flex; flex-direction:column; }
+.search-box { padding:8px 10px; border-bottom:1px solid var(--border); }
+.search-box input { width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card); color:var(--text); font-size:12px; outline:none; }
+.search-box input:focus { border-color:var(--accent); }
+.filters { display:flex; gap:3px; padding:6px 10px; border-bottom:1px solid var(--border); overflow-x:auto; }
+.flt { padding:3px 8px; border-radius:10px; font-size:10px; font-weight:500; cursor:pointer; border:1px solid var(--border); color:var(--text-muted); background:transparent; white-space:nowrap; }
+.flt.active { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
+.conv-list { flex:1; overflow-y:auto; }
+.cv { padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+.cv:hover { background:var(--bg-hover); }
+.cv.sel { background:var(--bg-selected); border-left:3px solid var(--accent); }
+.cv-top { display:flex; justify-content:space-between; margin-bottom:3px; }
+.cv-name { font-size:12px; font-weight:600; }
+.cv-time { font-size:10px; color:var(--text-dim); }
+.cv-msg { font-size:11px; color:var(--text-muted); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:4px; }
+.cv-meta { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+.badge-sm { font-size:9px; font-weight:600; padding:1px 6px; border-radius:8px; text-transform:uppercase; letter-spacing:.3px; }
+.b-sent { background:var(--green-soft); color:var(--green); }
+.b-shadow { background:var(--purple-soft); color:var(--purple); }
+.b-pending { background:var(--orange-soft); color:var(--orange); }
+.b-blocked { background:var(--red-soft); color:var(--red); }
+.b-open { background:var(--yellow-soft); color:var(--yellow); }
+.b-info { background:var(--bg-hover); color:var(--text-dim); }
 
-/* ─── CONVERSATION DETAIL (CENTER) ─── */
-.conv-detail { flex:1; display:flex; flex-direction:column; background:var(--bg); }
-.conv-detail-empty { flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:14px; }
-.conv-detail-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-.conv-detail-header h2 { font-size:15px; font-weight:600; }
-.conv-detail-header .client-link { font-size:12px; color:var(--accent); cursor:pointer; }
-.messages-area { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:8px; }
-.msg { max-width:75%; padding:10px 14px; border-radius:var(--radius); font-size:13px; line-height:1.5; position:relative; }
-.msg.client { align-self:flex-start; background:var(--bg-card); border:1px solid var(--border); }
-.msg.agent { align-self:flex-end; background:var(--accent-soft); border:1px solid rgba(108,140,255,0.2); }
-.msg.ai { align-self:flex-end; background:rgba(167,139,250,0.08); border:1px solid rgba(167,139,250,0.2); }
-.msg .msg-time { font-size:10px; color:var(--text-dim); margin-top:4px; }
-.msg .msg-sender { font-size:10px; font-weight:600; color:var(--text-muted); margin-bottom:2px; text-transform:uppercase; letter-spacing:0.5px; }
+/* CENTER: Detail */
+.center { flex:1; display:flex; flex-direction:column; min-width:0; }
+.empty-state { flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:13px; }
+.detail-header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.detail-header h2 { font-size:14px; font-weight:600; }
+.detail-header .sub { font-size:10px; color:var(--text-dim); }
+.detail-header .mem-link { font-size:11px; color:var(--accent); cursor:pointer; }
 
-/* ─── AI REPLY BOX ─── */
-.ai-reply-box { border-top:1px solid var(--border); padding:16px 20px; background:var(--bg-card); }
-.ai-reply-label { font-size:11px; font-weight:600; color:var(--purple); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
-.ai-reply-label .safety { font-size:10px; padding:2px 6px; border-radius:8px; }
-.ai-reply-text { width:100%; min-height:60px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:13px; font-family:inherit; resize:vertical; outline:none; line-height:1.5; }
-.ai-reply-text:focus { border-color:var(--accent); }
-.ai-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-.ai-actions .btn { padding:7px 14px; border:none; border-radius:var(--radius-sm); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
-.btn-approve { background:var(--green); color:#0f1117; }
-.btn-approve:hover { filter:brightness(1.1); }
-.btn-edit { background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent) !important; }
-.btn-edit:hover { background:var(--accent); color:#fff; }
-.btn-clarify { background:var(--orange-soft); color:var(--orange); }
-.btn-clarify:hover { background:var(--orange); color:#fff; }
-.btn-operator { background:var(--red-soft); color:var(--red); }
-.btn-operator:hover { background:var(--red); color:#fff; }
-.btn-memory { background:var(--bg-hover); color:var(--text-muted); }
-.btn-memory:hover { color:var(--text); }
+/* Messages */
+.msgs { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:6px; }
+.m { max-width:72%; padding:8px 12px; border-radius:var(--radius); font-size:12px; line-height:1.45; }
+.m.cl { align-self:flex-start; background:var(--bg-card); border:1px solid var(--border); }
+.m.ag { align-self:flex-end; background:var(--accent-soft); border:1px solid rgba(108,140,255,.15); }
+.m.ai { align-self:flex-end; background:var(--purple-soft); border:1px solid rgba(167,139,250,.15); }
+.m-who { font-size:9px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:1px; }
+.m-time { font-size:9px; color:var(--text-dim); margin-top:2px; }
 
-/* ─── MEMORY PANEL (RIGHT) ─── */
-.memory-panel { width:360px; border-left:1px solid var(--border); background:var(--bg-card); display:flex; flex-direction:column; overflow:hidden; transition:width .2s; }
-.memory-panel.hidden { width:0; border:none; }
-.memory-header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-.memory-header h3 { font-size:14px; font-weight:600; }
-.memory-close { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; padding:4px 8px; }
-.memory-content { flex:1; overflow-y:auto; padding:12px 16px; }
-.memory-section { margin-bottom:16px; }
-.memory-section h4 { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
-.memory-field { background:var(--bg); padding:8px 10px; border-radius:var(--radius-sm); margin-bottom:6px; border:1px solid var(--border); }
-.memory-field .field-label { font-size:11px; color:var(--text-dim); margin-bottom:2px; }
-.memory-field .field-value { font-size:13px; }
-.memory-field .field-actions { display:flex; gap:4px; margin-top:6px; }
-.memory-field .field-actions button { font-size:10px; padding:2px 8px; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; }
-.memory-field .field-actions button:hover { color:var(--text); border-color:var(--text-muted); }
-.memory-field .field-actions button.mark-wrong { color:var(--red); border-color:var(--red); }
-.memory-note { margin-top:12px; }
-.memory-note textarea { width:100%; padding:8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:12px; font-family:inherit; resize:vertical; min-height:50px; outline:none; }
-.memory-note .btn-note { margin-top:6px; padding:5px 12px; font-size:11px; background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent); border-radius:var(--radius-sm); cursor:pointer; }
+/* Event Plan Card */
+.plan-card { margin:8px 16px; padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); }
+.plan-card h4 { font-size:11px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+.plan-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:4px; }
+.plan-field { font-size:11px; }
+.plan-field .label { color:var(--text-dim); }
+.plan-field .val { color:var(--text); font-weight:500; }
+.plan-missing { font-size:10px; color:var(--orange); margin-top:4px; }
 
-/* ─── RULES TAB ─── */
-.rules-panel { display:none; flex:1; padding:20px 24px; overflow-y:auto; }
-.rules-panel.active { display:block; }
-.rules-panel h2 { font-size:16px; margin-bottom:16px; }
-.rule-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; transition:border-color .15s; }
-.rule-card:hover { border-color:var(--text-dim); }
-.rule-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.rule-name { font-size:14px; font-weight:600; }
-.rule-toggle { position:relative; width:36px; height:20px; }
-.rule-toggle input { display:none; }
-.rule-toggle label { display:block; width:36px; height:20px; border-radius:10px; background:var(--border); cursor:pointer; transition:background .2s; position:relative; }
-.rule-toggle label::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--text-muted); transition:all .2s; }
-.rule-toggle input:checked+label { background:var(--green); }
-.rule-toggle input:checked+label::after { left:18px; background:#fff; }
-.rule-desc { font-size:12px; color:var(--text-muted); line-height:1.4; margin-bottom:8px; }
-.rule-when { display:flex; gap:6px; flex-wrap:wrap; }
-.rule-tag { font-size:10px; padding:3px 8px; border-radius:4px; background:var(--bg); border:1px solid var(--border); color:var(--text-dim); }
-.add-rule-btn { padding:10px 16px; border:2px dashed var(--border); border-radius:var(--radius); color:var(--text-muted); font-size:13px; cursor:pointer; text-align:center; transition:all .15s; background:transparent; width:100%; }
-.add-rule-btn:hover { border-color:var(--accent); color:var(--accent); }
+/* AI Reply Box */
+.ai-box { border-top:1px solid var(--border); padding:12px 16px; background:var(--bg-card); }
+.ai-label { font-size:10px; font-weight:600; color:var(--purple); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+.ai-label .tool-act { font-size:9px; padding:1px 6px; border-radius:4px; background:var(--accent-soft); color:var(--accent); }
+.ai-label .safety { font-size:9px; padding:1px 6px; border-radius:4px; }
+.safe-ok { background:var(--green-soft); color:var(--green); }
+.safe-warn { background:var(--orange-soft); color:var(--orange); }
+.safe-block { background:var(--red-soft); color:var(--red); }
+.ai-text { width:100%; min-height:48px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:12px; font-family:inherit; resize:vertical; outline:none; line-height:1.4; }
+.ai-text:focus { border-color:var(--accent); }
+.ai-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.btn { padding:6px 12px; border:none; border-radius:var(--radius-sm); font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; }
+.b-approve { background:var(--green); color:#0f1117; }
+.b-approve:hover { filter:brightness(1.1); }
+.b-edit { background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent) !important; }
+.b-edit:hover { background:var(--accent); color:#fff; }
+.b-clarify { background:var(--orange-soft); color:var(--orange); }
+.b-clarify:hover { background:var(--orange); color:#fff; }
+.b-operator { background:var(--red-soft); color:var(--red); }
+.b-operator:hover { background:var(--red); color:#fff; }
+.b-mem { background:var(--bg-hover); color:var(--text-muted); }
+.b-mem:hover { color:var(--text); }
+.b-rule { background:transparent; color:var(--text-dim); border:1px solid var(--border) !important; }
 
-/* ─── ADMIN TAB ─── */
-.admin-panel { display:none; flex:1; padding:20px 24px; overflow-y:auto; }
-.admin-panel.active { display:block; }
-.admin-panel h2 { font-size:16px; margin-bottom:16px; }
-.admin-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; }
-.admin-link-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; cursor:pointer; transition:all .15s; text-decoration:none; color:var(--text); display:block; }
-.admin-link-card:hover { border-color:var(--accent); transform:translateY(-1px); }
-.admin-link-card h4 { font-size:13px; font-weight:600; margin-bottom:4px; }
-.admin-link-card p { font-size:11px; color:var(--text-muted); line-height:1.3; }
+/* RIGHT: Memory */
+.right { width:320px; border-left:1px solid var(--border); background:var(--bg-card); display:flex; flex-direction:column; overflow:hidden; transition:width .2s; }
+.right.hidden { width:0; border:none; }
+.mem-hdr { padding:10px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.mem-hdr h3 { font-size:13px; font-weight:600; }
+.mem-close { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:2px 6px; }
+.mem-body { flex:1; overflow-y:auto; padding:10px 12px; }
+.mem-sec { margin-bottom:14px; }
+.mem-sec h4 { font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+.mf { background:var(--bg); padding:6px 8px; border-radius:var(--radius-sm); margin-bottom:4px; border:1px solid var(--border); }
+.mf .lbl { font-size:10px; color:var(--text-dim); }
+.mf .val { font-size:12px; }
+.mf-acts { display:flex; gap:3px; margin-top:4px; }
+.mf-acts button { font-size:9px; padding:1px 6px; border-radius:3px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; }
+.mf-acts button:hover { color:var(--text); }
+.mf-acts .wrong { color:var(--red); border-color:var(--red); }
+.note-area { margin-top:10px; }
+.note-area textarea { width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:11px; font-family:inherit; resize:vertical; min-height:40px; outline:none; }
+.note-btn { margin-top:4px; padding:4px 10px; font-size:10px; background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent); border-radius:var(--radius-sm); cursor:pointer; }
 
-/* ─── SCROLLBAR ─── */
-::-webkit-scrollbar { width:6px; }
+/* RULES TAB */
+.rules-view { display:none; flex:1; padding:16px 20px; overflow-y:auto; }
+.rules-view.active { display:block; }
+.rc { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:8px; }
+.rc:hover { border-color:var(--text-dim); }
+.rc-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.rc-name { font-size:13px; font-weight:600; }
+.toggle { position:relative; width:32px; height:18px; }
+.toggle input { display:none; }
+.toggle label { display:block; width:32px; height:18px; border-radius:9px; background:var(--border); cursor:pointer; transition:.2s; }
+.toggle label::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--text-muted); transition:.2s; }
+.toggle input:checked+label { background:var(--green); }
+.toggle input:checked+label::after { left:16px; background:#fff; }
+.rc-desc { font-size:11px; color:var(--text-muted); line-height:1.3; margin-bottom:6px; }
+.rc-tags { display:flex; gap:4px; flex-wrap:wrap; }
+.rtag { font-size:9px; padding:2px 6px; border-radius:3px; background:var(--bg); border:1px solid var(--border); color:var(--text-dim); }
+.add-btn { padding:8px 14px; border:2px dashed var(--border); border-radius:var(--radius); color:var(--text-muted); font-size:12px; cursor:pointer; text-align:center; background:transparent; width:100%; }
+.add-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* SERVICE CONFIG */
+.svc-section { margin-top:20px; }
+.svc-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:8px; }
+.svc-card h4 { font-size:12px; font-weight:600; margin-bottom:6px; }
+.svc-card .fields { display:flex; flex-wrap:wrap; gap:4px; }
+.svc-card .field-tag { font-size:9px; padding:2px 6px; border-radius:3px; }
+.field-req { background:var(--accent-soft); color:var(--accent); }
+.field-opt { background:var(--bg); color:var(--text-dim); border:1px solid var(--border); }
+
+/* ADMIN TAB */
+.admin-view { display:none; flex:1; padding:16px 20px; overflow-y:auto; }
+.admin-view.active { display:block; }
+.admin-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px; }
+.admin-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; cursor:pointer; text-decoration:none; color:var(--text); display:block; }
+.admin-card:hover { border-color:var(--accent); }
+.admin-card h4 { font-size:12px; font-weight:600; margin-bottom:3px; }
+.admin-card p { font-size:10px; color:var(--text-muted); }
+
+/* MODAL */
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:center; justify-content:center; }
+.modal-bg.show { display:flex; }
+.modal { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; width:420px; max-height:75vh; overflow-y:auto; }
+.modal h3 { margin-bottom:10px; font-size:14px; }
+.modal input,.modal textarea,.modal select { width:100%; padding:7px 8px; margin-bottom:8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:12px; font-family:inherit; outline:none; }
+.modal .mrow { display:flex; gap:6px; justify-content:flex-end; }
+.modal .ms { padding:6px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:11px; font-weight:600; }
+.modal .mc { padding:6px 14px; background:transparent; color:var(--text-muted); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; font-size:11px; }
+
+/* TOAST */
+.toast { position:fixed; bottom:16px; right:16px; padding:8px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:500; z-index:200; opacity:0; transition:.3s; }
+.toast.show { opacity:1; }
+.toast.ok { background:var(--green); color:#0f1117; }
+.toast.err { background:var(--red); color:#fff; }
+
+::-webkit-scrollbar { width:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-::-webkit-scrollbar-thumb:hover { background:var(--text-dim); }
-
-/* ─── MODAL ─── */
-.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; align-items:center; justify-content:center; }
-.modal-overlay.show { display:flex; }
-.modal { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; width:480px; max-height:80vh; overflow-y:auto; }
-.modal h3 { margin-bottom:12px; font-size:15px; }
-.modal input, .modal textarea, .modal select { width:100%; padding:8px 10px; margin-bottom:10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:13px; font-family:inherit; outline:none; }
-.modal .btn-row { display:flex; gap:8px; justify-content:flex-end; }
-.modal .btn-save { padding:8px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:12px; font-weight:600; }
-.modal .btn-cancel { padding:8px 16px; background:transparent; color:var(--text-muted); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; font-size:12px; }
-
-/* ─── TOAST ─── */
-.toast { position:fixed; bottom:20px; right:20px; padding:10px 16px; border-radius:var(--radius-sm); font-size:13px; font-weight:500; z-index:200; opacity:0; transition:opacity .3s; }
-.toast.show { opacity:1; }
-.toast.success { background:var(--green); color:#0f1117; }
-.toast.error { background:var(--red); color:#fff; }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
 <div class="topbar">
-  <div class="logo">AI Operator Desk <span>by Superparty</span></div>
+  <div class="logo">AI Operator Desk <span>· Superparty</span></div>
   <div class="tabs">
-    <div class="tab active" data-tab="conversations">Conversații <span class="badge" id="convBadge">0</span></div>
+    <div class="tab active" data-tab="conv">Conversații <span class="badge" id="cBadge">0</span></div>
     <div class="tab" data-tab="rules">Reguli AI</div>
-    <div class="tab" data-tab="admin">Admin avansat</div>
+    <div class="tab" data-tab="admin">Admin ↗</div>
   </div>
-  <div class="topbar-right">
-    <div class="health" id="healthDot">OK</div>
-    <a class="admin-link" href="admin-suite.html" target="_blank">Admin Suite ↗</a>
-    <a class="admin-link" href="../brain/brain-console.html" target="_blank">Brain Console ↗</a>
+  <div class="topbar-r">
+    <div class="health" id="hDot">OK</div>
+    <a class="ext-link" href="admin-suite.html" target="_blank">Suite</a>
+    <a class="ext-link" href="../brain/brain-console.html" target="_blank">Brain</a>
   </div>
 </div>
 
-<!-- MAIN -->
 <div class="main">
-  <!-- CONVERSATIONS TAB -->
-  <div class="conv-list" id="convListPanel">
-    <div class="conv-search"><input type="text" id="convSearch" placeholder="Caută client sau mesaj..."></div>
-    <div class="conv-filters">
-      <div class="conv-filter active" data-filter="all">Toate</div>
-      <div class="conv-filter" data-filter="pending">De revizuit</div>
-      <div class="conv-filter" data-filter="shadow">Shadow</div>
-      <div class="conv-filter" data-filter="open">Deschise</div>
+  <!-- LEFT -->
+  <div class="left" id="leftP">
+    <div class="search-box"><input type="text" id="sBox" placeholder="Caută client sau mesaj..."></div>
+    <div class="filters">
+      <div class="flt active" data-f="all">Toate</div>
+      <div class="flt" data-f="pending">De revizuit</div>
+      <div class="flt" data-f="shadow">Shadow</div>
+      <div class="flt" data-f="open">Deschise</div>
     </div>
-    <div class="conv-items" id="convItems"></div>
+    <div class="conv-list" id="cList"></div>
   </div>
 
-  <div class="conv-detail" id="convDetail">
-    <div class="conv-detail-empty" id="emptyState">Selectează o conversație din stânga</div>
+  <!-- CENTER -->
+  <div class="center" id="centerP">
+    <div class="empty-state" id="emptyS">Selectează o conversație</div>
   </div>
 
-  <div class="memory-panel hidden" id="memoryPanel">
-    <div class="memory-header">
-      <h3 id="memoryClientName">Memorie Client</h3>
-      <button class="memory-close" onclick="toggleMemory(false)">✕</button>
-    </div>
-    <div class="memory-content" id="memoryContent"></div>
+  <!-- RIGHT: Memory -->
+  <div class="right hidden" id="rightP">
+    <div class="mem-hdr"><h3 id="mName">Memorie</h3><button class="mem-close" onclick="toggleMem(false)">✕</button></div>
+    <div class="mem-body" id="mBody"></div>
   </div>
 
   <!-- RULES TAB -->
-  <div class="rules-panel" id="rulesPanel"></div>
+  <div class="rules-view" id="rulesV"></div>
 
   <!-- ADMIN TAB -->
-  <div class="admin-panel" id="adminPanel"></div>
+  <div class="admin-view" id="adminV"></div>
 </div>
 
-<!-- ADD RULE MODAL -->
-<div class="modal-overlay" id="ruleModal">
+<!-- MODAL -->
+<div class="modal-bg" id="ruleM">
   <div class="modal">
-    <h3 id="ruleModalTitle">Adaugă regulă nouă</h3>
-    <input type="text" id="ruleModalName" placeholder="Numele regulii (ex: Întâi durata la preț)">
-    <textarea id="ruleModalDesc" rows="2" placeholder="Descriere scurtă (ce face regula)"></textarea>
-    <select id="ruleModalTrigger">
-      <option value="">Când se aplică...</option>
-      <option value="PRICE_QUESTION">Întrebare despre preț</option>
-      <option value="COSTUME_QUERY">Întrebare despre costume</option>
-      <option value="RESCHEDULE">Reprogramare</option>
-      <option value="COMPLAINT">Plângere</option>
-      <option value="GENERAL">General / orice mesaj</option>
-    </select>
-    <select id="ruleModalBehavior">
-      <option value="">Ce face AI-ul...</option>
-      <option value="CLARIFY_FIRST">Cere clarificare mai întâi</option>
-      <option value="USE_KB">Răspunde din baza de cunoștințe</option>
-      <option value="HANDOFF">Trimite la operator</option>
-      <option value="AUTO_REPLY">Răspunde automat</option>
-      <option value="BLOCK">Blochează (nu răspunde)</option>
-    </select>
-    <div class="btn-row">
-      <button class="btn-cancel" onclick="closeRuleModal()">Anulează</button>
-      <button class="btn-save" onclick="saveRule()">Salvează</button>
-    </div>
+    <h3>Adaugă regulă</h3>
+    <input id="rmN" placeholder="Nume regulă">
+    <textarea id="rmD" rows="2" placeholder="Descriere"></textarea>
+    <select id="rmT"><option value="">Când se aplică...</option><option value="PRICE_QUESTION">Preț</option><option value="COSTUME_QUERY">Costume</option><option value="RESCHEDULE">Reprogramare</option><option value="COMPLAINT">Plângere</option><option value="GENERAL">General</option></select>
+    <select id="rmB"><option value="">Ce face AI-ul...</option><option value="CLARIFY_FIRST">Clarificare</option><option value="USE_KB">Răspunde din KB</option><option value="HANDOFF">Operator</option><option value="AUTO_REPLY">Auto</option><option value="BLOCK">Block</option></select>
+    <div class="mrow"><button class="mc" onclick="closeRM()">Anulează</button><button class="ms" onclick="saveR()">Salvează</button></div>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── CONFIG ───
-const API = window.location.origin;
-const TOKEN = localStorage.getItem('admin_token') || '';
-const headers = () => ({ 'Content-Type':'application/json', ...(TOKEN ? {'Authorization':`Bearer ${TOKEN}`} : {}) });
+const API = location.origin;
+const TK = localStorage.getItem('admin_token') || '';
+const H = () => ({'Content-Type':'application/json', ...(TK ? {'Authorization':`Bearer ${TK}`} : {})});
 
-// ─── STATE ───
-let conversations = [];
-let selectedConvId = null;
-let currentClientId = null;
-let currentFilter = 'all';
+let inbox = [], selId = null, curClient = null, filter = 'all';
 
-// ─── TOAST ───
-function toast(msg, type='success') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = `toast ${type} show`;
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
+function toast(m, ok=true) { const t=document.getElementById('toast'); t.textContent=m; t.className=`toast ${ok?'ok':'err'} show`; setTimeout(()=>t.classList.remove('show'),2500); }
+function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function ago(iso) { if(!iso) return ''; const m=Math.floor((Date.now()-new Date(iso))/60000); return m<1?'acum':m<60?m+'m':m<1440?Math.floor(m/60)+'h':Math.floor(m/1440)+'z'; }
+function stLbl(s) { return {sent:'Trimis',shadow:'Shadow',pending:'Revizuit',blocked:'Blocat',open:'Deschis'}[s]||s||'?'; }
+function safeClass(s) { if(!s) return ''; if(s.includes('block')) return 'safe-block'; if(s.includes('review')||s.includes('warn')) return 'safe-warn'; return 'safe-ok'; }
 
 // ─── TABS ───
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    const name = tab.dataset.tab;
-    // Show/hide panels
-    document.getElementById('convListPanel').style.display = name === 'conversations' ? 'flex' : 'none';
-    document.getElementById('convDetail').style.display = name === 'conversations' ? 'flex' : 'none';
-    document.getElementById('memoryPanel').style.display = name === 'conversations' && !document.getElementById('memoryPanel').classList.contains('hidden') ? 'flex' : 'none';
-    document.getElementById('rulesPanel').classList.toggle('active', name === 'rules');
-    document.getElementById('adminPanel').classList.toggle('active', name === 'admin');
-    if (name === 'rules') loadRules();
-    if (name === 'admin') renderAdmin();
-  });
-});
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  const n=t.dataset.tab;
+  document.getElementById('leftP').style.display=n==='conv'?'flex':'none';
+  document.getElementById('centerP').style.display=n==='conv'?'flex':'none';
+  document.getElementById('rightP').style.display=n==='conv'&&!document.getElementById('rightP').classList.contains('hidden')?'flex':'none';
+  document.getElementById('rulesV').classList.toggle('active',n==='rules');
+  document.getElementById('adminV').classList.toggle('active',n==='admin');
+  if(n==='rules') loadRules();
+  if(n==='admin') renderAdmin();
+}));
 
-// ─── FILTERS ───
-document.querySelectorAll('.conv-filter').forEach(f => {
-  f.addEventListener('click', () => {
-    document.querySelectorAll('.conv-filter').forEach(x => x.classList.remove('active'));
-    f.classList.add('active');
-    currentFilter = f.dataset.filter;
-    renderConversations();
-  });
-});
+document.querySelectorAll('.flt').forEach(f=>f.addEventListener('click',()=>{
+  document.querySelectorAll('.flt').forEach(x=>x.classList.remove('active'));
+  f.classList.add('active');
+  filter=f.dataset.f;
+  renderList();
+}));
 
-// ─── SEARCH ───
-document.getElementById('convSearch').addEventListener('input', e => {
-  renderConversations(e.target.value);
-});
+document.getElementById('sBox').addEventListener('input',e=>renderList(e.target.value));
 
-// ─── LOAD CONVERSATIONS ───
-async function loadConversations() {
+// ─── LOAD INBOX ───
+async function loadInbox() {
   try {
-    const r = await fetch(`${API}/api/admin/crm/clients?limit=100`, { headers: headers() });
+    const r = await fetch(`${API}/api/operator/inbox?limit=80`, {headers:H()});
     const d = await r.json();
-    // Get recent conversations with messages
-    const cr = await fetch(`${API}/api/admin/crm/clients?limit=50&sort=updated_at`, { headers: headers() });
-    const cd = await cr.json();
-
-    // Build conversation list from clients with recent activity
-    conversations = (cd.clients || d.clients || []).map(c => ({
-      id: c.id,
-      client_id: c.id,
-      client_name: c.display_name || c.alias || c.mapped_alias || `Client ${(c.id||'').substring(0,6)}`,
-      channel: c.source || 'whatsapp',
-      status: c.ai_status || 'open',
-      updated_at: c.updated_at || c.created_at,
-      last_message: c.last_msg_snippet || '',
-      ai_reply: c.ai_last_reply || '',
-      safety_class: c.safety_class || null
-    }));
-
-    document.getElementById('convBadge').textContent = conversations.length;
-    renderConversations();
-  } catch (e) {
-    console.error('Load error:', e);
-    toast('Eroare la încărcare', 'error');
-  }
+    inbox = d.inbox || [];
+    document.getElementById('cBadge').textContent = inbox.length;
+    renderList();
+  } catch(e) { console.error('Inbox error:', e); toast('Eroare încărcare','err'); }
 }
 
-function renderConversations(search = '') {
-  const container = document.getElementById('convItems');
-  let items = conversations;
+function renderList(q='') {
+  let items = inbox;
+  if(filter!=='all') items=items.filter(c=>c.status===filter);
+  if(q) { const lq=q.toLowerCase(); items=items.filter(c=>(c.client_name||'').toLowerCase().includes(lq)||(c.client_message||'').toLowerCase().includes(lq)); }
 
-  if (currentFilter !== 'all') {
-    items = items.filter(c => c.status === currentFilter);
-  }
-  if (search) {
-    const q = search.toLowerCase();
-    items = items.filter(c => c.client_name.toLowerCase().includes(q) || (c.last_message||'').toLowerCase().includes(q));
-  }
-
-  container.innerHTML = items.map(c => `
-    <div class="conv-item ${c.id === selectedConvId ? 'selected' : ''}" onclick="selectConversation('${c.id}')">
-      <div class="conv-header">
-        <span class="conv-name">${esc(c.client_name)}</span>
-        <span class="conv-time">${timeAgo(c.updated_at)}</span>
-      </div>
-      <div class="conv-last">${esc(c.last_message || 'Fără mesaje recente')}</div>
-      <div class="conv-meta">
-        <span class="status-badge status-${c.status}">${statusLabel(c.status)}</span>
-        ${c.channel ? `<span class="rule-tag">${c.channel}</span>` : ''}
+  document.getElementById('cList').innerHTML = items.map(c=>`
+    <div class="cv ${c.id===selId?'sel':''}" onclick="selectConv('${c.id}')">
+      <div class="cv-top"><span class="cv-name">${esc(c.client_name)}</span><span class="cv-time">${ago(c.updated_at)}</span></div>
+      <div class="cv-msg">${esc(c.client_message||'Fără mesaje recente')}</div>
+      <div class="cv-meta">
+        <span class="badge-sm b-${c.status}">${stLbl(c.status)}</span>
+        ${c.tool_action?`<span class="badge-sm b-info">🔧 ${esc(c.tool_action)}</span>`:''}
+        ${c.has_event_plan?`<span class="badge-sm b-info">📋 plan</span>`:''}
+        ${c.safety_class?`<span class="badge-sm ${safeClass(c.safety_class)}">${esc(c.safety_class.replace(/_/g,' '))}</span>`:''}
       </div>
     </div>
   `).join('');
 }
 
 // ─── SELECT CONVERSATION ───
-async function selectConversation(clientId) {
-  selectedConvId = clientId;
-  currentClientId = clientId;
-  renderConversations(document.getElementById('convSearch')?.value || '');
+async function selectConv(convId) {
+  selId = convId;
+  const item = inbox.find(i=>i.id===convId);
+  curClient = item?.client_id;
+  renderList(document.getElementById('sBox')?.value||'');
 
-  const detail = document.getElementById('convDetail');
-  detail.innerHTML = '<div class="conv-detail-empty">Se încarcă...</div>';
+  const cp = document.getElementById('centerP');
+  cp.innerHTML = '<div class="empty-state">Se încarcă...</div>';
 
   try {
-    const r = await fetch(`${API}/api/admin/crm/clients/${clientId}`, { headers: headers() });
+    // Get full client detail
+    const r = await fetch(`${API}/api/admin/crm/clients/${curClient}`, {headers:H()});
     const d = await r.json();
     const client = d.client || {};
     const messages = d.latest_messages || [];
     const plans = d.event_plans || [];
+    const aiDec = d.ai_decisions || [];
+    const latestDec = aiDec[0] || {};
 
-    detail.innerHTML = `
-      <div class="conv-detail-header">
+    // Determine AI reply and tool_action
+    const aiReply = item?.ai_reply || latestDec?.decision?.response || latestDec?.ai_reply || '';
+    const toolAction = item?.tool_action || latestDec?.decision?.tool_action || latestDec?.tool_action || '';
+    const safetyC = item?.safety_class || latestDec?.safety_class || '';
+    const confidence = item?.confidence || latestDec?.confidence || '';
+
+    // Active plan for this conversation
+    const activePlan = plans.find(p=>['draft','active'].includes(p.status));
+
+    cp.innerHTML = `
+      <div class="detail-header">
         <div>
           <h2>${esc(client.display_name || client.alias || client.mapped_alias || 'Client')}</h2>
-          <span style="font-size:11px;color:var(--text-dim)">${client.source || 'whatsapp'} · ${(d.conversations||[]).length} conversații · ${messages.length} mesaje</span>
+          <span class="sub">${client.source||'whatsapp'} · ${(d.conversations||[]).length} conv · ${messages.length} msg</span>
         </div>
-        <span class="conv-detail-header client-link" onclick="toggleMemory(true,'${clientId}')">📋 Vezi memorie</span>
+        <span class="mem-link" onclick="toggleMem(true,'${curClient}')">📋 Memorie client</span>
       </div>
-      <div class="messages-area" id="messagesArea">
-        ${messages.length ? messages.map(m => `
-          <div class="msg ${m.sender_type === 'client' ? 'client' : m.sender_type === 'ai' ? 'ai' : 'agent'}">
-            <div class="msg-sender">${m.sender_type === 'client' ? '👤 Client' : m.sender_type === 'ai' ? '🤖 AI' : '👨‍💼 Agent'}</div>
-            ${esc(m.content || '')}
-            <div class="msg-time">${new Date(m.created_at).toLocaleString('ro-RO')}</div>
-          </div>
-        `).join('') : '<div style="color:var(--text-dim);text-align:center;padding:40px">Nu sunt mesaje recente</div>'}
+
+      ${activePlan ? renderPlanCard(activePlan) : ''}
+
+      <div class="msgs" id="msgsArea">
+        ${messages.length ? messages.map(m=>{
+          const who = m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';
+          const icon = who==='cl'?'👤':who==='ai'?'🤖':'👨‍💼';
+          return `<div class="m ${who}"><div class="m-who">${icon} ${m.sender_type}</div>${esc(m.content||'')}<div class="m-time">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`;
+        }).join('') : '<div style="color:var(--text-dim);text-align:center;padding:30px">Fără mesaje</div>'}
       </div>
-      <div class="ai-reply-box">
-        <div class="ai-reply-label">
+
+      <div class="ai-box">
+        <div class="ai-label">
           🤖 Răspuns AI propus
-          ${d.ai_decisions?.length ? `<span class="safety status-badge status-shadow">Shadow</span>` : ''}
+          ${toolAction?`<span class="tool-act">🔧 ${esc(toolAction)}</span>`:''}
+          ${safetyC?`<span class="safety ${safeClass(safetyC)}">${esc(safetyC.replace(/_/g,' '))}</span>`:''}
+          ${confidence?`<span class="safety safe-ok">${confidence}% conf</span>`:''}
         </div>
-        <textarea class="ai-reply-text" id="aiReplyText" placeholder="Scrie sau editează răspunsul AI...">${esc(d.ai_decisions?.[0]?.decision?.response || '')}</textarea>
+        <textarea class="ai-text" id="aiText">${esc(aiReply)}</textarea>
         <div class="ai-actions">
-          <button class="btn btn-approve" onclick="approveReply('${clientId}')">✓ Aprobă</button>
-          <button class="btn btn-edit" onclick="editReply()">✎ Editează</button>
-          <button class="btn btn-clarify" onclick="markClarify('${clientId}')">? Clarificare</button>
-          <button class="btn btn-operator" onclick="sendToOperator('${clientId}')">→ Operator</button>
-          <button class="btn btn-memory" onclick="toggleMemory(true,'${clientId}')">📋 Memorie</button>
+          <button class="btn b-approve" onclick="doAction('approve')">✓ Aprobă</button>
+          <button class="btn b-edit" onclick="document.getElementById('aiText').focus()">✎ Editează</button>
+          <button class="btn b-clarify" onclick="doAction('clarify')">? Clarificare</button>
+          <button class="btn b-operator" onclick="doAction('handoff')">→ Operator</button>
+          <button class="btn b-mem" onclick="toggleMem(true,'${curClient}')">📋 Memorie</button>
+          <button class="btn b-rule" onclick="doAction('make_rule')">+ Regulă</button>
         </div>
       </div>
     `;
 
-    // Scroll messages to bottom
-    const area = document.getElementById('messagesArea');
-    if (area) area.scrollTop = area.scrollHeight;
-  } catch (e) {
-    detail.innerHTML = `<div class="conv-detail-empty" style="color:var(--red)">Eroare: ${e.message}</div>`;
+    const area = document.getElementById('msgsArea');
+    if(area) area.scrollTop = area.scrollHeight;
+  } catch(e) {
+    cp.innerHTML = `<div class="empty-state" style="color:var(--red)">Eroare: ${e.message}</div>`;
   }
+}
+
+function renderPlanCard(plan) {
+  const missing = plan.missing_fields || [];
+  return `<div class="plan-card">
+    <h4>📋 ${plan.status==='draft'?'Draft':'Plan'} eveniment · ${esc(plan.event_type||'?')}</h4>
+    <div class="plan-row">
+      ${plan.event_date?`<div class="plan-field"><span class="label">Data: </span><span class="val">${plan.event_date}</span></div>`:''}
+      ${plan.event_time?`<div class="plan-field"><span class="label">Ora: </span><span class="val">${plan.event_time}</span></div>`:''}
+      ${plan.location?`<div class="plan-field"><span class="label">Loc: </span><span class="val">${esc(plan.location)}</span></div>`:''}
+      <div class="plan-field"><span class="label">Status: </span><span class="val">${plan.status}</span></div>
+      <div class="plan-field"><span class="label">Quote: </span><span class="val">${plan.readiness_for_quote?'✓ ready':'✗ not ready'}</span></div>
+    </div>
+    ${missing.length?`<div class="plan-missing">⚠ Câmpuri lipsă: ${missing.join(', ')}</div>`:''}
+  </div>`;
 }
 
 // ─── ACTIONS ───
-async function approveReply(clientId) {
-  const text = document.getElementById('aiReplyText')?.value;
-  if (!text) return toast('Răspunsul e gol', 'error');
+async function doAction(type) {
+  const text = document.getElementById('aiText')?.value || '';
+  const traceId = `${type}-${curClient}-${Date.now()}`;
   try {
     await fetch(`${API}/api/admin/corrections`, {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ trace_id: `approve-${clientId}-${Date.now()}`, request: { client_id: clientId }, corrected_decision: { action: 'approved', response: text }, tags: ['approved'], policy_version: 'v1.0.0' })
+      method:'POST', headers:H(),
+      body: JSON.stringify({
+        trace_id: traceId,
+        request: { client_id: curClient, conversation_id: selId },
+        original_decision: { ai_reply: text },
+        corrected_decision: { action: type, response: type==='approve'?text:'' },
+        tags: [type],
+        policy_version: 'v1.0.0'
+      })
     });
-    toast('✓ Răspuns aprobat');
-  } catch (e) { toast('Eroare: '+e.message, 'error'); }
+    const msgs = {approve:'✓ Aprobat',clarify:'Marcat: clarificare',handoff:'Trimis la operator',make_rule:'Salvat ca bază de regulă'};
+    toast(msgs[type]||'Salvat');
+  } catch(e) { toast('Eroare: '+e.message, false); }
 }
 
-function editReply() {
-  const el = document.getElementById('aiReplyText');
-  if (el) { el.focus(); el.select(); }
+// ─── MEMORY ───
+function toggleMem(show, cid) {
+  const p = document.getElementById('rightP');
+  if(show) { p.classList.remove('hidden'); p.style.display='flex'; loadMem(cid||curClient); }
+  else { p.classList.add('hidden'); p.style.display='none'; }
 }
 
-async function markClarify(clientId) {
+async function loadMem(cid) {
+  if(!cid) return;
+  const body = document.getElementById('mBody');
+  body.innerHTML = '<div style="color:var(--text-dim);padding:16px">Se încarcă...</div>';
   try {
-    await fetch(`${API}/api/admin/corrections`, {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ trace_id: `clarify-${clientId}-${Date.now()}`, request: { client_id: clientId }, original_decision: {}, corrected_decision: { action: 'needs_clarification' }, tags: ['clarification'], policy_version: 'v1.0.0' })
-    });
-    toast('Marcat: necesită clarificare');
-  } catch (e) { toast('Eroare', 'error'); }
-}
-
-async function sendToOperator(clientId) {
-  try {
-    await fetch(`${API}/api/admin/corrections`, {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ trace_id: `handoff-${clientId}-${Date.now()}`, request: { client_id: clientId }, original_decision: {}, corrected_decision: { action: 'handoff_to_operator' }, tags: ['handoff'], policy_version: 'v1.0.0' })
-    });
-    toast('Trimis la operator');
-  } catch (e) { toast('Eroare', 'error'); }
-}
-
-// ─── MEMORY PANEL ───
-function toggleMemory(show, clientId) {
-  const panel = document.getElementById('memoryPanel');
-  if (show) {
-    panel.classList.remove('hidden');
-    panel.style.display = 'flex';
-    loadMemory(clientId || currentClientId);
-  } else {
-    panel.classList.add('hidden');
-    panel.style.display = 'none';
-  }
-}
-
-async function loadMemory(clientId) {
-  if (!clientId) return;
-  const content = document.getElementById('memoryContent');
-  content.innerHTML = '<div style="color:var(--text-dim);padding:20px">Se încarcă...</div>';
-
-  try {
-    const r = await fetch(`${API}/api/admin/memory/${clientId}`, { headers: headers() });
+    const r = await fetch(`${API}/api/admin/memory/${cid}`, {headers:H()});
     const d = await r.json();
     const mem = d.memory || {};
     const plans = d.event_plans || [];
     const quotes = d.quotes || [];
-    const goals = d.goal_states || [];
+    document.getElementById('mName').textContent = mem.client_name || 'Client';
 
-    document.getElementById('memoryClientName').textContent = mem.client_name || 'Client';
-
-    content.innerHTML = `
-      <!-- Profile -->
-      <div class="memory-section">
-        <h4>Profil</h4>
-        ${memField('Nume', mem.client_name || '—', clientId, 'client_name')}
-        ${memField('Locație', mem.location || mem.preferences?.location || '—', clientId, 'location')}
-        ${memField('Servicii cerute', (mem.services_requested||[]).join(', ') || '—', clientId, 'services_requested')}
-        ${memField('Client recurent', mem.is_recurring ? '✓ Da' : '✗ Nu', clientId, 'is_recurring')}
+    body.innerHTML = `
+      <div class="mem-sec"><h4>Profil</h4>
+        ${mf('Nume',mem.client_name||'—',cid,'client_name')}
+        ${mf('Locație',mem.location||mem.preferences?.location||'—',cid,'location')}
+        ${mf('Servicii',(mem.services_requested||[]).join(', ')||'—',cid,'services_requested')}
+        ${mf('Recurent',mem.is_recurring?'✓ Da':'Nu',cid,'is_recurring')}
       </div>
-
-      <!-- Preferințe -->
-      ${mem.preferences ? `<div class="memory-section">
-        <h4>Preferințe</h4>
-        ${Object.entries(mem.preferences || {}).map(([k,v]) =>
-          memField(k.replace(/_/g,' '), typeof v === 'object' ? JSON.stringify(v) : v, clientId, 'preferences.'+k)
-        ).join('')}
-      </div>` : ''}
-
-      <!-- Restricții -->
-      ${(mem.restrictions||[]).length ? `<div class="memory-section">
-        <h4>Restricții</h4>
-        ${(mem.restrictions||[]).map(r => `<div class="memory-field"><div class="field-value" style="color:var(--red)">${esc(r)}</div></div>`).join('')}
-      </div>` : ''}
-
-      <!-- Planuri eveniment -->
-      ${plans.length ? `<div class="memory-section">
-        <h4>Planuri eveniment (${plans.length})</h4>
-        ${plans.map(p => `
-          <div class="memory-field">
-            <div class="field-label">${p.event_type || 'Eveniment'} · ${p.status || '?'}</div>
-            <div class="field-value">${p.event_date ? new Date(p.event_date).toLocaleDateString('ro-RO') : '—'} ${p.location || ''}</div>
-          </div>
-        `).join('')}
-      </div>` : ''}
-
-      <!-- Citate -->
-      ${quotes.length ? `<div class="memory-section">
-        <h4>Cotații (${quotes.length})</h4>
-        ${quotes.map(q => `
-          <div class="memory-field">
-            <div class="field-value">${q.total_amount||'—'} RON · ${q.status||'?'}</div>
-          </div>
-        `).join('')}
-      </div>` : ''}
-
-      <!-- Obiective AI -->
-      ${goals.length ? `<div class="memory-section">
-        <h4>Stare AI</h4>
-        ${goals.map(g => `
-          <div class="memory-field">
-            <div class="field-label">Goal: ${g.current_goal || '—'}</div>
-            <div class="field-value">Stage: ${g.stage || '—'}</div>
-          </div>
-        `).join('')}
-      </div>` : ''}
-
-      <!-- Notă nouă -->
-      <div class="memory-section memory-note">
-        <h4>Adaugă notă</h4>
-        <textarea id="memoryNoteText" placeholder="Notă despre client..."></textarea>
-        <button class="btn-note" onclick="addMemoryNote('${clientId}')">Salvează notă</button>
-      </div>
+      ${mem.preferences?`<div class="mem-sec"><h4>Preferințe</h4>${Object.entries(mem.preferences).map(([k,v])=>mf(k.replaceAll('_',' '),typeof v==='object'?JSON.stringify(v):v,cid,'pref.'+k)).join('')}</div>`:''}
+      ${plans.length?`<div class="mem-sec"><h4>Planuri (${plans.length})</h4>${plans.map(p=>`<div class="mf"><div class="lbl">${p.event_type||'Eveniment'} · ${p.status}</div><div class="val">${p.event_date?new Date(p.event_date).toLocaleDateString('ro-RO'):'—'} ${p.location||''}</div></div>`).join('')}</div>`:''}
+      ${quotes.length?`<div class="mem-sec"><h4>Cotații</h4>${quotes.map(q=>`<div class="mf"><div class="val">${q.grand_total||q.total_amount||'—'} RON · ${q.status||'?'}</div></div>`).join('')}</div>`:''}
+      <div class="mem-sec note-area"><h4>Notă</h4><textarea id="noteT" placeholder="Notă..."></textarea><button class="note-btn" onclick="addNote('${cid}')">Salvează</button></div>
     `;
-  } catch (e) {
-    content.innerHTML = `<div style="color:var(--red);padding:20px">Eroare la încărcarea memoriei: ${e.message}</div>`;
-  }
+  } catch(e) { body.innerHTML=`<div style="color:var(--red);padding:16px">${e.message}</div>`; }
 }
 
-function memField(label, value, clientId, fieldKey) {
-  return `<div class="memory-field">
-    <div class="field-label">${esc(label)}</div>
-    <div class="field-value">${esc(String(value))}</div>
-    <div class="field-actions">
-      <button onclick="markMemory('${clientId}','${fieldKey}','correct')">✓ Corect</button>
-      <button class="mark-wrong" onclick="markMemory('${clientId}','${fieldKey}','wrong')">✗ Greșit</button>
-      <button onclick="markMemory('${clientId}','${fieldKey}','outdated')">⏰ Învechit</button>
-    </div>
-  </div>`;
+function mf(label, value, cid, key) {
+  return `<div class="mf"><div class="lbl">${esc(label)}</div><div class="val">${esc(String(value))}</div>
+    <div class="mf-acts"><button onclick="markMem('${cid}','${key}','correct')">✓</button><button class="wrong" onclick="markMem('${cid}','${key}','wrong')">✗</button><button onclick="markMem('${cid}','${key}','outdated')">⏰</button></div></div>`;
 }
 
-async function markMemory(clientId, field, status) {
-  try {
-    await fetch(`${API}/api/admin/memory/${clientId}/note`, {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ note: `[${status.toUpperCase()}] Câmpul "${field}" marcat ca ${status} de operator`, changed_by: 'operator' })
-    });
-    toast(`Câmp marcat: ${status}`);
-  } catch (e) { toast('Eroare', 'error'); }
+async function markMem(cid, field, status) {
+  try { await fetch(`${API}/api/admin/memory/${cid}/note`, { method:'POST', headers:H(), body:JSON.stringify({note:`[${status.toUpperCase()}] ${field}`,changed_by:'operator'}) }); toast(`Marcat: ${status}`); } catch(e) { toast('Eroare',false); }
 }
 
-async function addMemoryNote(clientId) {
-  const note = document.getElementById('memoryNoteText')?.value;
-  if (!note) return;
-  try {
-    await fetch(`${API}/api/admin/memory/${clientId}/note`, {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ note, changed_by: 'operator' })
-    });
-    toast('Notă salvată');
-    document.getElementById('memoryNoteText').value = '';
-  } catch (e) { toast('Eroare', 'error'); }
+async function addNote(cid) {
+  const n = document.getElementById('noteT')?.value; if(!n) return;
+  try { await fetch(`${API}/api/admin/memory/${cid}/note`, { method:'POST', headers:H(), body:JSON.stringify({note:n,changed_by:'operator'}) }); toast('Notă salvată'); document.getElementById('noteT').value=''; } catch(e) { toast('Eroare',false); }
 }
 
 // ─── RULES ───
 async function loadRules() {
-  const panel = document.getElementById('rulesPanel');
-  panel.innerHTML = '<h2>Reguli AI</h2><div style="color:var(--text-dim)">Se încarcă...</div>';
-
+  const v = document.getElementById('rulesV');
+  v.innerHTML = '<h2 style="font-size:15px;margin-bottom:12px">Reguli AI</h2><div style="color:var(--text-dim)">Se încarcă...</div>';
   try {
-    const r = await fetch(`${API}/api/ai/brain/rules`, { headers: headers() });
+    const r = await fetch(`${API}/api/ai/brain/rules`, {headers:H()});
     const d = await r.json();
     const rules = d.rules || d || [];
+    const bL = {'CLARIFY_FIRST':'🔍 Clarificare','USE_KB':'📖 KB','HANDOFF':'👤 Operator','AUTO_REPLY':'✓ Auto','BLOCK':'🚫 Block'};
+    const tL = {'PRICE_QUESTION':'Preț','COSTUME_QUERY':'Costume','RESCHEDULE':'Reprogramare','COMPLAINT':'Plângere','GENERAL':'General'};
 
-    const behaviorLabels = {
-      'CLARIFY_FIRST': '🔍 Cere clarificare',
-      'USE_KB': '📖 Răspunde din KB',
-      'HANDOFF': '👤 Trimite la operator',
-      'AUTO_REPLY': '✓ Răspuns automat',
-      'BLOCK': '🚫 Blochează'
-    };
-    const triggerLabels = {
-      'PRICE_QUESTION': 'Întrebare de preț',
-      'COSTUME_QUERY': 'Costume / personaje',
-      'RESCHEDULE': 'Reprogramare',
-      'COMPLAINT': 'Plângere / reclamație',
-      'GENERAL': 'General'
-    };
+    // Load services for config section
+    let svcHtml = '';
+    try {
+      const sr = await fetch(`${API}/api/operator/services`, {headers:H()});
+      const sd = await sr.json();
+      if(sd.services?.length) {
+        svcHtml = `<div class="svc-section"><h3 style="font-size:14px;margin-bottom:10px">Servicii configurate (${sd.services.length})</h3>
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Detaliile obligatorii per categorie de serviciu. Acestea ghidează ce întreabă AI-ul.</p>
+          ${sd.services.map(s=>`<div class="svc-card"><h4>${esc(s.display_name)} <span style="color:var(--text-dim);font-weight:400;font-size:10px">${s.service_key}</span></h4>
+            <div class="fields">${(s.required_fields||[]).map(f=>`<span class="field-tag field-req">${f}</span>`).join('')}${(s.optional_fields||[]).map(f=>`<span class="field-tag field-opt">${f}</span>`).join('')}</div>
+            ${s.standard_questions?.length?`<div style="margin-top:4px;font-size:10px;color:var(--text-dim)">Întrebări: ${s.standard_questions.slice(0,2).join(' · ')}${s.standard_questions.length>2?' ...':''}</div>`:''}
+          </div>`).join('')}
+        </div>`;
+      }
+    } catch(e) { /* ignore */ }
 
-    panel.innerHTML = `
-      <h2>Reguli AI <span style="font-size:12px;color:var(--text-muted);font-weight:400">${rules.length} reguli</span></h2>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Definește cum răspunde AI-ul la diferite tipuri de mesaje. Regulile se aplică în ordinea priorității.</p>
-      ${rules.map(r => `
-        <div class="rule-card">
-          <div class="rule-top">
-            <span class="rule-name">${esc(r.name || r.rule_name || 'Regulă')}</span>
-            <div class="rule-toggle">
-              <input type="checkbox" id="rt_${r.id}" ${r.status === 'active' ? 'checked' : ''} onchange="toggleRule('${r.id}', this.checked)">
-              <label for="rt_${r.id}"></label>
-            </div>
-          </div>
-          <div class="rule-desc">${esc(r.description || behaviorLabels[r.behavior] || r.behavior || '')}</div>
-          <div class="rule-when">
-            <span class="rule-tag">Când: ${triggerLabels[r.trigger] || r.trigger || '?'}</span>
-            <span class="rule-tag">Face: ${behaviorLabels[r.behavior] || r.behavior || '?'}</span>
-            ${r.stage ? `<span class="rule-tag">Etapă: ${r.stage}</span>` : ''}
-            ${r.priority ? `<span class="rule-tag">Prioritate: ${r.priority}</span>` : ''}
-          </div>
-        </div>
-      `).join('')}
-      <button class="add-rule-btn" onclick="openRuleModal()">+ Adaugă regulă nouă</button>
+    v.innerHTML = `
+      <h2 style="font-size:15px;margin-bottom:4px">Reguli AI <span style="font-size:11px;color:var(--text-muted);font-weight:400">${rules.length} reguli</span></h2>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px">Cum răspunde AI-ul la diferite mesaje</p>
+      ${rules.map(r=>`<div class="rc"><div class="rc-top"><span class="rc-name">${esc(r.name||'')}</span><div class="toggle"><input type="checkbox" id="rt_${r.id}" ${r.status==='active'?'checked':''} onchange="toggleR('${r.id}',this.checked)"><label for="rt_${r.id}"></label></div></div>
+        <div class="rc-desc">${esc(r.description||bL[r.behavior]||'')}</div>
+        <div class="rc-tags"><span class="rtag">Când: ${tL[r.trigger]||r.trigger||'?'}</span><span class="rtag">Face: ${bL[r.behavior]||r.behavior||'?'}</span>${r.priority?`<span class="rtag">P${r.priority}</span>`:''}</div></div>`).join('')}
+      <button class="add-btn" onclick="openRM()">+ Regulă nouă</button>
+      ${svcHtml}
     `;
-  } catch (e) {
-    panel.innerHTML = `<h2>Reguli AI</h2><div style="color:var(--red)">Eroare: ${e.message}</div>`;
-  }
+  } catch(e) { v.innerHTML=`<h2>Reguli AI</h2><div style="color:var(--red)">${e.message}</div>`; }
 }
 
-async function toggleRule(id, active) {
-  try {
-    await fetch(`${API}/api/ai/brain/rules/${id}`, {
-      method: 'PUT', headers: headers(),
-      body: JSON.stringify({ status: active ? 'active' : 'inactive' })
-    });
-    toast(active ? 'Regulă activată' : 'Regulă dezactivată');
-  } catch (e) { toast('Eroare la actualizare', 'error'); }
-}
+async function toggleR(id, on) { try { await fetch(`${API}/api/ai/brain/rules/${id}`, {method:'PUT',headers:H(),body:JSON.stringify({status:on?'active':'inactive'})}); toast(on?'Activat':'Dezactivat'); } catch(e) { toast('Eroare',false); } }
 
-// ─── RULE MODAL ───
-function openRuleModal() { document.getElementById('ruleModal').classList.add('show'); }
-function closeRuleModal() { document.getElementById('ruleModal').classList.remove('show'); }
-
-async function saveRule() {
-  const name = document.getElementById('ruleModalName').value;
-  const desc = document.getElementById('ruleModalDesc').value;
-  const trigger = document.getElementById('ruleModalTrigger').value;
-  const behavior = document.getElementById('ruleModalBehavior').value;
-  if (!name || !trigger || !behavior) return toast('Completează toate câmpurile', 'error');
-
-  try {
-    await fetch(`${API}/api/ai/brain/rules`, {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ name, description: desc, trigger, behavior, stage: 'DISCOVERY', priority: 50, status: 'active' })
-    });
-    toast('Regulă adăugată');
-    closeRuleModal();
-    loadRules();
-  } catch (e) { toast('Eroare: '+e.message, 'error'); }
+function openRM() { document.getElementById('ruleM').classList.add('show'); }
+function closeRM() { document.getElementById('ruleM').classList.remove('show'); }
+async function saveR() {
+  const n=document.getElementById('rmN').value, d=document.getElementById('rmD').value, t=document.getElementById('rmT').value, b=document.getElementById('rmB').value;
+  if(!n||!t||!b) return toast('Completează câmpurile',false);
+  try { await fetch(`${API}/api/ai/brain/rules`,{method:'POST',headers:H(),body:JSON.stringify({name:n,description:d,trigger:t,behavior:b,stage:'DISCOVERY',priority:50,status:'active'})}); toast('Regulă adăugată'); closeRM(); loadRules(); } catch(e) { toast('Eroare',false); }
 }
 
 // ─── ADMIN ───
 function renderAdmin() {
-  document.getElementById('adminPanel').innerHTML = `
-    <h2>Admin avansat</h2>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Module tehnice și configurare avansată. Folosește doar când e necesar.</p>
+  document.getElementById('adminV').innerHTML = `
+    <h2 style="font-size:15px;margin-bottom:4px">Admin avansat</h2>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Module tehnice — folosește doar când e necesar</p>
     <div class="admin-grid">
-      <a class="admin-link-card" href="admin-suite.html" target="_blank"><h4>📊 Dashboard</h4><p>Statistici generale, overview complet</p></a>
-      <a class="admin-link-card" href="admin-suite.html#crm" target="_blank"><h4>👥 CRM complet</h4><p>Toți clienții, filtrare, detalii</p></a>
-      <a class="admin-link-card" href="admin-suite.html#pricing" target="_blank"><h4>💰 Pricing avansat</h4><p>Catalog servicii, reguli comerciale</p></a>
-      <a class="admin-link-card" href="admin-suite.html#employees" target="_blank"><h4>👤 Angajați & Payroll</h4><p>Echipă, roluri, salarii</p></a>
-      <a class="admin-link-card" href="admin-suite.html#rollout" target="_blank"><h4>🚀 Rollout & Safety</h4><p>Shadow/canary, feature flags, wave control</p></a>
-      <a class="admin-link-card" href="admin-suite.html#audit" target="_blank"><h4>📋 Audit & Incidente</h4><p>Toate acțiunile loggate, incidente</p></a>
-      <a class="admin-link-card" href="../brain/brain-console.html" target="_blank"><h4>🧠 Brain Console</h4><p>Configurare avansată AI, politici, coverage</p></a>
-      <a class="admin-link-card" href="../brain/brain-console.html#coverage" target="_blank"><h4>📡 Coverage zones</h4><p>Zone de acoperire, mod de operare</p></a>
-      <a class="admin-link-card" href="../brain/brain-console.html#kb" target="_blank"><h4>📚 Knowledge Base</h4><p>Baza de cunoștințe AI</p></a>
-      <a class="admin-link-card" href="${API}/health" target="_blank"><h4>💚 Health check</h4><p>Status server, policy, memorie</p></a>
-    </div>
-  `;
+      <a class="admin-card" href="admin-suite.html" target="_blank"><h4>📊 Dashboard</h4><p>Overview complet</p></a>
+      <a class="admin-card" href="admin-suite.html#crm" target="_blank"><h4>👥 CRM</h4><p>Toți clienții</p></a>
+      <a class="admin-card" href="admin-suite.html#pricing" target="_blank"><h4>💰 Pricing</h4><p>Catalog, reguli</p></a>
+      <a class="admin-card" href="admin-suite.html#employees" target="_blank"><h4>👤 Angajați</h4><p>Echipă, roluri</p></a>
+      <a class="admin-card" href="admin-suite.html#rollout" target="_blank"><h4>🚀 Rollout</h4><p>Shadow, canary</p></a>
+      <a class="admin-card" href="admin-suite.html#audit" target="_blank"><h4>📋 Audit</h4><p>Loguri, incidente</p></a>
+      <a class="admin-card" href="../brain/brain-console.html" target="_blank"><h4>🧠 Brain</h4><p>Configurare AI</p></a>
+      <a class="admin-card" href="../brain/brain-console.html#coverage" target="_blank"><h4>📡 Coverage</h4><p>Zone AI</p></a>
+      <a class="admin-card" href="${API}/health" target="_blank"><h4>💚 Health</h4><p>Status server</p></a>
+    </div>`;
 }
 
 // ─── HEALTH ───
-async function checkHealth() {
-  try {
-    const r = await fetch(`${API}/health`);
-    const d = await r.json();
-    const dot = document.getElementById('healthDot');
-    dot.textContent = `${d.status} · v${d.policy_version || '?'} · ${d.policy_rules || 0} reguli`;
-    dot.style.color = d.status === 'ok' ? 'var(--green)' : 'var(--red)';
-  } catch (e) { document.getElementById('healthDot').textContent = 'Offline'; document.getElementById('healthDot').style.color = 'var(--red)'; }
+async function checkH() {
+  try { const r=await fetch(`${API}/health`); const d=await r.json(); const h=document.getElementById('hDot'); h.textContent=`${d.status} · v${d.policy_version||'?'} · ${d.policy_rules||0}r`; h.style.color=d.status==='ok'?'var(--green)':'var(--red)'; } catch(e) { document.getElementById('hDot').textContent='Offline'; document.getElementById('hDot').style.color='var(--red)'; }
 }
 
-// ─── HELPERS ───
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-function timeAgo(iso) {
-  if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff/60000);
-  if (m < 1) return 'acum';
-  if (m < 60) return m + 'm';
-  const h = Math.floor(m/60);
-  if (h < 24) return h + 'h';
-  return Math.floor(h/24) + 'z';
-}
-function statusLabel(s) {
-  const labels = { sent:'Trimis', shadow:'Shadow', pending:'De revizuit', blocked:'Blocat', open:'Deschis', closed:'Închis' };
-  return labels[s] || s || 'Necunoscut';
-}
-
-// ─── AUTH PROMPT ───
-if (!TOKEN) {
-  const t = prompt('Introdu tokenul de acces (ADMIN_API_TOKEN):');
-  if (t) { localStorage.setItem('admin_token', t); location.reload(); }
-}
+// ─── AUTH ───
+if(!TK) { const t=prompt('Token de acces:'); if(t){localStorage.setItem('admin_token',t);location.reload();} }
 
 // ─── INIT ───
-checkHealth();
-loadConversations();
-setInterval(checkHealth, 30000);
-setInterval(loadConversations, 60000);
+checkH(); loadInbox();
+setInterval(checkH, 30000);
+setInterval(loadInbox, 60000);
 </script>
 </body>
 </html>

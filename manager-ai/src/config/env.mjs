@@ -37,7 +37,7 @@ export const AI_SAFE_AUTOREPLY_ENABLED = process.env.AI_SAFE_AUTOREPLY_ENABLED =
 export const AI_FULL_AUTOREPLY_ENABLED = process.env.AI_FULL_AUTOREPLY_ENABLED === 'true'; // default OFF
 export const AI_SAFE_AUTOREPLY_MIN_CONFIDENCE = parseInt(process.env.AI_SAFE_AUTOREPLY_MIN_CONFIDENCE || '75', 10);
 export const AI_AUTOREPLY_ALLOWED_STAGES = (process.env.AI_AUTOREPLY_ALLOWED_STAGES || 'new_lead,greeting,discovery').split(',').map(s => s.trim());
-export const AI_AUTOREPLY_ALLOWED_TOOLS = (process.env.AI_AUTOREPLY_ALLOWED_TOOLS || 'reply_only').split(',').map(s => s.trim());
+export const AI_AUTOREPLY_ALLOWED_TOOLS = (process.env.AI_AUTOREPLY_ALLOWED_TOOLS || 'reply_only,update_event_plan').split(',').map(s => s.trim());
 
 // ─── Phase 3: Rollout Gate Thresholds ───
 export const AI_WAVE1_MIN_APPROVAL_RATE = parseInt(process.env.AI_WAVE1_MIN_APPROVAL_RATE || '80', 10);

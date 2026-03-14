@@ -442,9 +442,19 @@ export async function processConversation(conversation_id, message_id = null, op
             isGreeting: lastClientMessageText && /^(bun[aă]|salut|hey|hello|hi|bun[aă]\s*(seara|ziua|dimineata|dimineața)|sal|hei|ce\s*faci|servus)\s*[!.,?]*$/i.test(lastClientMessageText.trim())
         };
         const nextTarget = computeNextBestAction(plannerContext);
-        console.log(`[Agent] State=${runtimeState.lead_state}, Primary=${runtimeState.primary_service}, NBA=${nextTarget.action}, NextState=${nextTarget.nextState}`);
+        
+        // ── AUTONOMOUS COMMERCIAL AGENT: Phase 2 Intelligence ──
+        const { deriveGoalFromState } = await import('../agent/goalEngine.mjs');
+        const { calculateLeadScore } = await import('../agent/leadScoring.mjs');
+        
+        const goalDirective = deriveGoalFromState(runtimeState.lead_state);
+        const scoring = calculateLeadScore({ runtimeState, missingMetrics, relationshipData, hasActiveBooking: relationshipData?.hasActiveBooking });
+        
+        runtimeState.lead_score = scoring.score; // Store in state for later persistence
+        
+        console.log(`[Agent] State=${runtimeState.lead_state}, Score=${scoring.score}(${scoring.temperature}), Primary=${runtimeState.primary_service}, NBA=${nextTarget.action}, NextState=${nextTarget.nextState}`);
 
-        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget });
+        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();
@@ -474,7 +484,30 @@ export async function processConversation(conversation_id, message_id = null, op
         };
 
         let suggestedReply = analysis.assistant_reply || analysis.suggested_reply || 'Nu am putut genera un raspuns.';
-        const toolAction = analysis.tool_action || { name: 'reply_only', arguments: { reason: 'No tool action provided' } };
+        let toolAction = analysis.tool_action || { name: 'reply_only', arguments: { reason: 'No tool action provided' } };
+        
+        // ── AUTONOMOUS COMMERCIAL AGENT: Phase 2 Self-Check ──
+        const { runSelfCheckAudit, AUDIT_RESULTS } = await import('../agent/replySelfCheck.mjs');
+        const audit = runSelfCheckAudit(suggestedReply, { eventPlan, missingMetrics });
+        
+        if (!audit.passed) {
+            console.warn(`[Agent] Self-check FAILED: ${audit.reason}. Rewriting reply to safe fallback.`);
+            decision.can_auto_reply = false;
+            decision.needs_human_review = true;
+            decision.escalation_reason = `self_check_failed_${audit.reason}`;
+            
+            if (audit.reason === AUDIT_RESULTS.BLOCK_PREMATURE_CONFIRMATION) {
+                suggestedReply = 'Confirmarea oficială urmează să fie realizată de un coleg din echipă imediat ce avem toate detaliile.';
+            } else if (audit.reason === AUDIT_RESULTS.BLOCK_UNAUTHORIZED_DISCOUNT) {
+                 suggestedReply = 'Vom verifica detaliile ofertei și un coleg vă va confirma varianta finală de preț.';
+            } else if (audit.reason === AUDIT_RESULTS.BLOCK_HALLUCINATED_PRICE) {
+                 suggestedReply = 'Pentru a structura un preț corect și final, mai avem nevoie de câteva detalii logistice. Revin imediat cu informația clară.';
+            } else {
+                 suggestedReply = '[Mesaj recalculat pentru revizie umană]';
+            }
+            
+            toolAction = { name: 'reply_only', arguments: { reason: 'self_check_fallback' } };
+        }
         
         // Legacy stubs
         const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: '' };

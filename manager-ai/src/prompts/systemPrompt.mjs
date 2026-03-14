@@ -48,7 +48,7 @@ function buildToolsFromLiveRegistry() {
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null } = {}) {
+export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null, goalDirective = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
 
     let roleBlock = '';
@@ -152,6 +152,11 @@ IMPORTANT: Comporta-te conform etapei. Nu sari peste pasi. Daca esti in event_qu
         contextNbaBlock = `\n=== NEXT BEST ACTION (INSTRUCTIUNE STRICTA) ===\nActiune ceruta: ${nextBestActionGoal.action}\nInstructiune: ${nextBestActionGoal.instruction}\nCRITIC IMPORTANT: Trebuie sa raspunzi EXACT conform acestei instructiuni in campul assistant_reply. Fara abateri. Obiectivul tau curent este sa executi aceasta actiune!\n=== SFARSIT NEXT BEST ACTION ===\n`;
     }
 
+    let strategyBlock = '';
+    if (goalDirective) {
+        strategyBlock = `\n=== OBIECTIV STRATEGIC CURENT ===\nObiectiv: ${goalDirective.goal}\nStrategie de comunicare: ${goalDirective.strategy}\n=== SFARSIT OBIECTIV STRATEGIC ===\n`;
+    }
+
     return `Esti asistentul AI al Superparty — companie de organizare evenimente si petreceri.
 Analizeaza conversatia WhatsApp de mai jos dintre echipa noastra (Superparty) si un Client.
 Extrage detaliile principale folosind DOAR informatiile explicite din conversatie. Nu inventa nimic.
@@ -161,7 +166,7 @@ IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.
 === CATALOGUL NOSTRU DE SERVICII ===
 ${catalogBlock}
 === SFARSIT CATALOG ===
-${roleBlock}${memoryBlock}${relationBlock}${planBlock}${goalBlock}${quoteBlock}${contextNbaBlock}
+${roleBlock}${memoryBlock}${relationBlock}${planBlock}${goalBlock}${quoteBlock}${strategyBlock}${contextNbaBlock}
 SARCINA TA:
 1. Identifica ce SERVICII din catalogul nostru sunt cerute sau mentionate in conversatie.
 2. Pentru fiecare serviciu detectat, extrage campurile obligatorii completate sau pune null daca lipsesc.

@@ -91,7 +91,8 @@ export function evaluateFastPath({ messageText, existingDraft, conversationStage
     // ── 3. Clear service mention ──
     const detectedServices = detectServicesInMessage(msg);
     if (detectedServices.length > 0 && msg.length < 100 && !complexPatterns.some(p => p.test(msg))) {
-        return { use_fast_path: true, fast_path_type: 'clear_services', fast_path_reason: `Services detected: ${detectedServices.join(', ')}`, detected_services: detectedServices };
+        // Disabled fast path for `clear_services` to allow the LLM to apply Custom Roles and Pricing logic over them.
+        // return { use_fast_path: true, fast_path_type: 'clear_services', fast_path_reason: `Services detected: ${detectedServices.join(', ')}`, detected_services: detectedServices };
     }
 
     // ── Default: full pipeline ──

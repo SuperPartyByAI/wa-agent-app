@@ -85,7 +85,6 @@ export async function loadRulesFromDB() {
         const { data: policies, error: polErr } = await supabase
             .from('ai_knowledge_base')
             .select('*')
-            .eq('status', 'approved');
 
         if (polErr) throw polErr;
 

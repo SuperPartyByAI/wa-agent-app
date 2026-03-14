@@ -48,8 +48,13 @@ function buildToolsFromLiveRegistry() {
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null } = {}) {
+export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
+
+    let roleBlock = '';
+    if (activeRolesText) {
+        roleBlock = `\n=== FISE DE POST (ROLURI ACTIVE) ===\n${activeRolesText}\n=== SFARSIT FISE DE POST ===\nIMPORTANT: Foloseste regulile, preturile si pachetele EXCLUSIV de mai sus pentru aceste servicii. Ignora catalogul general daca se contrazic.\n`;
+    }
 
     // Build memory context block if we have existing memory
     let memoryBlock = '';
@@ -150,7 +155,7 @@ IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.
 === CATALOGUL NOSTRU DE SERVICII ===
 ${catalogBlock}
 === SFARSIT CATALOG ===
-${memoryBlock}${relationBlock}${planBlock}${goalBlock}
+${roleBlock}${memoryBlock}${relationBlock}${planBlock}${goalBlock}
 SARCINA TA:
 1. Identifica ce SERVICII din catalogul nostru sunt cerute sau mentionate in conversatie.
 2. Pentru fiecare serviciu detectat, extrage campurile obligatorii completate sau pune null daca lipsesc.

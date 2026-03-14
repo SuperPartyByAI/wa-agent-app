@@ -11,6 +11,7 @@ import { composeHumanReply } from '../replies/composeHumanReply.mjs';
 import { evaluateReplyQuality } from '../replies/evaluateReplyQuality.mjs';
 import { buildReplyContext } from '../replies/buildReplyContext.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
+import { extractActiveRoles } from '../knowledge/knowledgeBase.mjs';
 import { loadRelationshipData } from '../memory/loadRelationshipData.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
 import { recordEvent, recordKbMiss } from '../analytics/recordAiEvent.mjs';
@@ -197,12 +198,14 @@ export async function processConversation(conversation_id, message_id = null, op
         }
 
         // ── 4. Build transcript and call LLM ──
-        const transcript = messages.reverse().map(m =>
+        // CLONE the array using [...messages] because .reverse() mutates the array in-place!
+        // If we mutate it, the later .find() logic will extract the oldest message instead of the newest.
+        const transcript = [...messages].reverse().map(m =>
             `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
         ).join('\n');
 
         // Extract last client message for service confidence guard
-        const lastClientMsg = [...messages].reverse().find(m => m.sender_type === 'client');
+        const lastClientMsg = messages.find(m => m.sender_type === 'client');
         const lastClientMessageText = lastClientMsg?.content || '';
 
         // ── 3.5. Fast Path Check ──
@@ -406,7 +409,8 @@ export async function processConversation(conversation_id, message_id = null, op
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
         }
 
-        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData });
+        const activeRolesText = await extractActiveRoles(lastClientMessageText, eventPlan);
+        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData, activeRolesText });
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();

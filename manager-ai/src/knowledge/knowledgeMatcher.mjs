@@ -90,9 +90,18 @@ function scorePatternMatch(normMsg, patterns) {
         // Word overlap
         let hits = 0;
         for (const w of words) {
-            if (normMsg.includes(w)) hits++;
+            // Check boundaries so 'vata' doesn't match 'cravata'
+            const regex = new RegExp(`\\b${w}\\b`, 'i');
+            if (regex.test(normMsg)) hits++;
         }
-        best = Math.max(best, hits / words.length);
+        let overlap = hits / words.length;
+        
+        // Penalize partial matches for very short patterns (e.g., 'aveti cu vata')
+        if (overlap === 1.0 && words.length < 3) {
+            overlap = 0.85; // Capped to prevent false 100% on 2 words
+        }
+        
+        best = Math.max(best, overlap);
     }
     return best;
 }
@@ -122,7 +131,7 @@ function scoreCategoryMatch(normMsg, entryCategory) {
     const catKeywords = {
         pricing: ['pret', 'preturi', 'costa', 'tarif', 'oferta', 'cat costa'],
         services: ['animatie', 'animator', 'baloane', 'vata', 'popcorn', 'ursitoare'],
-        packages: ['pachete', 'pachet', 'aveti', 'oferiti', 'variante', 'include', 'contine', 'confetti', 'tort', 'banner'],
+        packages: ['pachete', 'pachet', 'variante', 'include', 'contine', 'confetti', 'tort', 'banner'],
         faq: ['zone', 'acoperiti', 'veniti', 'cum', 'unde', 'cand', 'rezerv'],
         policy: ['politica', 'reguli', 'conditii', 'anulare', 'rambursare']
     };
@@ -188,6 +197,11 @@ export async function matchKnowledge(clientMessage, context = {}) {
     let bestReason = '';
 
     for (const entry of entries) {
+        // Exclude role entries from being matched as a generic KB answer!
+        if (entry.category === 'roles' || (entry.knowledge_key && entry.knowledge_key.startsWith('role_'))) {
+            continue;
+        }
+
         // Category filter
         if (context.category && entry.category !== context.category) continue;
 
@@ -244,4 +258,55 @@ export async function matchKnowledge(clientMessage, context = {}) {
 export function invalidateKBCache() {
     kbCache = null;
     kbCacheAt = 0;
+}
+
+/**
+ * Extracts Answer Templates for AI roles that match the user's message or the current event plan.
+ * Used to dynamically inject role logic into the System Prompt.
+ * 
+ * @param {string} clientMessage 
+ * @param {object} eventPlan 
+ * @returns {Promise<string>} Combined role instructions text.
+ */
+export async function extractActiveRoles(clientMessage, eventPlan = {}) {
+    const entries = await loadApprovedKB();
+    if (!entries || entries.length === 0) return '';
+
+    // Filter only roles
+    const roles = entries.filter(e => e.knowledge_key && e.knowledge_key.startsWith('role_'));
+    if (roles.length === 0) return '';
+
+    const normMsg = normalize(clientMessage);
+    const requestedServices = new Set((eventPlan?.requested_services || []).map(s => normalize(s)));
+    
+    const matchedRoles = [];
+
+    for (const role of roles) {
+        let isMatch = false;
+
+        // 1. Check if the role's service tag is explicitly requested in the plan
+        const roleTags = (role.service_tags || []).map(s => normalize(s));
+        for (const tag of roleTags) {
+            if (requestedServices.has(tag)) {
+                isMatch = true;
+                break;
+            }
+        }
+
+        // 2. If not already matched by plan, check chat text pattern match
+        if (!isMatch && normMsg.length >= MIN_MSG_LENGTH) {
+            const score = scorePatternMatch(normMsg, role.question_patterns);
+            if (score > 0.15) {
+                isMatch = true;
+            }
+        }
+
+        if (isMatch && role.answer_template) {
+            matchedRoles.push(`ROL: ${role.knowledge_key.replace('role_', '').toUpperCase()}\n${role.answer_template}`);
+        }
+    }
+
+    if (matchedRoles.length === 0) return '';
+
+    return matchedRoles.join('\n\n');
 }

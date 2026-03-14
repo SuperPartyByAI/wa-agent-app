@@ -7,12 +7,19 @@
  *  - invalidateKBCache()                — flush cache
  */
 
-import { matchKnowledge, invalidateKBCache as flushCache } from './knowledgeMatcher.mjs';
+import { matchKnowledge, invalidateKBCache as flushCache, extractActiveRoles as extractRoles } from './knowledgeMatcher.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '../config/env.mjs';
 import { normalize } from './knowledgeMatcher.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+/**
+ * Extract active roles logic based on client intent and event plan.
+ */
+export async function extractActiveRoles(clientMessage, eventPlan = {}) {
+    return extractRoles(clientMessage, eventPlan);
+}
 
 /**
  * Search Knowledge Base.

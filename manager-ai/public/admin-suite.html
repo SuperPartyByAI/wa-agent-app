@@ -92,8 +92,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
     <h2 id="pageTitle">Dashboard</h2>
     <div class="search"><input type="text" id="globalSearch" placeholder="Search clients, conversations..." onkeydown="if(event.key==='Enter')searchGlobal()"></div>
   </div>
-  <div class="content">
-
   <div class="content" id="mainContentArea">
 
     <!-- ═══ OPERATOR DESK (IFRAME) ═══ -->
@@ -113,7 +111,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
     <div class="panel" id="mod-roles"><div class="loader"><div class="spinner"></div></div></div>
 
   </div>
-</div>
 
 <div class="modal-overlay" id="modal"><div class="modal" id="modalContent"></div></div>
 
@@ -149,6 +146,9 @@ document.querySelectorAll('.nav-item').forEach(n=>{
 });
 
 function loadModule(m){const l={operator:()=>{},creier:loadCreier,roles:loadRoles};if(l[m])l[m]()}
+const tokenFromUrl = new URLSearchParams(window.location.search).get('token');
+if(tokenFromUrl) localStorage.setItem('token', tokenFromUrl);
+
 async function api(path,opts={}) {
   const token = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('token');
   const headers = { 'Content-Type': 'application/json' };

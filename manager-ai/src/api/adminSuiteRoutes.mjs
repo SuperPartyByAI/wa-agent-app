@@ -283,6 +283,25 @@ router.put('/pricing/kb/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.post('/pricing/kb', async (req, res) => {
+    try {
+        const payload = { ...req.body, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        const { data, error } = await supabase.from('ai_knowledge_base').insert(payload).select().single();
+        if (error) throw error;
+        await logAudit('pricing', 'create', 'kb_entry', data.id, data);
+        res.json({ status: 'created', entry: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/pricing/kb/:id', async (req, res) => {
+    try {
+        const { error } = await supabase.from('ai_knowledge_base').delete().eq('id', req.params.id);
+        if (error) throw error;
+        await logAudit('pricing', 'delete', 'kb_entry', req.params.id, null, req.query._reason || '');
+        res.json({ status: 'deleted' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ═══════════════════════════════════════════════════
 // E. EMPLOYEES / ROLES
 // ═══════════════════════════════════════════════════

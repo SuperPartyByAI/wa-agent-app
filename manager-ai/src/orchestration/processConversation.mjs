@@ -410,9 +410,41 @@ export async function processConversation(conversation_id, message_id = null, op
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
         }
 
+        // ── AUTONOMOUS COMMERCIAL AGENT: Phase 1 Runtime ──
+        const { loadLeadRuntimeState } = await import('../agent/loadLeadRuntimeState.mjs');
+        const { saveLeadRuntimeState } = await import('../agent/saveLeadRuntimeState.mjs');
+        const { computeMissingFields } = await import('../agent/missingFieldsEngine.mjs');
+        const { computeNextBestAction } = await import('../agent/nextBestActionPlanner.mjs');
+
+        const runtimeState = await loadLeadRuntimeState(conversation_id);
+
         const activeRoles = await extractActiveRoles(lastClientMessageText, eventPlan);
         const activeRolesText = activeRoles && activeRoles.length > 0 ? buildActiveCommercialPoliciesBlock(activeRoles) : null;
-        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData, activeRolesText });
+        
+        if (!runtimeState.primary_service && eventPlan?.selected_package) {
+            runtimeState.primary_service = eventPlan.selected_package;
+        }
+        if (activeRoles && activeRoles.length > 0) {
+            const newSvc = activeRoles[0].service_key;
+            if (!runtimeState.primary_service || runtimeState.primary_service !== newSvc) {
+                runtimeState.primary_service = newSvc;
+            }
+            runtimeState.active_roles = activeRoles.map(r => r.role_id);
+        }
+
+        const missingMetrics = computeMissingFields(runtimeState.primary_service, eventPlan, runtimeState.known_fields);
+
+        const plannerContext = {
+            runtimeState,
+            missingMetrics,
+            humanTakeover: false, // TODO: Wire human takeover logic dynamically
+            isAcknowledgment: isAck,
+            isGreeting: lastClientMessageText && /^(bun[aă]|salut|hey|hello|hi|bun[aă]\s*(seara|ziua|dimineata|dimineața)|sal|hei|ce\s*faci|servus)\s*[!.,?]*$/i.test(lastClientMessageText.trim())
+        };
+        const nextTarget = computeNextBestAction(plannerContext);
+        console.log(`[Agent] State=${runtimeState.lead_state}, Primary=${runtimeState.primary_service}, NBA=${nextTarget.action}, NextState=${nextTarget.nextState}`);
+
+        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget });
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();
@@ -761,6 +793,20 @@ export async function processConversation(conversation_id, message_id = null, op
         };
         if (message_id) statePayload.last_processed_message_id = message_id;
         await supabase.from('ai_conversation_state').upsert(statePayload);
+
+        // ── 8.4.2. Persist Autonomous Runtime State ──
+        if (typeof runtimeState !== 'undefined' && typeof nextTarget !== 'undefined') {
+            await saveLeadRuntimeState(conversation_id, {
+                lead_state: nextTarget.nextState,
+                last_agent_goal: nextTarget.instruction.substring(0, 200),
+                next_best_action: nextTarget.action,
+                primary_service: runtimeState.primary_service,
+                active_roles: runtimeState.active_roles,
+                missing_fields: missingMetrics?.missing || [],
+                human_takeover: runtimeState.human_takeover
+            });
+            console.log(`[Agent] Persisted runtime state to DB: ${nextTarget.nextState} / ${nextTarget.action}`);
+        }
 
         // ── 8.5. Service Detection Confidence Guard ──
         const serviceConfidence = evaluateServiceConfidence({

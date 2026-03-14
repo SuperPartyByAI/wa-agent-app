@@ -53,7 +53,9 @@ export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goa
 
     let roleBlock = '';
     if (activeRolesText) {
-        roleBlock = `\n=== FISE DE POST (ROLURI ACTIVE) ===\n${activeRolesText}\n=== SFARSIT FISE DE POST ===\nIMPORTANT: Foloseste regulile, preturile si pachetele EXCLUSIV de mai sus pentru aceste servicii. Ignora catalogul general daca se contrazic.\n`;
+        roleBlock = `\n=== FISE DE POST (ROLURI ACTIVE) ===\n${activeRolesText}\n=== SFARSIT FISE DE POST ===\n
+CRITIC IMPORTANT: Tu ESTI constrans comercial de regulile de mai sus! 
+Obligatoriu cand generezi \`assistant_reply\`, TREBUIE sa iti compui textul folosind EXACT frazele din 'APPROVED SALES COPY GUIDELINES' (Intro, Upsell, Closing question) ale serviciului detectat. Nu mai da raspunsuri generice tip "Ce servicii va intereseaza?", ci raspunde exact cu oferta/intro-ul pentru serviciul detectat.\n`;
     }
 
     // Build memory context block if we have existing memory

@@ -7,553 +7,538 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0f1117; --bg-card: #181b23; --bg-hover: #1f2330; --bg-selected: #252a38;
-  --border: #2a2e3a; --text: #e4e6ed; --text-muted: #8b8fa3; --text-dim: #5c6070;
-  --accent: #6c8cff; --accent-soft: rgba(108,140,255,0.12);
-  --green: #34d399; --green-soft: rgba(52,211,153,0.12);
-  --orange: #fb923c; --orange-soft: rgba(251,146,60,0.12);
-  --red: #f87171; --red-soft: rgba(248,113,113,0.12);
-  --yellow: #fbbf24; --yellow-soft: rgba(251,191,36,0.12);
-  --purple: #a78bfa; --purple-soft: rgba(167,139,250,0.12);
-  --radius: 10px; --radius-sm: 6px;
+  --bg:#0f1117;--bg2:#181b23;--bg3:#1f2330;--bg4:#252a38;--bd:#2a2e3a;
+  --tx:#e4e6ed;--tx2:#8b8fa3;--tx3:#5c6070;
+  --ac:#6c8cff;--ac2:rgba(108,140,255,.12);
+  --gr:#34d399;--gr2:rgba(52,211,153,.12);
+  --or:#fb923c;--or2:rgba(251,146,60,.12);
+  --rd:#f87171;--rd2:rgba(248,113,113,.12);
+  --yl:#fbbf24;--yl2:rgba(251,191,36,.12);
+  --pu:#a78bfa;--pu2:rgba(167,139,250,.12);
+  --r:10px;--rs:6px;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:100vh;overflow:hidden}
 
-/* ─── TOP NAV ─── */
-.topbar { display:flex; align-items:center; height:48px; background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 16px; gap:12px; }
-.logo { font-size:14px; font-weight:700; color:var(--accent); }
-.logo span { color:var(--text-dim); font-weight:400; font-size:12px; }
-.tabs { display:flex; gap:2px; margin-left:16px; }
-.tab { padding:6px 14px; border-radius:var(--radius-sm); cursor:pointer; font-size:12px; font-weight:500; color:var(--text-muted); transition:all .15s; user-select:none; }
-.tab:hover { color:var(--text); background:var(--bg-hover); }
-.tab.active { color:var(--accent); background:var(--accent-soft); }
-.tab .badge { display:inline-block; background:var(--red); color:#fff; font-size:10px; padding:1px 5px; border-radius:8px; margin-left:4px; font-weight:700; }
-.topbar-r { margin-left:auto; display:flex; align-items:center; gap:10px; }
-.health { font-size:11px; color:var(--green); display:flex; align-items:center; gap:4px; }
-.health::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--green); }
-.ext-link { font-size:11px; color:var(--text-dim); text-decoration:none; padding:4px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); }
-.ext-link:hover { color:var(--text); }
+/* TOP */
+.top{display:flex;align-items:center;height:46px;background:var(--bg2);border-bottom:1px solid var(--bd);padding:0 14px;gap:10px}
+.logo{font-size:13px;font-weight:700;color:var(--ac)}.logo span{color:var(--tx3);font-weight:400;font-size:11px}
+.tabs{display:flex;gap:2px;margin-left:14px}
+.tab{padding:5px 12px;border-radius:var(--rs);cursor:pointer;font-size:11px;font-weight:500;color:var(--tx2);transition:.15s;user-select:none}
+.tab:hover{color:var(--tx);background:var(--bg3)}.tab.act{color:var(--ac);background:var(--ac2)}
+.tab .bg{display:inline-block;background:var(--rd);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:3px;font-weight:700}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.hp{font-size:10px;color:var(--gr);display:flex;align-items:center;gap:3px}.hp::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--gr)}
+.el{font-size:10px;color:var(--tx3);text-decoration:none;padding:3px 8px;border:1px solid var(--bd);border-radius:var(--rs)}.el:hover{color:var(--tx)}
 
-/* ─── LAYOUT ─── */
-.main { display:flex; height:calc(100vh - 48px); }
+/* LAYOUT */
+.main{display:flex;height:calc(100vh - 46px)}
+.left{width:290px;min-width:220px;border-right:1px solid var(--bd);display:flex;flex-direction:column}
+.sb{padding:7px 9px;border-bottom:1px solid var(--bd)}
+.sb input{width:100%;padding:6px 9px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg2);color:var(--tx);font-size:11px;outline:none}
+.sb input:focus{border-color:var(--ac)}
+.flt{display:flex;gap:2px;padding:5px 9px;border-bottom:1px solid var(--bd);overflow-x:auto}
+.fb{padding:2px 7px;border-radius:10px;font-size:9px;font-weight:500;cursor:pointer;border:1px solid var(--bd);color:var(--tx2);background:transparent;white-space:nowrap}
+.fb.act{background:var(--ac2);color:var(--ac);border-color:var(--ac)}
+.cl{flex:1;overflow-y:auto}
+.cv{padding:9px 10px;border-bottom:1px solid var(--bd);cursor:pointer;transition:.1s}
+.cv:hover{background:var(--bg3)}.cv.sel{background:var(--bg4);border-left:3px solid var(--ac)}
+.cv-t{display:flex;justify-content:space-between;margin-bottom:2px}
+.cv-n{font-size:11px;font-weight:600}.cv-d{font-size:9px;color:var(--tx3)}
+.cv-m{font-size:10px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+.cv-b{display:flex;gap:3px;flex-wrap:wrap}
+.bs{font-size:8px;font-weight:600;padding:1px 5px;border-radius:7px;text-transform:uppercase;letter-spacing:.3px}
+.b-open{background:var(--yl2);color:var(--yl)}.b-shadow{background:var(--pu2);color:var(--pu)}.b-pending{background:var(--or2);color:var(--or)}
+.b-blocked{background:var(--rd2);color:var(--rd)}.b-sent{background:var(--gr2);color:var(--gr)}.b-info{background:var(--bg3);color:var(--tx3)}
+.b-appr{background:var(--gr2);color:var(--gr)}.b-plan{background:var(--ac2);color:var(--ac)}
 
-/* LEFT: Conv List */
-.left { width:300px; min-width:240px; border-right:1px solid var(--border); display:flex; flex-direction:column; }
-.search-box { padding:8px 10px; border-bottom:1px solid var(--border); }
-.search-box input { width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card); color:var(--text); font-size:12px; outline:none; }
-.search-box input:focus { border-color:var(--accent); }
-.filters { display:flex; gap:3px; padding:6px 10px; border-bottom:1px solid var(--border); overflow-x:auto; }
-.flt { padding:3px 8px; border-radius:10px; font-size:10px; font-weight:500; cursor:pointer; border:1px solid var(--border); color:var(--text-muted); background:transparent; white-space:nowrap; }
-.flt.active { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
-.conv-list { flex:1; overflow-y:auto; }
-.cv { padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
-.cv:hover { background:var(--bg-hover); }
-.cv.sel { background:var(--bg-selected); border-left:3px solid var(--accent); }
-.cv-top { display:flex; justify-content:space-between; margin-bottom:3px; }
-.cv-name { font-size:12px; font-weight:600; }
-.cv-time { font-size:10px; color:var(--text-dim); }
-.cv-msg { font-size:11px; color:var(--text-muted); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:4px; }
-.cv-meta { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
-.badge-sm { font-size:9px; font-weight:600; padding:1px 6px; border-radius:8px; text-transform:uppercase; letter-spacing:.3px; }
-.b-sent { background:var(--green-soft); color:var(--green); }
-.b-shadow { background:var(--purple-soft); color:var(--purple); }
-.b-pending { background:var(--orange-soft); color:var(--orange); }
-.b-blocked { background:var(--red-soft); color:var(--red); }
-.b-open { background:var(--yellow-soft); color:var(--yellow); }
-.b-info { background:var(--bg-hover); color:var(--text-dim); }
+/* CENTER */
+.center{flex:1;display:flex;flex-direction:column;min-width:0}
+.es{flex:1;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:12px}
+.dh{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.dh h2{font-size:13px;font-weight:600}.dh .sub{font-size:9px;color:var(--tx3)}
+.dh .ml{font-size:10px;color:var(--ac);cursor:pointer}
+.msgs{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:5px}
+.m{max-width:72%;padding:7px 10px;border-radius:var(--r);font-size:11px;line-height:1.4}
+.m.cl{align-self:flex-start;background:var(--bg2);border:1px solid var(--bd)}
+.m.ag{align-self:flex-end;background:var(--ac2);border:1px solid rgba(108,140,255,.15)}
+.m.ai{align-self:flex-end;background:var(--pu2);border:1px solid rgba(167,139,250,.15)}
+.mw{font-size:8px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px}
+.mt{font-size:8px;color:var(--tx3);margin-top:1px}
 
-/* CENTER: Detail */
-.center { flex:1; display:flex; flex-direction:column; min-width:0; }
-.empty-state { flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:13px; }
-.detail-header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-.detail-header h2 { font-size:14px; font-weight:600; }
-.detail-header .sub { font-size:10px; color:var(--text-dim); }
-.detail-header .mem-link { font-size:11px; color:var(--accent); cursor:pointer; }
+/* PLAN CARD */
+.pc{margin:6px 14px;padding:9px 10px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r)}
+.pc h4{font-size:10px;font-weight:600;color:var(--ac);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.pr{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:3px}
+.pf{font-size:10px}.pf .l{color:var(--tx3)}.pf .v{color:var(--tx);font-weight:500}
+.pm{font-size:9px;color:var(--or);margin-top:3px}
+.pbar{height:3px;background:var(--bd);border-radius:2px;margin-top:4px;overflow:hidden}
+.pbar-f{height:100%;background:var(--ac);border-radius:2px;transition:.3s}
 
-/* Messages */
-.msgs { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:6px; }
-.m { max-width:72%; padding:8px 12px; border-radius:var(--radius); font-size:12px; line-height:1.45; }
-.m.cl { align-self:flex-start; background:var(--bg-card); border:1px solid var(--border); }
-.m.ag { align-self:flex-end; background:var(--accent-soft); border:1px solid rgba(108,140,255,.15); }
-.m.ai { align-self:flex-end; background:var(--purple-soft); border:1px solid rgba(167,139,250,.15); }
-.m-who { font-size:9px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:1px; }
-.m-time { font-size:9px; color:var(--text-dim); margin-top:2px; }
+/* AI BOX */
+.ab{border-top:1px solid var(--bd);padding:10px 14px;background:var(--bg2)}
+.al{font-size:9px;font-weight:600;color:var(--pu);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.al .ta{font-size:8px;padding:1px 5px;border-radius:3px;background:var(--ac2);color:var(--ac)}
+.al .sf{font-size:8px;padding:1px 5px;border-radius:3px}
+.sf-ok{background:var(--gr2);color:var(--gr)}.sf-w{background:var(--or2);color:var(--or)}.sf-b{background:var(--rd2);color:var(--rd)}
+.at{width:100%;min-height:44px;padding:7px 9px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg);color:var(--tx);font-size:11px;font-family:inherit;resize:vertical;outline:none;line-height:1.35}
+.at:focus{border-color:var(--ac)}
+.aa{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.btn{padding:5px 10px;border:none;border-radius:var(--rs);font-size:10px;font-weight:600;cursor:pointer;transition:.15s}
+.ba{background:var(--gr);color:#0f1117}.ba:hover{filter:brightness(1.1)}
+.be{background:var(--ac2);color:var(--ac);border:1px solid var(--ac)!important}.be:hover{background:var(--ac);color:#fff}
+.bc{background:var(--or2);color:var(--or)}.bc:hover{background:var(--or);color:#fff}
+.bh{background:var(--rd2);color:var(--rd)}.bh:hover{background:var(--rd);color:#fff}
+.bm{background:var(--bg3);color:var(--tx2)}.bm:hover{color:var(--tx)}
+.br{background:transparent;color:var(--tx3);border:1px solid var(--bd)!important}
 
-/* Event Plan Card */
-.plan-card { margin:8px 16px; padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); }
-.plan-card h4 { font-size:11px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
-.plan-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:4px; }
-.plan-field { font-size:11px; }
-.plan-field .label { color:var(--text-dim); }
-.plan-field .val { color:var(--text); font-weight:500; }
-.plan-missing { font-size:10px; color:var(--orange); margin-top:4px; }
+/* FIELD WRITE LOG */
+.fw{margin:6px 14px;padding:7px 9px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--rs)}
+.fw h5{font-size:9px;font-weight:600;color:var(--tx2);text-transform:uppercase;margin-bottom:4px}
+.fw-r{font-size:9px;margin-bottom:2px;padding:2px 0;border-bottom:1px solid var(--bd)}
+.fw-r:last-child{border:none}
+.fw-ok{color:var(--gr)}.fw-bl{color:var(--or)}.fw-er{color:var(--rd)}
 
-/* AI Reply Box */
-.ai-box { border-top:1px solid var(--border); padding:12px 16px; background:var(--bg-card); }
-.ai-label { font-size:10px; font-weight:600; color:var(--purple); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
-.ai-label .tool-act { font-size:9px; padding:1px 6px; border-radius:4px; background:var(--accent-soft); color:var(--accent); }
-.ai-label .safety { font-size:9px; padding:1px 6px; border-radius:4px; }
-.safe-ok { background:var(--green-soft); color:var(--green); }
-.safe-warn { background:var(--orange-soft); color:var(--orange); }
-.safe-block { background:var(--red-soft); color:var(--red); }
-.ai-text { width:100%; min-height:48px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:12px; font-family:inherit; resize:vertical; outline:none; line-height:1.4; }
-.ai-text:focus { border-color:var(--accent); }
-.ai-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
-.btn { padding:6px 12px; border:none; border-radius:var(--radius-sm); font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; }
-.b-approve { background:var(--green); color:#0f1117; }
-.b-approve:hover { filter:brightness(1.1); }
-.b-edit { background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent) !important; }
-.b-edit:hover { background:var(--accent); color:#fff; }
-.b-clarify { background:var(--orange-soft); color:var(--orange); }
-.b-clarify:hover { background:var(--orange); color:#fff; }
-.b-operator { background:var(--red-soft); color:var(--red); }
-.b-operator:hover { background:var(--red); color:#fff; }
-.b-mem { background:var(--bg-hover); color:var(--text-muted); }
-.b-mem:hover { color:var(--text); }
-.b-rule { background:transparent; color:var(--text-dim); border:1px solid var(--border) !important; }
+/* RIGHT PANEL */
+.right{width:300px;border-left:1px solid var(--bd);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;transition:.2s}
+.right.hid{width:0;border:none}
+.rh{padding:9px 10px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.rh h3{font-size:12px;font-weight:600}
+.rx{background:none;border:none;color:var(--tx2);cursor:pointer;font-size:13px;padding:2px 5px}
+.rb{flex:1;overflow-y:auto;padding:9px 10px}
+.ms{margin-bottom:12px}.ms h4{font-size:9px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.mf{background:var(--bg);padding:5px 7px;border-radius:var(--rs);margin-bottom:3px;border:1px solid var(--bd)}
+.mf .l{font-size:9px;color:var(--tx3)}.mf .v{font-size:11px}
+.mf-a{display:flex;gap:2px;margin-top:3px}
+.mf-a button{font-size:8px;padding:1px 5px;border-radius:3px;border:1px solid var(--bd);background:transparent;color:var(--tx2);cursor:pointer}
+.mf-a button:hover{color:var(--tx)}.mf-a .w{color:var(--rd);border-color:var(--rd)}
+.na{margin-top:8px}.na textarea{width:100%;padding:5px 7px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg);color:var(--tx);font-size:10px;font-family:inherit;resize:vertical;min-height:36px;outline:none}
+.nb{margin-top:3px;padding:3px 8px;font-size:9px;background:var(--ac2);color:var(--ac);border:1px solid var(--ac);border-radius:var(--rs);cursor:pointer}
 
-/* RIGHT: Memory */
-.right { width:320px; border-left:1px solid var(--border); background:var(--bg-card); display:flex; flex-direction:column; overflow:hidden; transition:width .2s; }
-.right.hidden { width:0; border:none; }
-.mem-hdr { padding:10px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-.mem-hdr h3 { font-size:13px; font-weight:600; }
-.mem-close { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:2px 6px; }
-.mem-body { flex:1; overflow-y:auto; padding:10px 12px; }
-.mem-sec { margin-bottom:14px; }
-.mem-sec h4 { font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
-.mf { background:var(--bg); padding:6px 8px; border-radius:var(--radius-sm); margin-bottom:4px; border:1px solid var(--border); }
-.mf .lbl { font-size:10px; color:var(--text-dim); }
-.mf .val { font-size:12px; }
-.mf-acts { display:flex; gap:3px; margin-top:4px; }
-.mf-acts button { font-size:9px; padding:1px 6px; border-radius:3px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; }
-.mf-acts button:hover { color:var(--text); }
-.mf-acts .wrong { color:var(--red); border-color:var(--red); }
-.note-area { margin-top:10px; }
-.note-area textarea { width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:11px; font-family:inherit; resize:vertical; min-height:40px; outline:none; }
-.note-btn { margin-top:4px; padding:4px 10px; font-size:10px; background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent); border-radius:var(--radius-sm); cursor:pointer; }
+/* TABS VIEWS */
+.tv{display:none;flex:1;padding:14px 18px;overflow-y:auto}.tv.act{display:block}
 
-/* RULES TAB */
-.rules-view { display:none; flex:1; padding:16px 20px; overflow-y:auto; }
-.rules-view.active { display:block; }
-.rc { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:8px; }
-.rc:hover { border-color:var(--text-dim); }
-.rc-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-.rc-name { font-size:13px; font-weight:600; }
-.toggle { position:relative; width:32px; height:18px; }
-.toggle input { display:none; }
-.toggle label { display:block; width:32px; height:18px; border-radius:9px; background:var(--border); cursor:pointer; transition:.2s; }
-.toggle label::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--text-muted); transition:.2s; }
-.toggle input:checked+label { background:var(--green); }
-.toggle input:checked+label::after { left:16px; background:#fff; }
-.rc-desc { font-size:11px; color:var(--text-muted); line-height:1.3; margin-bottom:6px; }
-.rc-tags { display:flex; gap:4px; flex-wrap:wrap; }
-.rtag { font-size:9px; padding:2px 6px; border-radius:3px; background:var(--bg); border:1px solid var(--border); color:var(--text-dim); }
-.add-btn { padding:8px 14px; border:2px dashed var(--border); border-radius:var(--radius); color:var(--text-muted); font-size:12px; cursor:pointer; text-align:center; background:transparent; width:100%; }
-.add-btn:hover { border-color:var(--accent); color:var(--accent); }
+/* RULES + SERVICES */
+.rc{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:7px}
+.rc:hover{border-color:var(--tx3)}
+.rc-t{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.rc-n{font-size:12px;font-weight:600}
+.tgl{position:relative;width:30px;height:16px}
+.tgl input{display:none}
+.tgl label{display:block;width:30px;height:16px;border-radius:8px;background:var(--bd);cursor:pointer;transition:.2s}
+.tgl label::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--tx2);transition:.2s}
+.tgl input:checked+label{background:var(--gr)}.tgl input:checked+label::after{left:16px;background:#fff}
+.rc-d{font-size:10px;color:var(--tx2);line-height:1.3;margin-bottom:4px}
+.rc-tg{display:flex;gap:3px;flex-wrap:wrap}
+.rt{font-size:8px;padding:1px 5px;border-radius:3px;background:var(--bg);border:1px solid var(--bd);color:var(--tx3)}
+.adb{padding:7px 12px;border:2px dashed var(--bd);border-radius:var(--r);color:var(--tx2);font-size:11px;cursor:pointer;text-align:center;background:transparent;width:100%}
+.adb:hover{border-color:var(--ac);color:var(--ac)}
 
-/* SERVICE CONFIG */
-.svc-section { margin-top:20px; }
-.svc-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:8px; }
-.svc-card h4 { font-size:12px; font-weight:600; margin-bottom:6px; }
-.svc-card .fields { display:flex; flex-wrap:wrap; gap:4px; }
-.svc-card .field-tag { font-size:9px; padding:2px 6px; border-radius:3px; }
-.field-req { background:var(--accent-soft); color:var(--accent); }
-.field-opt { background:var(--bg); color:var(--text-dim); border:1px solid var(--border); }
+/* FIELD REGISTRY */
+.fr-sec{margin-top:18px}
+.fr-h{font-size:13px;font-weight:600;margin-bottom:4px}
+.fr-sub{font-size:10px;color:var(--tx2);margin-bottom:10px}
+.fr-c{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.fr-c:hover{border-color:var(--tx3)}
+.fr-l{flex:1}
+.fr-n{font-size:11px;font-weight:600;margin-bottom:2px}
+.fr-k{font-size:8px;color:var(--tx3);font-family:monospace;margin-bottom:3px}
+.fr-d{font-size:9px;color:var(--tx2);margin-bottom:3px}
+.fr-tg{display:flex;gap:3px;flex-wrap:wrap}
+.ft{font-size:7px;padding:1px 5px;border-radius:3px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.ft-auto{background:var(--gr2);color:var(--gr)}.ft-sens{background:var(--rd2);color:var(--rd)}.ft-cust{background:var(--or2);color:var(--or)}
+.ft-req{background:var(--ac2);color:var(--ac)}.ft-opt{background:var(--bg3);color:var(--tx3)}.ft-map{background:var(--bg);color:var(--tx3);border:1px solid var(--bd)}
+.fr-r{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:60px}
+.fr-st{font-size:8px;padding:2px 6px;border-radius:3px;font-weight:600;text-transform:uppercase}
+.st-auto{background:var(--gr2);color:var(--gr)}.st-sens{background:var(--rd2);color:var(--rd)}.st-cust{background:var(--or2);color:var(--or)}.st-no{background:var(--bg3);color:var(--tx3)}
+.fr-ed{font-size:8px;color:var(--ac);cursor:pointer;text-decoration:underline}
 
-/* ADMIN TAB */
-.admin-view { display:none; flex:1; padding:16px 20px; overflow-y:auto; }
-.admin-view.active { display:block; }
-.admin-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px; }
-.admin-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; cursor:pointer; text-decoration:none; color:var(--text); display:block; }
-.admin-card:hover { border-color:var(--accent); }
-.admin-card h4 { font-size:12px; font-weight:600; margin-bottom:3px; }
-.admin-card p { font-size:10px; color:var(--text-muted); }
+/* SVC CARDS */
+.sc{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:7px}
+.sc h4{font-size:11px;font-weight:600;margin-bottom:5px}
+.sc h4 span{color:var(--tx3);font-weight:400;font-size:9px}
+.sc .fl{display:flex;flex-wrap:wrap;gap:3px}
+.sc .fi{font-size:8px;padding:1px 5px;border-radius:3px}
+.fi-r{background:var(--ac2);color:var(--ac)}.fi-o{background:var(--bg);color:var(--tx3);border:1px solid var(--bd)}
+.sc .qs{margin-top:4px;font-size:9px;color:var(--tx3)}
+.sc .stat{margin-top:4px;display:flex;gap:6px;font-size:8px;color:var(--tx3)}
+.sc .sn{color:var(--gr)}.sc .ss{color:var(--rd)}.sc .sc_{color:var(--or)}
+
+/* ADMIN */
+.ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.ac{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:10px;cursor:pointer;text-decoration:none;color:var(--tx);display:block}
+.ac:hover{border-color:var(--ac)}.ac h4{font-size:11px;font-weight:600;margin-bottom:2px}.ac p{font-size:9px;color:var(--tx2)}
 
 /* MODAL */
-.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:center; justify-content:center; }
-.modal-bg.show { display:flex; }
-.modal { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; width:420px; max-height:75vh; overflow-y:auto; }
-.modal h3 { margin-bottom:10px; font-size:14px; }
-.modal input,.modal textarea,.modal select { width:100%; padding:7px 8px; margin-bottom:8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:12px; font-family:inherit; outline:none; }
-.modal .mrow { display:flex; gap:6px; justify-content:flex-end; }
-.modal .ms { padding:6px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:11px; font-weight:600; }
-.modal .mc { padding:6px 14px; background:transparent; color:var(--text-muted); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; font-size:11px; }
+.mo-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}.mo-bg.sh{display:flex}
+.mo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:14px;width:460px;max-height:80vh;overflow-y:auto}
+.mo h3{margin-bottom:8px;font-size:13px}
+.mo input,.mo textarea,.mo select{width:100%;padding:6px 7px;margin-bottom:6px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg);color:var(--tx);font-size:11px;font-family:inherit;outline:none}
+.mo .fg{margin-bottom:8px}.mo .fl{font-size:9px;color:var(--tx2);margin-bottom:2px}
+.mo .mr{display:flex;gap:5px;justify-content:flex-end;margin-top:8px}
+.mo .ms_{padding:5px 12px;background:var(--ac);color:#fff;border:none;border-radius:var(--rs);cursor:pointer;font-size:10px;font-weight:600}
+.mo .mc{padding:5px 12px;background:transparent;color:var(--tx2);border:1px solid var(--bd);border-radius:var(--rs);cursor:pointer;font-size:10px}
+.mo .chk{display:flex;align-items:center;gap:5px;font-size:10px;margin-bottom:4px}
+.mo .chk input{width:auto;margin:0}
 
 /* TOAST */
-.toast { position:fixed; bottom:16px; right:16px; padding:8px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:500; z-index:200; opacity:0; transition:.3s; }
-.toast.show { opacity:1; }
-.toast.ok { background:var(--green); color:#0f1117; }
-.toast.err { background:var(--red); color:#fff; }
+.toast{position:fixed;bottom:14px;right:14px;padding:7px 12px;border-radius:var(--rs);font-size:11px;font-weight:500;z-index:200;opacity:0;transition:.3s}
+.toast.sh{opacity:1}.toast.ok{background:var(--gr);color:#0f1117}.toast.er{background:var(--rd);color:#fff}
 
-::-webkit-scrollbar { width:5px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
 </style>
 </head>
 <body>
 
-<div class="topbar">
+<div class="top">
   <div class="logo">AI Operator Desk <span>· Superparty</span></div>
   <div class="tabs">
-    <div class="tab active" data-tab="conv">Conversații <span class="badge" id="cBadge">0</span></div>
+    <div class="tab act" data-tab="conv">Conversații <span class="bg" id="cBg">0</span></div>
+    <div class="tab" data-tab="fields">Registru câmpuri</div>
     <div class="tab" data-tab="rules">Reguli AI</div>
-    <div class="tab" data-tab="admin">Admin ↗</div>
+    <div class="tab" data-tab="admin">Administrare ↗</div>
   </div>
-  <div class="topbar-r">
-    <div class="health" id="hDot">OK</div>
-    <a class="ext-link" href="admin-suite.html" target="_blank">Suite</a>
-    <a class="ext-link" href="../brain/brain-console.html" target="_blank">Brain</a>
+  <div class="top-r">
+    <div class="hp" id="hDot">OK</div>
+    <a class="el" href="admin-suite.html" target="_blank">Suită</a>
+    <a class="el" href="../brain/brain-console.html" target="_blank">Brain</a>
   </div>
 </div>
 
 <div class="main">
-  <!-- LEFT -->
-  <div class="left" id="leftP">
-    <div class="search-box"><input type="text" id="sBox" placeholder="Caută client sau mesaj..."></div>
-    <div class="filters">
-      <div class="flt active" data-f="all">Toate</div>
-      <div class="flt" data-f="pending">De revizuit</div>
-      <div class="flt" data-f="shadow">Shadow</div>
-      <div class="flt" data-f="open">Deschise</div>
+  <div class="left" id="lP">
+    <div class="sb"><input type="text" id="sBox" placeholder="Caută client sau mesaj..."></div>
+    <div class="flt">
+      <div class="fb act" data-f="all">Toate</div>
+      <div class="fb" data-f="pending">De revizuit</div>
+      <div class="fb" data-f="shadow">Shadow</div>
+      <div class="fb" data-f="open">Deschise</div>
     </div>
-    <div class="conv-list" id="cList"></div>
+    <div class="cl" id="cList"></div>
   </div>
 
-  <!-- CENTER -->
-  <div class="center" id="centerP">
-    <div class="empty-state" id="emptyS">Selectează o conversație</div>
+  <div class="center" id="cP"><div class="es" id="emS">Selectează o conversație</div></div>
+  <div class="right hid" id="rP">
+    <div class="rh"><h3 id="mN">Memorie client</h3><button class="rx" onclick="tgMem(0)">✕</button></div>
+    <div class="rb" id="mB"></div>
   </div>
 
-  <!-- RIGHT: Memory -->
-  <div class="right hidden" id="rightP">
-    <div class="mem-hdr"><h3 id="mName">Memorie</h3><button class="mem-close" onclick="toggleMem(false)">✕</button></div>
-    <div class="mem-body" id="mBody"></div>
-  </div>
-
-  <!-- RULES TAB -->
-  <div class="rules-view" id="rulesV"></div>
-
-  <!-- ADMIN TAB -->
-  <div class="admin-view" id="adminV"></div>
+  <div class="tv" id="fieldsV"></div>
+  <div class="tv" id="rulesV"></div>
+  <div class="tv" id="adminV"></div>
 </div>
 
-<!-- MODAL -->
-<div class="modal-bg" id="ruleM">
-  <div class="modal">
-    <h3>Adaugă regulă</h3>
-    <input id="rmN" placeholder="Nume regulă">
-    <textarea id="rmD" rows="2" placeholder="Descriere"></textarea>
-    <select id="rmT"><option value="">Când se aplică...</option><option value="PRICE_QUESTION">Preț</option><option value="COSTUME_QUERY">Costume</option><option value="RESCHEDULE">Reprogramare</option><option value="COMPLAINT">Plângere</option><option value="GENERAL">General</option></select>
-    <select id="rmB"><option value="">Ce face AI-ul...</option><option value="CLARIFY_FIRST">Clarificare</option><option value="USE_KB">Răspunde din KB</option><option value="HANDOFF">Operator</option><option value="AUTO_REPLY">Auto</option><option value="BLOCK">Block</option></select>
-    <div class="mrow"><button class="mc" onclick="closeRM()">Anulează</button><button class="ms" onclick="saveR()">Salvează</button></div>
-  </div>
+<!-- FIELD MODAL -->
+<div class="mo-bg" id="fM">
+<div class="mo">
+  <h3 id="fMT">Câmp nou</h3>
+  <div class="fg"><div class="fl">Cheie câmp *</div><input id="fK" placeholder="ex: indoor_outdoor"></div>
+  <div class="fg"><div class="fl">Etichetă *</div><input id="fL" placeholder="ex: Interior/Exterior"></div>
+  <div class="fg"><div class="fl">Tip</div><select id="fTy"><option value="text">Text</option><option value="number">Număr</option><option value="boolean">Da/Nu</option><option value="date">Dată</option><option value="time">Oră</option><option value="select">Selecție</option><option value="multiselect">Selecție multiplă</option><option value="list">Listă</option><option value="notes">Note</option></select></div>
+  <div class="fg"><div class="fl">Servicii (separate cu virgulă)</div><input id="fSvc" placeholder="animator, personaje, mascote"></div>
+  <div class="fg"><div class="fl">Întrebarea de pus</div><textarea id="fQ" rows="2" placeholder="Ce întreabă AI-ul?"></textarea></div>
+  <div class="fg"><div class="fl">Text clarificare</div><input id="fCl" placeholder="Text suplimentar dacă e ambiguu"></div>
+  <div class="fg"><div class="fl">Ordinea întrebării</div><input id="fOr" type="number" value="50"></div>
+  <div class="fg"><div class="fl">Entitate stocare</div><input id="fSE" value="ai_event_plans"></div>
+  <div class="fg"><div class="fl">Coloană stocare *</div><input id="fSP" placeholder="ex: venue_type"></div>
+  <div class="fg"><div class="fl">Tip stocare</div><select id="fST"><option value="column">Coloană directă</option><option value="json_path">Cale JSON</option><option value="array_merge">Array (adaugă)</option><option value="array_replace">Array (înlocuiește)</option></select></div>
+  <div class="fg"><div class="fl">Valori permise (separate cu virgulă)</div><input id="fAV" placeholder="ex: interior, exterior"></div>
+  <div class="chk"><input type="checkbox" id="fReq"><label for="fReq">Obligatoriu</label></div>
+  <div class="chk"><input type="checkbox" id="fCR"><label for="fCR">Necesar la creare</label></div>
+  <div class="chk"><input type="checkbox" id="fQR"><label for="fQR">Necesar pentru cotație</label></div>
+  <div class="chk"><input type="checkbox" id="fUA" checked><label for="fUA">Permite actualizare</label></div>
+  <div class="chk"><input type="checkbox" id="fCA" checked><label for="fCA">Cere clarificare dacă e ambiguu</label></div>
+  <div class="chk"><input type="checkbox" id="fSn"><label for="fSn">⚠ Sensibil (necesită operator)</label></div>
+  <div class="chk"><input type="checkbox" id="fCH"><label for="fCH">🔧 Necesită handler special</label></div>
+  <div class="chk"><input type="checkbox" id="fAc" checked><label for="fAc">Activ</label></div>
+  <div class="mr"><button class="mc" onclick="closeFM()">Anulează</button><button class="ms_" onclick="saveFM()">Salvează</button></div>
 </div>
+</div>
+
+<!-- RULE MODAL -->
+<div class="mo-bg" id="rM">
+<div class="mo">
+  <h3>Regulă nouă</h3>
+  <input id="rmN" placeholder="Nume regulă">
+  <textarea id="rmD" rows="2" placeholder="Descriere"></textarea>
+  <select id="rmT"><option value="">Când se aplică...</option><option value="PRICE_QUESTION">Preț</option><option value="COSTUME_QUERY">Costume</option><option value="RESCHEDULE">Reprogramare</option><option value="COMPLAINT">Plângere</option><option value="GENERAL">General</option></select>
+  <select id="rmB"><option value="">Ce face AI-ul...</option><option value="CLARIFY_FIRST">Clarificare</option><option value="USE_KB">Răspunde din KB</option><option value="HANDOFF">Operator</option><option value="AUTO_REPLY">Auto</option><option value="BLOCK">Blochează</option></select>
+  <div class="mr"><button class="mc" onclick="closeRM()">Anulează</button><button class="ms_" onclick="saveR()">Salvează</button></div>
+</div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-const API = location.origin;
-const TK = localStorage.getItem('admin_token') || '';
-const H = () => ({'Content-Type':'application/json', ...(TK ? {'Authorization':`Bearer ${TK}`} : {})});
+const API=location.origin;
+const TK=localStorage.getItem('admin_token')||'';
+const H=()=>({'Content-Type':'application/json',...(TK?{'Authorization':`Bearer ${TK}`}:{})});
+let inbox=[],selId=null,curCl=null,curDec=null,filt='all',editFieldId=null;
 
-let inbox = [], selId = null, curClient = null, filter = 'all';
+function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className=`toast ${ok?'ok':'er'} sh`;setTimeout(()=>t.classList.remove('sh'),2500)}
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+function ago(iso){if(!iso)return'';const mn=Math.floor((Date.now()-new Date(iso))/60000);return mn<1?'acum':mn<60?mn+'m':mn<1440?Math.floor(mn/60)+'h':Math.floor(mn/1440)+'z'}
+function sfC(s){if(!s)return'';if(s.includes('block'))return'sf-b';if(s.includes('review')||s.includes('warn'))return'sf-w';return'sf-ok'}
 
-function toast(m, ok=true) { const t=document.getElementById('toast'); t.textContent=m; t.className=`toast ${ok?'ok':'err'} show`; setTimeout(()=>t.classList.remove('show'),2500); }
-function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
-function ago(iso) { if(!iso) return ''; const m=Math.floor((Date.now()-new Date(iso))/60000); return m<1?'acum':m<60?m+'m':m<1440?Math.floor(m/60)+'h':Math.floor(m/1440)+'z'; }
-function stLbl(s) { return {sent:'Trimis',shadow:'Shadow',pending:'Revizuit',blocked:'Blocat',open:'Deschis'}[s]||s||'?'; }
-function safeClass(s) { if(!s) return ''; if(s.includes('block')) return 'safe-block'; if(s.includes('review')||s.includes('warn')) return 'safe-warn'; return 'safe-ok'; }
-
-// ─── TABS ───
+// TABS
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('act'));t.classList.add('act');
   const n=t.dataset.tab;
-  document.getElementById('leftP').style.display=n==='conv'?'flex':'none';
-  document.getElementById('centerP').style.display=n==='conv'?'flex':'none';
-  document.getElementById('rightP').style.display=n==='conv'&&!document.getElementById('rightP').classList.contains('hidden')?'flex':'none';
-  document.getElementById('rulesV').classList.toggle('active',n==='rules');
-  document.getElementById('adminV').classList.toggle('active',n==='admin');
-  if(n==='rules') loadRules();
-  if(n==='admin') renderAdmin();
+  document.getElementById('lP').style.display=n==='conv'?'flex':'none';
+  document.getElementById('cP').style.display=n==='conv'?'flex':'none';
+  document.getElementById('rP').style.display=n==='conv'&&!document.getElementById('rP').classList.contains('hid')?'flex':'none';
+  ['fieldsV','rulesV','adminV'].forEach(v=>document.getElementById(v).classList.toggle('act',v===n+'V'));
+  if(n==='fields')loadFields();if(n==='rules')loadRules();if(n==='admin')renderAdmin();
 }));
-
-document.querySelectorAll('.flt').forEach(f=>f.addEventListener('click',()=>{
-  document.querySelectorAll('.flt').forEach(x=>x.classList.remove('active'));
-  f.classList.add('active');
-  filter=f.dataset.f;
-  renderList();
-}));
-
+document.querySelectorAll('.fb').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.fb').forEach(x=>x.classList.remove('act'));f.classList.add('act');filt=f.dataset.f;renderList()}));
 document.getElementById('sBox').addEventListener('input',e=>renderList(e.target.value));
 
-// ─── LOAD INBOX ───
-async function loadInbox() {
-  try {
-    const r = await fetch(`${API}/api/operator/inbox?limit=80`, {headers:H()});
-    const d = await r.json();
-    inbox = d.inbox || [];
-    document.getElementById('cBadge').textContent = inbox.length;
-    renderList();
-  } catch(e) { console.error('Inbox error:', e); toast('Eroare încărcare','err'); }
+// INBOX
+async function loadInbox(){
+  try{const r=await fetch(`${API}/api/operator/inbox?limit=80`,{headers:H()});const d=await r.json();inbox=d.inbox||[];document.getElementById('cBg').textContent=inbox.length;renderList()}
+  catch(e){console.error(e);toast('Eroare încărcare inbox',false)}
 }
-
-function renderList(q='') {
-  let items = inbox;
-  if(filter!=='all') items=items.filter(c=>c.status===filter);
-  if(q) { const lq=q.toLowerCase(); items=items.filter(c=>(c.client_name||'').toLowerCase().includes(lq)||(c.client_message||'').toLowerCase().includes(lq)); }
-
-  document.getElementById('cList').innerHTML = items.map(c=>`
-    <div class="cv ${c.id===selId?'sel':''}" onclick="selectConv('${c.id}')">
-      <div class="cv-top"><span class="cv-name">${esc(c.client_name)}</span><span class="cv-time">${ago(c.updated_at)}</span></div>
-      <div class="cv-msg">${esc(c.client_message||'Fără mesaje recente')}</div>
-      <div class="cv-meta">
-        <span class="badge-sm b-${c.status}">${stLbl(c.status)}</span>
-        ${c.tool_action?`<span class="badge-sm b-info">🔧 ${esc(c.tool_action)}</span>`:''}
-        ${c.has_event_plan?`<span class="badge-sm b-info">📋 plan</span>`:''}
-        ${c.safety_class?`<span class="badge-sm ${safeClass(c.safety_class)}">${esc(c.safety_class.replace(/_/g,' '))}</span>`:''}
+function renderList(q=''){
+  let it=inbox;if(filt!=='all')it=it.filter(c=>c.status===filt||(filt==='pending'&&!c.operator_verdict));
+  if(q){const lq=q.toLowerCase();it=it.filter(c=>(c.client_name||'').toLowerCase().includes(lq)||(c.client_message||'').toLowerCase().includes(lq))}
+  document.getElementById('cList').innerHTML=it.map(c=>`
+    <div class="cv ${c.id===selId?'sel':''}" onclick="selConv('${c.id}')">
+      <div class="cv-t"><span class="cv-n">${esc(c.client_name)}</span><span class="cv-d">${ago(c.updated_at)}</span></div>
+      <div class="cv-m">${esc(c.client_message||'Fără mesaje')}</div>
+      <div class="cv-b">
+        <span class="bs b-${c.operator_verdict==='approved'?'appr':c.status}">${c.operator_verdict==='approved'?'Aprobat':c.status==='shadow'?'Shadow':c.status==='pending'?'Revizuire':c.status==='blocked'?'Blocat':'Deschis'}</span>
+        ${c.tool_action?`<span class="bs b-info">🔧 ${esc(c.tool_action)}</span>`:''}
+        ${c.has_event_plan?`<span class="bs b-plan">📋 Plan</span>`:''}
+        ${c.safety_class?`<span class="bs ${c.safety_class.includes('block')?'b-blocked':c.safety_class.includes('review')?'b-pending':'b-sent'}">${esc(c.safety_class.replace(/_/g,' '))}</span>`:''}
       </div>
-    </div>
-  `).join('');
-}
+    </div>`).join('')}
 
-// ─── SELECT CONVERSATION ───
-async function selectConv(convId) {
-  selId = convId;
-  const item = inbox.find(i=>i.id===convId);
-  curClient = item?.client_id;
+// SELECT CONVERSATION
+async function selConv(id){
+  selId=id;const it=inbox.find(i=>i.id===id);curCl=it?.client_id;curDec=it?.ai_decision_id;
   renderList(document.getElementById('sBox')?.value||'');
+  const cp=document.getElementById('cP');cp.innerHTML='<div class="es">Se încarcă...</div>';
+  try{
+    const r=await fetch(`${API}/api/admin/crm/clients/${curCl}`,{headers:H()});const d=await r.json();
+    const cl=d.client||{},msgs=d.latest_messages||[],plans=d.event_plans||[];
+    const aiR=it?.ai_reply||'',tool=it?.tool_action||'',safe=it?.safety_class||'',conf=it?.confidence||'';
+    const ap=plans.find(p=>['draft','active'].includes(p.status));
 
-  const cp = document.getElementById('centerP');
-  cp.innerHTML = '<div class="empty-state">Se încarcă...</div>';
+    // Get field analysis if plan exists
+    let fieldLog='';
+    if(ap&&ap.requested_services?.length){
+      try{
+        const ar=await fetch(`${API}/api/operator/services/${ap.requested_services[0]}/analyze?plan_id=${ap.id}`,{headers:H()});
+        const ad=await ar.json();
+        if(ad.filled||ad.missing_required){
+          fieldLog=`<div class="fw"><h5>📊 Analiză câmpuri (${ad.service_key||''})</h5>
+            ${(ad.filled||[]).map(f=>`<div class="fw-r fw-ok">✓ ${esc(f.label)}: ${esc(String(f.value))}</div>`).join('')}
+            ${(ad.missing_required||[]).map(f=>`<div class="fw-r fw-bl">⚠ ${esc(f.label)} — lipsește</div>`).join('')}
+            <div class="fw-r" style="color:var(--ac)">Completare: ${ad.completion_pct||0}% · ${ad.readiness||'?'}</div>
+          </div>`;
+        }
+      }catch(e){}
+    }
 
-  try {
-    // Get full client detail
-    const r = await fetch(`${API}/api/admin/crm/clients/${curClient}`, {headers:H()});
-    const d = await r.json();
-    const client = d.client || {};
-    const messages = d.latest_messages || [];
-    const plans = d.event_plans || [];
-    const aiDec = d.ai_decisions || [];
-    const latestDec = aiDec[0] || {};
-
-    // Determine AI reply and tool_action
-    const aiReply = item?.ai_reply || latestDec?.decision?.response || latestDec?.ai_reply || '';
-    const toolAction = item?.tool_action || latestDec?.decision?.tool_action || latestDec?.tool_action || '';
-    const safetyC = item?.safety_class || latestDec?.safety_class || '';
-    const confidence = item?.confidence || latestDec?.confidence || '';
-
-    // Active plan for this conversation
-    const activePlan = plans.find(p=>['draft','active'].includes(p.status));
-
-    cp.innerHTML = `
-      <div class="detail-header">
-        <div>
-          <h2>${esc(client.display_name || client.alias || client.mapped_alias || 'Client')}</h2>
-          <span class="sub">${client.source||'whatsapp'} · ${(d.conversations||[]).length} conv · ${messages.length} msg</span>
+    cp.innerHTML=`
+      <div class="dh"><div><h2>${esc(cl.display_name||cl.alias||cl.mapped_alias||'Client')}</h2><span class="sub">${cl.source||'whatsapp'} · ${(d.conversations||[]).length} conv · ${msgs.length} msg</span></div>
+        <span class="ml" onclick="tgMem(1,'${curCl}')">📋 Memorie client</span></div>
+      ${ap?renderPlan(ap):''}
+      ${fieldLog}
+      <div class="msgs" id="mA">${msgs.length?msgs.map(m=>{const w=m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='cl'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}</div>
+      <div class="ab">
+        <div class="al">🤖 Răspuns AI propus
+          ${tool?`<span class="ta">🔧 ${esc(tool)}</span>`:''}
+          ${safe?`<span class="sf ${sfC(safe)}">${esc(safe.replace(/_/g,' '))}</span>`:''}
+          ${conf?`<span class="sf sf-ok">${conf}% încredere</span>`:''}
         </div>
-        <span class="mem-link" onclick="toggleMem(true,'${curClient}')">📋 Memorie client</span>
-      </div>
-
-      ${activePlan ? renderPlanCard(activePlan) : ''}
-
-      <div class="msgs" id="msgsArea">
-        ${messages.length ? messages.map(m=>{
-          const who = m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';
-          const icon = who==='cl'?'👤':who==='ai'?'🤖':'👨‍💼';
-          return `<div class="m ${who}"><div class="m-who">${icon} ${m.sender_type}</div>${esc(m.content||'')}<div class="m-time">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`;
-        }).join('') : '<div style="color:var(--text-dim);text-align:center;padding:30px">Fără mesaje</div>'}
-      </div>
-
-      <div class="ai-box">
-        <div class="ai-label">
-          🤖 Răspuns AI propus
-          ${toolAction?`<span class="tool-act">🔧 ${esc(toolAction)}</span>`:''}
-          ${safetyC?`<span class="safety ${safeClass(safetyC)}">${esc(safetyC.replace(/_/g,' '))}</span>`:''}
-          ${confidence?`<span class="safety safe-ok">${confidence}% conf</span>`:''}
+        <textarea class="at" id="aiTx">${esc(aiR)}</textarea>
+        <div class="aa">
+          <button class="btn ba" onclick="doAct('approve')">✓ Aprobă</button>
+          <button class="btn be" onclick="document.getElementById('aiTx').focus()">✎ Editează</button>
+          <button class="btn bc" onclick="doAct('clarify')">? Clarificare</button>
+          <button class="btn bh" onclick="doAct('handoff')">→ Trimite la operator</button>
+          <button class="btn bm" onclick="tgMem(1,'${curCl}')">📋 Memorie</button>
+          <button class="btn br" onclick="doAct('save_edit')">💾 Salvează editare</button>
         </div>
-        <textarea class="ai-text" id="aiText">${esc(aiReply)}</textarea>
-        <div class="ai-actions">
-          <button class="btn b-approve" onclick="doAction('approve')">✓ Aprobă</button>
-          <button class="btn b-edit" onclick="document.getElementById('aiText').focus()">✎ Editează</button>
-          <button class="btn b-clarify" onclick="doAction('clarify')">? Clarificare</button>
-          <button class="btn b-operator" onclick="doAction('handoff')">→ Operator</button>
-          <button class="btn b-mem" onclick="toggleMem(true,'${curClient}')">📋 Memorie</button>
-          <button class="btn b-rule" onclick="doAction('make_rule')">+ Regulă</button>
-        </div>
-      </div>
-    `;
-
-    const area = document.getElementById('msgsArea');
-    if(area) area.scrollTop = area.scrollHeight;
-  } catch(e) {
-    cp.innerHTML = `<div class="empty-state" style="color:var(--red)">Eroare: ${e.message}</div>`;
-  }
+      </div>`;
+    const a=document.getElementById('mA');if(a)a.scrollTop=a.scrollHeight;
+  }catch(e){cp.innerHTML=`<div class="es" style="color:var(--rd)">Eroare: ${e.message}</div>`}
 }
 
-function renderPlanCard(plan) {
-  const missing = plan.missing_fields || [];
-  return `<div class="plan-card">
-    <h4>📋 ${plan.status==='draft'?'Draft':'Plan'} eveniment · ${esc(plan.event_type||'?')}</h4>
-    <div class="plan-row">
-      ${plan.event_date?`<div class="plan-field"><span class="label">Data: </span><span class="val">${plan.event_date}</span></div>`:''}
-      ${plan.event_time?`<div class="plan-field"><span class="label">Ora: </span><span class="val">${plan.event_time}</span></div>`:''}
-      ${plan.location?`<div class="plan-field"><span class="label">Loc: </span><span class="val">${esc(plan.location)}</span></div>`:''}
-      <div class="plan-field"><span class="label">Status: </span><span class="val">${plan.status}</span></div>
-      <div class="plan-field"><span class="label">Quote: </span><span class="val">${plan.readiness_for_quote?'✓ ready':'✗ not ready'}</span></div>
-    </div>
-    ${missing.length?`<div class="plan-missing">⚠ Câmpuri lipsă: ${missing.join(', ')}</div>`:''}
-  </div>`;
+function renderPlan(p){
+  const mis=p.missing_fields||[];
+  return`<div class="pc"><h4>📋 ${p.status==='draft'?'Plan draft':'Plan'} · ${esc(p.event_type||'?')}</h4>
+    <div class="pr">${p.event_date?`<div class="pf"><span class="l">Dată: </span><span class="v">${p.event_date}</span></div>`:''} ${p.event_time?`<div class="pf"><span class="l">Oră: </span><span class="v">${p.event_time}</span></div>`:''} ${p.location?`<div class="pf"><span class="l">Loc: </span><span class="v">${esc(p.location)}</span></div>`:''} <div class="pf"><span class="l">Status: </span><span class="v">${p.status}</span></div> <div class="pf"><span class="l">Cotație: </span><span class="v">${p.readiness_for_quote?'✓ gata':'✗ incomplet'}</span></div></div>
+    ${mis.length?`<div class="pm">⚠ Câmpuri lipsă: ${mis.join(', ')}</div>`:''}
+  </div>`}
+
+// REAL OPERATOR ACTIONS
+async function doAct(type){
+  const txt=document.getElementById('aiTx')?.value||'';
+  try{
+    let ep,body;
+    if(type==='approve'){
+      ep='/api/operator/action/approve';body={conversation_id:selId,decision_id:curDec,reply_text:txt};
+    }else if(type==='save_edit'){
+      ep='/api/operator/action/edit';body={conversation_id:selId,decision_id:curDec,original_reply:inbox.find(i=>i.id===selId)?.ai_reply||'',edited_reply:txt};
+    }else if(type==='clarify'){
+      ep='/api/operator/action/clarify';body={conversation_id:selId,decision_id:curDec,reason:'Operatorul a cerut clarificare'};
+    }else if(type==='handoff'){
+      ep='/api/operator/action/handoff';body={conversation_id:selId,decision_id:curDec,reason:'Handoff manual de la operator'};
+    }else return;
+    const r=await fetch(`${API}${ep}`,{method:'POST',headers:H(),body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.ok){toast({approve:'✓ Aprobat — efect real',save_edit:'💾 Editare salvată — corecție înregistrată',clarify:'? Marcat: necesită clarificare',handoff:'→ Trimis la operator — autoreply blocat'}[type]||'Salvat');await loadInbox()}
+    else toast('Eroare: '+(d.error||'necunoscut'),false);
+  }catch(e){toast('Eroare: '+e.message,false)}
 }
 
-// ─── ACTIONS ───
-async function doAction(type) {
-  const text = document.getElementById('aiText')?.value || '';
-  const traceId = `${type}-${curClient}-${Date.now()}`;
-  try {
-    await fetch(`${API}/api/admin/corrections`, {
-      method:'POST', headers:H(),
-      body: JSON.stringify({
-        trace_id: traceId,
-        request: { client_id: curClient, conversation_id: selId },
-        original_decision: { ai_reply: text },
-        corrected_decision: { action: type, response: type==='approve'?text:'' },
-        tags: [type],
-        policy_version: 'v1.0.0'
-      })
-    });
-    const msgs = {approve:'✓ Aprobat',clarify:'Marcat: clarificare',handoff:'Trimis la operator',make_rule:'Salvat ca bază de regulă'};
-    toast(msgs[type]||'Salvat');
-  } catch(e) { toast('Eroare: '+e.message, false); }
-}
+// MEMORY
+function tgMem(show,cid){const p=document.getElementById('rP');if(show){p.classList.remove('hid');p.style.display='flex';loadMem(cid||curCl)}else{p.classList.add('hid');p.style.display='none'}}
+async function loadMem(cid){if(!cid)return;const b=document.getElementById('mB');b.innerHTML='<div style="color:var(--tx3);padding:14px">Se încarcă...</div>';
+  try{const r=await fetch(`${API}/api/admin/memory/${cid}`,{headers:H()});const d=await r.json();const mem=d.memory||{},plans=d.event_plans||[],quotes=d.quotes||[];
+    document.getElementById('mN').textContent=mem.client_name||'Client';
+    b.innerHTML=`<div class="ms"><h4>Profil</h4>${mf('Nume',mem.client_name||'—')}${mf('Locație',mem.location||mem.preferences?.location||'—')}${mf('Servicii',(mem.services_requested||[]).join(', ')||'—')}${mf('Recurent',mem.is_recurring?'✓ Da':'Nu')}</div>
+      ${plans.length?`<div class="ms"><h4>Planuri (${plans.length})</h4>${plans.map(p=>`<div class="mf"><div class="l">${p.event_type||'Eveniment'} · ${p.status}</div><div class="v">${p.event_date||'—'} ${p.location||''}</div></div>`).join('')}</div>`:''}
+      ${quotes.length?`<div class="ms"><h4>Cotații</h4>${quotes.map(q=>`<div class="mf"><div class="v">${q.grand_total||q.total_amount||'—'} RON · ${q.status||'?'}</div></div>`).join('')}</div>`:''}
+      <div class="ms na"><h4>Notă</h4><textarea id="nT" placeholder="Scrie o notă..."></textarea><button class="nb" onclick="addNote('${cid}')">Salvează notă</button></div>`}
+  catch(e){b.innerHTML=`<div style="color:var(--rd);padding:14px">${e.message}</div>`}}
+function mf(l,v){return`<div class="mf"><div class="l">${esc(l)}</div><div class="v">${esc(String(v))}</div></div>`}
+async function addNote(cid){const n=document.getElementById('nT')?.value;if(!n)return;try{await fetch(`${API}/api/admin/memory/${cid}/note`,{method:'POST',headers:H(),body:JSON.stringify({note:n,changed_by:'operator'})});toast('Notă salvată');document.getElementById('nT').value=''}catch(e){toast('Eroare',false)}}
 
-// ─── MEMORY ───
-function toggleMem(show, cid) {
-  const p = document.getElementById('rightP');
-  if(show) { p.classList.remove('hidden'); p.style.display='flex'; loadMem(cid||curClient); }
-  else { p.classList.add('hidden'); p.style.display='none'; }
-}
+// FIELD REGISTRY
+async function loadFields(){
+  const v=document.getElementById('fieldsV');v.innerHTML='<h2 style="font-size:14px;margin-bottom:4px">Registru câmpuri</h2><div style="color:var(--tx3)">Se încarcă...</div>';
+  try{
+    const r=await fetch(`${API}/api/operator/fields`,{headers:H()});const d=await r.json();const fields=d.fields||[];
+    const auto=fields.filter(f=>f.bind_status==='auto_bind'),sens=fields.filter(f=>f.bind_status==='sensitive'),cust=fields.filter(f=>f.bind_status==='custom'),nomap=fields.filter(f=>f.bind_status==='no_mapping');
 
-async function loadMem(cid) {
-  if(!cid) return;
-  const body = document.getElementById('mBody');
-  body.innerHTML = '<div style="color:var(--text-dim);padding:16px">Se încarcă...</div>';
-  try {
-    const r = await fetch(`${API}/api/admin/memory/${cid}`, {headers:H()});
-    const d = await r.json();
-    const mem = d.memory || {};
-    const plans = d.event_plans || [];
-    const quotes = d.quotes || [];
-    document.getElementById('mName').textContent = mem.client_name || 'Client';
-
-    body.innerHTML = `
-      <div class="mem-sec"><h4>Profil</h4>
-        ${mf('Nume',mem.client_name||'—',cid,'client_name')}
-        ${mf('Locație',mem.location||mem.preferences?.location||'—',cid,'location')}
-        ${mf('Servicii',(mem.services_requested||[]).join(', ')||'—',cid,'services_requested')}
-        ${mf('Recurent',mem.is_recurring?'✓ Da':'Nu',cid,'is_recurring')}
-      </div>
-      ${mem.preferences?`<div class="mem-sec"><h4>Preferințe</h4>${Object.entries(mem.preferences).map(([k,v])=>mf(k.replaceAll('_',' '),typeof v==='object'?JSON.stringify(v):v,cid,'pref.'+k)).join('')}</div>`:''}
-      ${plans.length?`<div class="mem-sec"><h4>Planuri (${plans.length})</h4>${plans.map(p=>`<div class="mf"><div class="lbl">${p.event_type||'Eveniment'} · ${p.status}</div><div class="val">${p.event_date?new Date(p.event_date).toLocaleDateString('ro-RO'):'—'} ${p.location||''}</div></div>`).join('')}</div>`:''}
-      ${quotes.length?`<div class="mem-sec"><h4>Cotații</h4>${quotes.map(q=>`<div class="mf"><div class="val">${q.grand_total||q.total_amount||'—'} RON · ${q.status||'?'}</div></div>`).join('')}</div>`:''}
-      <div class="mem-sec note-area"><h4>Notă</h4><textarea id="noteT" placeholder="Notă..."></textarea><button class="note-btn" onclick="addNote('${cid}')">Salvează</button></div>
-    `;
-  } catch(e) { body.innerHTML=`<div style="color:var(--red);padding:16px">${e.message}</div>`; }
-}
-
-function mf(label, value, cid, key) {
-  return `<div class="mf"><div class="lbl">${esc(label)}</div><div class="val">${esc(String(value))}</div>
-    <div class="mf-acts"><button onclick="markMem('${cid}','${key}','correct')">✓</button><button class="wrong" onclick="markMem('${cid}','${key}','wrong')">✗</button><button onclick="markMem('${cid}','${key}','outdated')">⏰</button></div></div>`;
-}
-
-async function markMem(cid, field, status) {
-  try { await fetch(`${API}/api/admin/memory/${cid}/note`, { method:'POST', headers:H(), body:JSON.stringify({note:`[${status.toUpperCase()}] ${field}`,changed_by:'operator'}) }); toast(`Marcat: ${status}`); } catch(e) { toast('Eroare',false); }
-}
-
-async function addNote(cid) {
-  const n = document.getElementById('noteT')?.value; if(!n) return;
-  try { await fetch(`${API}/api/admin/memory/${cid}/note`, { method:'POST', headers:H(), body:JSON.stringify({note:n,changed_by:'operator'}) }); toast('Notă salvată'); document.getElementById('noteT').value=''; } catch(e) { toast('Eroare',false); }
-}
-
-// ─── RULES ───
-async function loadRules() {
-  const v = document.getElementById('rulesV');
-  v.innerHTML = '<h2 style="font-size:15px;margin-bottom:12px">Reguli AI</h2><div style="color:var(--text-dim)">Se încarcă...</div>';
-  try {
-    const r = await fetch(`${API}/api/ai/brain/rules`, {headers:H()});
-    const d = await r.json();
-    const rules = d.rules || d || [];
-    const bL = {'CLARIFY_FIRST':'🔍 Clarificare','USE_KB':'📖 KB','HANDOFF':'👤 Operator','AUTO_REPLY':'✓ Auto','BLOCK':'🚫 Block'};
-    const tL = {'PRICE_QUESTION':'Preț','COSTUME_QUERY':'Costume','RESCHEDULE':'Reprogramare','COMPLAINT':'Plângere','GENERAL':'General'};
-
-    // Load services for config section
-    let svcHtml = '';
-    try {
-      const sr = await fetch(`${API}/api/operator/services`, {headers:H()});
-      const sd = await sr.json();
-      if(sd.services?.length) {
-        svcHtml = `<div class="svc-section"><h3 style="font-size:14px;margin-bottom:10px">Servicii configurate (${sd.services.length})</h3>
-          <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Detaliile obligatorii per categorie de serviciu. Acestea ghidează ce întreabă AI-ul.</p>
-          ${sd.services.map(s=>`<div class="svc-card"><h4>${esc(s.display_name)} <span style="color:var(--text-dim);font-weight:400;font-size:10px">${s.service_key}</span></h4>
-            <div class="fields">${(s.required_fields||[]).map(f=>`<span class="field-tag field-req">${f}</span>`).join('')}${(s.optional_fields||[]).map(f=>`<span class="field-tag field-opt">${f}</span>`).join('')}</div>
-            ${s.standard_questions?.length?`<div style="margin-top:4px;font-size:10px;color:var(--text-dim)">Întrebări: ${s.standard_questions.slice(0,2).join(' · ')}${s.standard_questions.length>2?' ...':''}</div>`:''}
-          </div>`).join('')}
-        </div>`;
+    // Also load services
+    let svcH='';
+    try{const sr=await fetch(`${API}/api/operator/services`,{headers:H()});const sd=await sr.json();
+      if(sd.services?.length){
+        svcH=`<div class="fr-sec"><div class="fr-h">Servicii configurate (${sd.services.length})</div>
+          <div class="fr-sub">Câmpuri obligatorii per categorie de serviciu. Ghidăz ce întreabă AI-ul automat.</div>
+          ${sd.services.map(s=>`<div class="sc"><h4>${esc(s.display_name)} <span>${s.service_key}</span></h4>
+            <div class="fl">${(s.required_fields||[]).map(f=>`<span class="fi fi-r">${esc(f.label||f.field_key)}</span>`).join('')}${(s.optional_fields||[]).map(f=>`<span class="fi fi-o">${esc(f.label||f.field_key)}</span>`).join('')}</div>
+            <div class="stat"><span class="sn">${s.auto_bind||0} auto</span><span class="ss">${s.sensitive||0} sensibile</span><span class="sc_">${s.custom||0} custom</span></div>
+            ${s.questions?.length?`<div class="qs">Întrebări: ${s.questions.slice(0,2).map(q=>q.question).join(' · ')}${s.questions.length>2?' ...':''}</div>`:''}
+          </div>`).join('')}</div>`;
       }
-    } catch(e) { /* ignore */ }
+    }catch(e){}
 
-    v.innerHTML = `
-      <h2 style="font-size:15px;margin-bottom:4px">Reguli AI <span style="font-size:11px;color:var(--text-muted);font-weight:400">${rules.length} reguli</span></h2>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px">Cum răspunde AI-ul la diferite mesaje</p>
-      ${rules.map(r=>`<div class="rc"><div class="rc-top"><span class="rc-name">${esc(r.name||'')}</span><div class="toggle"><input type="checkbox" id="rt_${r.id}" ${r.status==='active'?'checked':''} onchange="toggleR('${r.id}',this.checked)"><label for="rt_${r.id}"></label></div></div>
-        <div class="rc-desc">${esc(r.description||bL[r.behavior]||'')}</div>
-        <div class="rc-tags"><span class="rtag">Când: ${tL[r.trigger]||r.trigger||'?'}</span><span class="rtag">Face: ${bL[r.behavior]||r.behavior||'?'}</span>${r.priority?`<span class="rtag">P${r.priority}</span>`:''}</div></div>`).join('')}
-      <button class="add-btn" onclick="openRM()">+ Regulă nouă</button>
-      ${svcHtml}
-    `;
-  } catch(e) { v.innerHTML=`<h2>Reguli AI</h2><div style="color:var(--red)">${e.message}</div>`; }
+    const stMap={'auto_bind':['st-auto','Legare automată'],'sensitive':['st-sens','Sensibil'],'custom':['st-cust','Handler special'],'no_mapping':['st-no','Fără mapare']};
+    v.innerHTML=`
+      <h2 style="font-size:14px;margin-bottom:4px">Registru câmpuri <span style="font-size:10px;color:var(--tx2);font-weight:400">${fields.length} câmpuri active</span></h2>
+      <p style="font-size:10px;color:var(--tx2);margin-bottom:4px">Câmpurile standard cu mapare validă sunt folosite automat de agent. Câmpurile sensibile/custom necesită intervenție.</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;font-size:9px">
+        <span style="color:var(--gr)">● ${auto.length} legare automată</span>
+        <span style="color:var(--rd)">● ${sens.length} sensibile</span>
+        <span style="color:var(--or)">● ${cust.length} handler special</span>
+        <span style="color:var(--tx3)">● ${nomap.length} fără mapare</span>
+      </div>
+      ${fields.map(f=>`<div class="fr-c">
+        <div class="fr-l">
+          <div class="fr-n">${esc(f.label)}</div>
+          <div class="fr-k">${f.field_key} → ${f.storage_entity}.${f.storage_path} (${f.storage_type})</div>
+          ${f.question_text?`<div class="fr-d">„${esc(f.question_text)}"</div>`:''}
+          <div class="fr-tg">
+            <span class="ft ${stMap[f.bind_status]?.[0]||'ft-opt'}">${stMap[f.bind_status]?.[1]||'?'}</span>
+            ${f.required||f.create_required?'<span class="ft ft-req">Obligatoriu</span>':'<span class="ft ft-opt">Opțional</span>'}
+            <span class="ft ft-map">${f.field_type}</span>
+            ${f.update_allowed?'':'<span class="ft ft-sens">Nu se poate modifica</span>'}
+            ${f.clarify_if_ambiguous?'<span class="ft ft-opt">Clarificare</span>':''}
+          </div>
+        </div>
+        <div class="fr-r">
+          <span class="fr-st ${stMap[f.bind_status]?.[0]||'st-no'}">${stMap[f.bind_status]?.[1]||'?'}</span>
+        </div>
+      </div>`).join('')}
+      <button class="adb" onclick="openFM()">+ Câmp nou</button>
+      ${svcH}`;
+  }catch(e){v.innerHTML=`<h2>Registru câmpuri</h2><div style="color:var(--rd)">${e.message}</div>`}
 }
 
-async function toggleR(id, on) { try { await fetch(`${API}/api/ai/brain/rules/${id}`, {method:'PUT',headers:H(),body:JSON.stringify({status:on?'active':'inactive'})}); toast(on?'Activat':'Dezactivat'); } catch(e) { toast('Eroare',false); } }
-
-function openRM() { document.getElementById('ruleM').classList.add('show'); }
-function closeRM() { document.getElementById('ruleM').classList.remove('show'); }
-async function saveR() {
-  const n=document.getElementById('rmN').value, d=document.getElementById('rmD').value, t=document.getElementById('rmT').value, b=document.getElementById('rmB').value;
-  if(!n||!t||!b) return toast('Completează câmpurile',false);
-  try { await fetch(`${API}/api/ai/brain/rules`,{method:'POST',headers:H(),body:JSON.stringify({name:n,description:d,trigger:t,behavior:b,stage:'DISCOVERY',priority:50,status:'active'})}); toast('Regulă adăugată'); closeRM(); loadRules(); } catch(e) { toast('Eroare',false); }
+// FIELD MODAL
+function openFM(id){document.getElementById('fMT').textContent=id?'Editează câmp':'Câmp nou';editFieldId=id||null;document.getElementById('fM').classList.add('sh')}
+function closeFM(){document.getElementById('fM').classList.remove('sh');editFieldId=null}
+async function saveFM(){
+  const fk=document.getElementById('fK').value.trim(),lab=document.getElementById('fL').value.trim();
+  if(!fk||!lab)return toast('Cheia și eticheta sunt obligatorii',false);
+  const sp=document.getElementById('fSP').value.trim();
+  if(document.getElementById('fAc').checked&&!sp)return toast('Câmp activ necesită coloană stocare',false);
+  const body={
+    field_key:fk,label:lab,field_type:document.getElementById('fTy').value,
+    service_keys:document.getElementById('fSvc').value.split(',').map(s=>s.trim()).filter(Boolean),
+    question_text:document.getElementById('fQ').value||null,
+    clarification_text:document.getElementById('fCl').value||null,
+    question_order:parseInt(document.getElementById('fOr').value||'50',10),
+    storage_entity:document.getElementById('fSE').value||'ai_event_plans',
+    storage_path:sp||null,storage_type:document.getElementById('fST').value,
+    allowed_values:document.getElementById('fAV').value?document.getElementById('fAV').value.split(',').map(s=>s.trim()):null,
+    required:document.getElementById('fReq').checked,
+    create_required:document.getElementById('fCR').checked,
+    quote_required:document.getElementById('fQR').checked,
+    update_allowed:document.getElementById('fUA').checked,
+    clarify_if_ambiguous:document.getElementById('fCA').checked,
+    sensitive:document.getElementById('fSn').checked,
+    requires_custom_handler:document.getElementById('fCH').checked,
+    active:document.getElementById('fAc').checked,
+    updated_by:'operator'
+  };
+  try{
+    const ep=editFieldId?`${API}/api/operator/fields/${editFieldId}`:`${API}/api/operator/fields`;
+    const r=await fetch(ep,{method:editFieldId?'PUT':'POST',headers:H(),body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.ok||d.field){toast(editFieldId?'Câmp actualizat':'Câmp creat');closeFM();loadFields()}
+    else toast('Eroare: '+(d.error||'necunoscut'),false);
+  }catch(e){toast('Eroare: '+e.message,false)}
 }
 
-// ─── ADMIN ───
-function renderAdmin() {
-  document.getElementById('adminV').innerHTML = `
-    <h2 style="font-size:15px;margin-bottom:4px">Admin avansat</h2>
-    <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Module tehnice — folosește doar când e necesar</p>
-    <div class="admin-grid">
-      <a class="admin-card" href="admin-suite.html" target="_blank"><h4>📊 Dashboard</h4><p>Overview complet</p></a>
-      <a class="admin-card" href="admin-suite.html#crm" target="_blank"><h4>👥 CRM</h4><p>Toți clienții</p></a>
-      <a class="admin-card" href="admin-suite.html#pricing" target="_blank"><h4>💰 Pricing</h4><p>Catalog, reguli</p></a>
-      <a class="admin-card" href="admin-suite.html#employees" target="_blank"><h4>👤 Angajați</h4><p>Echipă, roluri</p></a>
-      <a class="admin-card" href="admin-suite.html#rollout" target="_blank"><h4>🚀 Rollout</h4><p>Shadow, canary</p></a>
-      <a class="admin-card" href="admin-suite.html#audit" target="_blank"><h4>📋 Audit</h4><p>Loguri, incidente</p></a>
-      <a class="admin-card" href="../brain/brain-console.html" target="_blank"><h4>🧠 Brain</h4><p>Configurare AI</p></a>
-      <a class="admin-card" href="../brain/brain-console.html#coverage" target="_blank"><h4>📡 Coverage</h4><p>Zone AI</p></a>
-      <a class="admin-card" href="${API}/health" target="_blank"><h4>💚 Health</h4><p>Status server</p></a>
-    </div>`;
-}
+// RULES
+async function loadRules(){
+  const v=document.getElementById('rulesV');v.innerHTML='<h2 style="font-size:14px;margin-bottom:4px">Reguli AI</h2><div style="color:var(--tx3)">Se încarcă...</div>';
+  try{const r=await fetch(`${API}/api/ai/brain/rules`,{headers:H()});const d=await r.json();const rules=d.rules||d||[];
+    const bL={'CLARIFY_FIRST':'🔍 Clarificare','USE_KB':'📖 KB','HANDOFF':'👤 Operator','AUTO_REPLY':'✓ Auto','BLOCK':'🚫 Blochează','USE_MEMORY':'🧠 Memorie'};
+    const tL={'PRICE_QUESTION':'Preț','COSTUME_QUERY':'Costume','RESCHEDULE':'Reprogramare','COMPLAINT':'Plângere','GENERAL':'General'};
+    v.innerHTML=`<h2 style="font-size:14px;margin-bottom:3px">Reguli AI <span style="font-size:10px;color:var(--tx2);font-weight:400">${rules.length} reguli</span></h2>
+      <p style="font-size:10px;color:var(--tx2);margin-bottom:12px">Cum răspunde AI-ul la diferite mesaje</p>
+      ${rules.map(r=>`<div class="rc"><div class="rc-t"><span class="rc-n">${esc(r.name||'')}</span><div class="tgl"><input type="checkbox" id="rt_${r.id}" ${r.status==='active'?'checked':''} onchange="tglR('${r.id}',this.checked)"><label for="rt_${r.id}"></label></div></div>
+        <div class="rc-d">${esc(r.description||bL[r.behavior]||'')}</div>
+        <div class="rc-tg"><span class="rt">Când: ${tL[r.trigger]||r.trigger||'?'}</span><span class="rt">Face: ${bL[r.behavior]||r.behavior||'?'}</span>${r.priority?`<span class="rt">P${r.priority}</span>`:''}</div></div>`).join('')}
+      <button class="adb" onclick="openRM()">+ Regulă nouă</button>`;
+  }catch(e){v.innerHTML=`<h2>Reguli AI</h2><div style="color:var(--rd)">${e.message}</div>`}}
+async function tglR(id,on){try{await fetch(`${API}/api/ai/brain/rules/${id}`,{method:'PUT',headers:H(),body:JSON.stringify({status:on?'active':'inactive'})});toast(on?'Regulă activată':'Regulă dezactivată')}catch(e){toast('Eroare',false)}}
+function openRM(){document.getElementById('rM').classList.add('sh')}
+function closeRM(){document.getElementById('rM').classList.remove('sh')}
+async function saveR(){const n=document.getElementById('rmN').value,d=document.getElementById('rmD').value,t=document.getElementById('rmT').value,b=document.getElementById('rmB').value;
+  if(!n||!t||!b)return toast('Completează câmpurile obligatorii',false);
+  try{await fetch(`${API}/api/ai/brain/rules`,{method:'POST',headers:H(),body:JSON.stringify({name:n,description:d,trigger:t,behavior:b,stage:'DISCOVERY',priority:50,status:'active'})});toast('Regulă adăugată');closeRM();loadRules()}catch(e){toast('Eroare',false)}}
 
-// ─── HEALTH ───
-async function checkH() {
-  try { const r=await fetch(`${API}/health`); const d=await r.json(); const h=document.getElementById('hDot'); h.textContent=`${d.status} · v${d.policy_version||'?'} · ${d.policy_rules||0}r`; h.style.color=d.status==='ok'?'var(--green)':'var(--red)'; } catch(e) { document.getElementById('hDot').textContent='Offline'; document.getElementById('hDot').style.color='var(--red)'; }
-}
+// ADMIN
+function renderAdmin(){document.getElementById('adminV').innerHTML=`
+  <h2 style="font-size:14px;margin-bottom:3px">Administrare avansată</h2>
+  <p style="font-size:10px;color:var(--tx2);margin-bottom:10px">Module tehnice — folosește doar când e necesar</p>
+  <div class="ag">
+    <a class="ac" href="admin-suite.html" target="_blank"><h4>📊 Panou principal</h4><p>Rezumat complet</p></a>
+    <a class="ac" href="admin-suite.html#crm" target="_blank"><h4>👥 CRM Clienți</h4><p>Toți clienții</p></a>
+    <a class="ac" href="admin-suite.html#pricing" target="_blank"><h4>💰 Prețuri</h4><p>Catalog, reguli</p></a>
+    <a class="ac" href="admin-suite.html#employees" target="_blank"><h4>👤 Angajați</h4><p>Echipă, roluri</p></a>
+    <a class="ac" href="admin-suite.html#rollout" target="_blank"><h4>🚀 Lansare</h4><p>Shadow, canary</p></a>
+    <a class="ac" href="admin-suite.html#audit" target="_blank"><h4>📋 Audit</h4><p>Loguri, incidente</p></a>
+    <a class="ac" href="../brain/brain-console.html" target="_blank"><h4>🧠 Brain</h4><p>Configurare AI</p></a>
+    <a class="ac" href="${API}/health" target="_blank"><h4>💚 Stare sistem</h4><p>Status server</p></a>
+  </div>`}
 
-// ─── AUTH ───
-if(!TK) { const t=prompt('Token de acces:'); if(t){localStorage.setItem('admin_token',t);location.reload();} }
+// HEALTH
+async function checkH(){try{const r=await fetch(`${API}/health`);const d=await r.json();const h=document.getElementById('hDot');h.textContent=`${d.status} · v${d.policy_version||'?'} · ${d.policy_rules||0} reguli`;h.style.color=d.status==='ok'?'var(--gr)':'var(--rd)'}catch(e){document.getElementById('hDot').textContent='Offline';document.getElementById('hDot').style.color='var(--rd)'}}
 
-// ─── INIT ───
-checkH(); loadInbox();
-setInterval(checkH, 30000);
-setInterval(loadInbox, 60000);
+// AUTH
+if(!TK){const t=prompt('Token de acces:');if(t){localStorage.setItem('admin_token',t);location.reload()}}
+
+// INIT
+checkH();loadInbox();setInterval(checkH,30000);setInterval(loadInbox,60000);
 </script>
 </body>
 </html>

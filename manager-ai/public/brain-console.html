@@ -1,0 +1,1050 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Brain Console — Superparty</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0f0f17;
+        --surface: #1a1a2e;
+        --surface2: #22223a;
+        --border: #2d2d4a;
+        --text: #e8e8f0;
+        --text-dim: #8888aa;
+        --accent: #7c5cfc;
+        --accent-glow: rgba(124, 92, 252, 0.15);
+        --green: #34d399;
+        --yellow: #fbbf24;
+        --red: #f87171;
+        --orange: #fb923c;
+        --blue: #60a5fa;
+        --radius: 10px;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      /* ─── Header ─── */
+      .header {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .header h1 {
+        font-size: 20px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .header h1 span {
+        color: var(--accent);
+      }
+      .header .stats {
+        display: flex;
+        gap: 16px;
+        font-size: 12px;
+        color: var(--text-dim);
+      }
+      .stat-pill {
+        background: var(--surface2);
+        padding: 4px 10px;
+        border-radius: 20px;
+      }
+      .stat-pill b {
+        color: var(--accent);
+      }
+
+      /* ─── Tabs ─── */
+      .tabs {
+        display: flex;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 0 16px;
+        overflow-x: auto;
+        gap: 2px;
+      }
+      .tab {
+        padding: 12px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        color: var(--text-dim);
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+        white-space: nowrap;
+        font-weight: 500;
+      }
+      .tab:hover {
+        color: var(--text);
+        background: var(--accent-glow);
+      }
+      .tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+      .tab .badge {
+        background: var(--accent);
+        color: white;
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 10px;
+        margin-left: 6px;
+        font-weight: 600;
+      }
+
+      /* ─── Content ─── */
+      .content {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      .panel {
+        display: none;
+      }
+      .panel.active {
+        display: block;
+      }
+
+      /* ─── Cards ─── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 12px;
+        transition: border-color 0.2s;
+      }
+      .card:hover {
+        border-color: var(--accent);
+      }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+      }
+      .card-header h3 {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .card-body {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-dim);
+      }
+
+      /* ─── Tags ─── */
+      .tag {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .tag-green {
+        background: rgba(52, 211, 153, 0.15);
+        color: var(--green);
+      }
+      .tag-yellow {
+        background: rgba(251, 191, 36, 0.15);
+        color: var(--yellow);
+      }
+      .tag-red {
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--red);
+      }
+      .tag-blue {
+        background: rgba(96, 165, 250, 0.15);
+        color: var(--blue);
+      }
+      .tag-purple {
+        background: var(--accent-glow);
+        color: var(--accent);
+      }
+      .tag-orange {
+        background: rgba(251, 146, 60, 0.15);
+        color: var(--orange);
+      }
+
+      /* ─── Tables ─── */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th {
+        text-align: left;
+        padding: 10px 12px;
+        color: var(--text-dim);
+        font-weight: 500;
+        border-bottom: 1px solid var(--border);
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+      td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      tr:hover {
+        background: var(--accent-glow);
+      }
+
+      /* ─── Filters ─── */
+      .filters {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      .filter-btn {
+        padding: 6px 14px;
+        font-size: 12px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        color: var(--text-dim);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .filter-btn:hover,
+      .filter-btn.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+      }
+
+      /* ─── Buttons ─── */
+      .btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: white;
+      }
+      .btn-primary:hover {
+        background: #6a4ce8;
+      }
+      .btn-outline {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+      }
+      .btn-outline:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .btn-sm {
+        padding: 4px 10px;
+        font-size: 11px;
+      }
+      .btn-danger {
+        background: var(--red);
+        color: white;
+      }
+
+      /* ─── Forms ─── */
+      .form-group {
+        margin-bottom: 12px;
+      }
+      .form-group label {
+        display: block;
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+        font-family: inherit;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      /* ─── Grid ─── */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+      }
+      .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+
+      /* ─── Coverage ─── */
+      .coverage-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        position: relative;
+      }
+      .coverage-card .level {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .level-high {
+        background: var(--green);
+        box-shadow: 0 0 8px var(--green);
+      }
+      .level-medium {
+        background: var(--yellow);
+        box-shadow: 0 0 8px var(--yellow);
+      }
+      .level-low {
+        background: var(--red);
+        box-shadow: 0 0 8px var(--red);
+      }
+
+      /* ── Stat cards ── */
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        text-align: center;
+      }
+      .stat-card .number {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+      .stat-card .label {
+        font-size: 11px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-top: 4px;
+      }
+
+      /* ─── Modal ─── */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+      .modal h2 {
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+
+      /* ─── Messages ─── */
+      .msg-bubble {
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin: 4px 0;
+        font-size: 13px;
+        max-width: 80%;
+      }
+      .msg-client {
+        background: var(--surface2);
+        margin-right: auto;
+      }
+      .msg-ai {
+        background: var(--accent-glow);
+        border: 1px solid rgba(124, 92, 252, 0.3);
+        margin-left: auto;
+      }
+
+      /* ─── Loader ─── */
+      .loader {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-dim);
+      }
+      .spinner {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        border: 2px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ─── Truncate ─── */
+      .truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 300px;
+        display: inline-block;
+      }
+
+      /* ─── Empty state ─── */
+      .empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-dim);
+      }
+      .empty .icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🧠 <span>AI Brain</span> Console</h1>
+      <div class="stats" id="headerStats"></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="inbox">
+        📥 Inbox <span class="badge" id="inboxCount">-</span>
+      </div>
+      <div class="tab" data-tab="corrections">✏️ Corrections</div>
+      <div class="tab" data-tab="rules">📏 Brain Rules</div>
+      <div class="tab" data-tab="patterns">🔄 Patterns</div>
+      <div class="tab" data-tab="policies">🛡️ Policies</div>
+      <div class="tab" data-tab="coverage">📊 Coverage</div>
+      <div class="tab" data-tab="stats">📈 Stats</div>
+    </div>
+
+    <div class="content">
+      <!-- ═══ INBOX ═══ -->
+      <div class="panel active" id="panel-inbox">
+        <div class="filters">
+          <button class="filter-btn active" data-filter="">All</button>
+          <button class="filter-btn" data-filter="unanswered">
+            Unanswered
+          </button>
+          <button class="filter-btn" data-filter="needs_review">
+            Needs Review
+          </button>
+          <button class="filter-btn" data-filter="corrected">Corrected</button>
+          <button class="filter-btn" data-filter="dangerous">Dangerous</button>
+          <button class="filter-btn" data-filter="should_have_clarified">
+            Should Clarify
+          </button>
+        </div>
+        <div id="inboxList">
+          <div class="loader">
+            <div class="spinner"></div>
+            <p>Loading inbox...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ CORRECTIONS ═══ -->
+      <div class="panel" id="panel-corrections">
+        <h2 style="margin-bottom: 16px">Correction History</h2>
+        <div id="correctionsList">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ BRAIN RULES ═══ -->
+      <div class="panel" id="panel-rules">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+          "
+        >
+          <h2>Brain Rules</h2>
+          <button class="btn btn-primary" onclick="showCreateRule()">
+            + New Rule
+          </button>
+        </div>
+        <div id="rulesList">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ PATTERNS ═══ -->
+      <div class="panel" id="panel-patterns">
+        <h2 style="margin-bottom: 16px">Answer Patterns</h2>
+        <div id="patternsList">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ POLICIES ═══ -->
+      <div class="panel" id="panel-policies">
+        <h2 style="margin-bottom: 16px">Active Policies</h2>
+        <div id="policiesList">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ COVERAGE ═══ -->
+      <div class="panel" id="panel-coverage">
+        <h2 style="margin-bottom: 16px">Coverage Control</h2>
+        <div id="coverageGrid">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ STATS ═══ -->
+      <div class="panel" id="panel-stats">
+        <h2 style="margin-bottom: 16px">Brain Console Stats</h2>
+        <div id="statsGrid">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MODAL ═══ -->
+    <div class="modal-overlay" id="modal">
+      <div class="modal" id="modalContent"></div>
+    </div>
+
+    <script>
+      const API = "/api/ai/brain";
+
+      // ─── Tab navigation ───
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document
+            .querySelectorAll(".tab")
+            .forEach((t) => t.classList.remove("active"));
+          document
+            .querySelectorAll(".panel")
+            .forEach((p) => p.classList.remove("active"));
+          tab.classList.add("active");
+          document
+            .getElementById("panel-" + tab.dataset.tab)
+            .classList.add("active");
+          loadTab(tab.dataset.tab);
+        });
+      });
+
+      function loadTab(tab) {
+        const loaders = {
+          inbox: loadInbox,
+          corrections: loadCorrections,
+          rules: loadRules,
+          patterns: loadPatterns,
+          policies: loadPolicies,
+          coverage: loadCoverage,
+          stats: loadStats,
+        };
+        if (loaders[tab]) loaders[tab]();
+      }
+
+      // ─── Helpers ───
+      async function api(path, opts = {}) {
+        const res = await fetch(API + path, {
+          headers: { "Content-Type": "application/json" },
+          ...opts,
+        });
+        return res.json();
+      }
+
+      function safetyTag(cls) {
+        const map = {
+          safe_autoreply_allowed: ["SAFE", "tag-green"],
+          needs_operator_review: ["REVIEW", "tag-yellow"],
+          blocked_autoreply: ["BLOCKED", "tag-red"],
+        };
+        const [label, style] = map[cls] || [cls || "?", "tag-blue"];
+        return `<span class="tag ${style}">${label}</span>`;
+      }
+
+      function verdictTag(v) {
+        if (!v) return '<span class="tag tag-blue">PENDING</span>';
+        const map = {
+          approved_as_is: "tag-green",
+          approved_with_edits: "tag-yellow",
+          rejected: "tag-red",
+          dangerous: "tag-red",
+          misunderstood_client: "tag-orange",
+          should_have_clarified: "tag-orange",
+          wrong_tool: "tag-red",
+          wrong_memory_usage: "tag-orange",
+          unnecessary_question: "tag-yellow",
+        };
+        return `<span class="tag ${map[v] || "tag-blue"}">${v.replace(/_/g, " ")}</span>`;
+      }
+
+      function behaviorTag(b) {
+        const map = {
+          answer_direct: "tag-green",
+          use_kb: "tag-blue",
+          clarify_first: "tag-yellow",
+          ask_missing_field: "tag-yellow",
+          use_memory: "tag-purple",
+          handoff: "tag-orange",
+          block: "tag-red",
+        };
+        return `<span class="tag ${map[b] || "tag-blue"}">${b}</span>`;
+      }
+
+      function statusTag(s) {
+        const map = {
+          active: "tag-green",
+          approved: "tag-green",
+          candidate: "tag-yellow",
+          draft: "tag-blue",
+          disabled: "tag-red",
+          retired: "tag-red",
+          observed: "tag-blue",
+        };
+        return `<span class="tag ${map[s] || "tag-blue"}">${s}</span>`;
+      }
+
+      function timeAgo(d) {
+        const s = Math.floor((new Date() - new Date(d)) / 1000);
+        if (s < 60) return s + "s ago";
+        if (s < 3600) return Math.floor(s / 60) + "m ago";
+        if (s < 86400) return Math.floor(s / 3600) + "h ago";
+        return Math.floor(s / 86400) + "d ago";
+      }
+
+      function closeModal() {
+        document.getElementById("modal").classList.remove("open");
+      }
+      function openModal(html) {
+        document.getElementById("modalContent").innerHTML = html;
+        document.getElementById("modal").classList.add("open");
+      }
+      document.getElementById("modal").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeModal();
+      });
+
+      // ═══════════════════════════════════════
+      // 1. INBOX
+      // ═══════════════════════════════════════
+      let currentFilter = "";
+      document.querySelectorAll(".filter-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".filter-btn")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          currentFilter = btn.dataset.filter;
+          loadInbox();
+        });
+      });
+
+      async function loadInbox() {
+        const data = await api(
+          "/inbox?limit=30" + (currentFilter ? "&filter=" + currentFilter : ""),
+        );
+        document.getElementById("inboxCount").textContent = data.total || 0;
+
+        if (!data.inbox?.length) {
+          document.getElementById("inboxList").innerHTML =
+            '<div class="empty"><div class="icon">📭</div><p>No items match this filter</p></div>';
+          return;
+        }
+
+        let html =
+          "<table><thead><tr><th>Time</th><th>Client Message</th><th>AI Reply</th><th>Safety</th><th>Verdict</th><th>Stage</th><th>Score</th><th></th></tr></thead><tbody>";
+        for (const item of data.inbox) {
+          html += `<tr>
+            <td style="white-space:nowrap;font-size:11px">${timeAgo(item.created_at)}</td>
+            <td><span class="truncate" style="max-width:200px">${item.client_message || "—"}</span></td>
+            <td><span class="truncate" style="max-width:220px">${item.suggested_reply || "—"}</span></td>
+            <td>${safetyTag(item.safety_class)}</td>
+            <td>${verdictTag(item.operator_verdict)}</td>
+            <td><span class="tag tag-blue">${item.conversation_stage || "?"}</span></td>
+            <td>${item.confidence_score || "—"}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="viewInboxItem('${item.id}')">View</button></td>
+        </tr>`;
+        }
+        html += "</tbody></table>";
+        document.getElementById("inboxList").innerHTML = html;
+      }
+
+      async function viewInboxItem(id) {
+        const data = await api("/inbox/" + id);
+        const d = data.decision;
+        let msgsHtml = data.messages
+          .map(
+            (m) =>
+              `<div class="msg-bubble msg-${m.sender_type === "client" ? "client" : "ai"}">${m.content}</div>`,
+          )
+          .join("");
+
+        openModal(`
+        <h2>Decision Detail</h2>
+        <div class="grid-2" style="margin-bottom:16px">
+            <div><label style="font-size:11px;color:var(--text-dim)">Safety</label>${safetyTag(d.safety_class)}</div>
+            <div><label style="font-size:11px;color:var(--text-dim)">Verdict</label>${verdictTag(d.operator_verdict)}</div>
+            <div><label style="font-size:11px;color:var(--text-dim)">Stage</label><span class="tag tag-blue">${d.conversation_stage}</span></div>
+            <div><label style="font-size:11px;color:var(--text-dim)">Confidence</label><b>${d.confidence_score}</b></div>
+        </div>
+        <h3 style="margin:12px 0 8px">Conversation</h3>
+        <div style="max-height:200px;overflow-y:auto;padding:8px;background:var(--bg);border-radius:8px">${msgsHtml || "<i>No messages</i>"}</div>
+        <h3 style="margin:12px 0 8px">AI Suggested Reply</h3>
+        <div style="padding:10px;background:var(--accent-glow);border-radius:8px;font-size:13px">${d.suggested_reply || "—"}</div>
+        ${d.operator_edited_reply ? `<h3 style="margin:12px 0 8px">Operator Edit</h3><div style="padding:10px;background:rgba(52,211,153,0.1);border-radius:8px;font-size:13px">${d.operator_edited_reply}</div>` : ""}
+        <h3 style="margin:12px 0 8px">Correct This Reply</h3>
+        <div class="form-group"><textarea id="correctionText" placeholder="Write the correct reply...">${d.operator_edited_reply || d.suggested_reply || ""}</textarea></div>
+        <div class="form-group">
+            <select id="correctionVerdict">
+                <option value="">Select verdict...</option>
+                <option value="approved_as_is">✅ Approved as-is</option>
+                <option value="approved_with_edits">✏️ Approved with edits</option>
+                <option value="rejected">❌ Rejected</option>
+                <option value="should_have_clarified">🤔 Should have clarified</option>
+                <option value="misunderstood_client">😕 Misunderstood client</option>
+                <option value="wrong_tool">🔧 Wrong tool</option>
+                <option value="wrong_memory_usage">🧠 Wrong memory usage</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitCorrection('${d.conversation_id}','${d.id}','${(d.suggested_reply || "").replace(/'/g, "\\'")}')">Save Correction</button>
+        </div>
+    `);
+      }
+
+      async function submitCorrection(convId, decId, originalReply) {
+        const correctedReply = document.getElementById("correctionText").value;
+        const verdict = document.getElementById("correctionVerdict").value;
+        await api("/correct", {
+          method: "POST",
+          body: JSON.stringify({
+            conversation_id: convId,
+            decision_id: decId,
+            original_ai_reply: originalReply,
+            corrected_reply: correctedReply,
+            verdict: verdict || "approved_with_edits",
+          }),
+        });
+        closeModal();
+        loadInbox();
+      }
+
+      // ═══════════════════════════════════════
+      // 2. CORRECTIONS
+      // ═══════════════════════════════════════
+      async function loadCorrections() {
+        const { data, error } = await fetch(
+          "/api/ai/brain/inbox?filter=corrected&limit=50",
+        )
+          .then((r) => r.json())
+          .then((d) => ({ data: d.inbox, error: null }))
+          .catch((e) => ({ data: null, error: e }));
+        const el = document.getElementById("correctionsList");
+
+        if (!data?.length) {
+          el.innerHTML =
+            '<div class="empty"><div class="icon">✏️</div><p>No corrections yet</p></div>';
+          return;
+        }
+
+        let html =
+          "<table><thead><tr><th>Time</th><th>Original AI Reply</th><th>Operator Correction</th><th>Verdict</th><th>Reason</th></tr></thead><tbody>";
+        for (const c of data) {
+          html += `<tr>
+            <td style="font-size:11px">${timeAgo(c.created_at)}</td>
+            <td><span class="truncate" style="max-width:250px">${c.suggested_reply || "—"}</span></td>
+            <td><span class="truncate" style="max-width:250px;color:var(--green)">${c.operator_edited_reply || "—"}</span></td>
+            <td>${verdictTag(c.operator_verdict)}</td>
+            <td style="font-size:12px;color:var(--text-dim)">${c.operator_feedback_reason || "—"}</td>
+        </tr>`;
+        }
+        html += "</tbody></table>";
+        el.innerHTML = html;
+      }
+
+      // ═══════════════════════════════════════
+      // 3. BRAIN RULES
+      // ═══════════════════════════════════════
+      async function loadRules() {
+        const data = await api("/rules");
+        const el = document.getElementById("rulesList");
+        if (!data.rules?.length) {
+          el.innerHTML =
+            '<div class="empty"><div class="icon">📏</div><p>No rules defined</p></div>';
+          return;
+        }
+
+        let html = "";
+        for (const r of data.rules) {
+          html += `<div class="card">
+            <div class="card-header">
+                <h3>${r.name}</h3>
+                <div>${statusTag(r.status)} ${behaviorTag(r.behavior)}</div>
+            </div>
+            <div class="card-body">
+                <p>${r.description || ""}</p>
+                <div style="margin-top:8px;display:flex;gap:8px">
+                    ${r.query_type ? `<span class="tag tag-blue">${r.query_type}</span>` : ""}
+                    ${r.trigger_stage ? `<span class="tag tag-purple">stage: ${r.trigger_stage}</span>` : ""}
+                    <span class="tag tag-blue">priority: ${r.priority}</span>
+                </div>
+                ${r.examples?.length ? `<div style="margin-top:8px;font-size:12px"><b>Example:</b> "${r.examples[0].question}" → "${r.examples[0].good_answer}"</div>` : ""}
+            </div>
+            <div style="margin-top:10px;display:flex;gap:6px;justify-content:flex-end">
+                ${r.status !== "active" ? `<button class="btn btn-sm btn-primary" onclick="approveRule('${r.id}','active')">Activate</button>` : ""}
+                ${r.status === "active" ? `<button class="btn btn-sm btn-outline" onclick="approveRule('${r.id}','disabled')">Disable</button>` : ""}
+                <button class="btn btn-sm btn-outline" onclick="editRule('${r.id}')">Edit</button>
+            </div>
+        </div>`;
+        }
+        el.innerHTML = html;
+      }
+
+      async function approveRule(id, targetStatus) {
+        await api("/rules/" + id + "/approve", {
+          method: "POST",
+          body: JSON.stringify({ target_status: targetStatus }),
+        });
+        loadRules();
+      }
+
+      function showCreateRule() {
+        openModal(`
+        <h2>Create Brain Rule</h2>
+        <div class="form-group"><label>Name</label><input id="ruleName" placeholder="e.g. Costume Query → KB Direct"></div>
+        <div class="form-group"><label>Description</label><textarea id="ruleDesc" placeholder="When to apply this rule..."></textarea></div>
+        <div class="grid-2">
+            <div class="form-group"><label>Query Type</label><input id="ruleType" placeholder="costume_query, price_question..."></div>
+            <div class="form-group"><label>Trigger Stage</label><input id="ruleStage" placeholder="discovery, coordination..."></div>
+        </div>
+        <div class="grid-2">
+            <div class="form-group"><label>Behavior</label>
+                <select id="ruleBehavior">
+                    <option value="answer_direct">Answer Direct</option>
+                    <option value="clarify_first">Clarify First</option>
+                    <option value="use_kb">Use KB</option>
+                    <option value="use_memory">Use Memory</option>
+                    <option value="ask_missing_field">Ask Missing Field</option>
+                    <option value="handoff">Handoff to Operator</option>
+                    <option value="block">Block</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Priority</label><input id="rulePriority" type="number" value="50"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="createRule()">Create Rule</button>
+        </div>
+    `);
+      }
+
+      async function createRule() {
+        await api("/rules", {
+          method: "POST",
+          body: JSON.stringify({
+            name: document.getElementById("ruleName").value,
+            description: document.getElementById("ruleDesc").value,
+            query_type: document.getElementById("ruleType").value,
+            trigger_stage: document.getElementById("ruleStage").value,
+            behavior: document.getElementById("ruleBehavior").value,
+            priority: parseInt(document.getElementById("rulePriority").value),
+          }),
+        });
+        closeModal();
+        loadRules();
+      }
+
+      // ═══════════════════════════════════════
+      // 4. PATTERNS
+      // ═══════════════════════════════════════
+      async function loadPatterns() {
+        const data = await api("/patterns");
+        const el = document.getElementById("patternsList");
+        if (!data.patterns?.length) {
+          el.innerHTML =
+            '<div class="empty"><div class="icon">🔄</div><p>No patterns observed yet</p></div>';
+          return;
+        }
+
+        let html =
+          "<table><thead><tr><th>Name</th><th>Category</th><th>Strategy</th><th>Frequency</th><th>Status</th><th></th></tr></thead><tbody>";
+        for (const p of data.patterns) {
+          html += `<tr>
+            <td>${p.name}</td>
+            <td><span class="tag tag-blue">${p.category || "—"}</span></td>
+            <td>${behaviorTag(p.strategy || "unknown")}</td>
+            <td>${p.frequency}</td>
+            <td>${statusTag(p.status)}</td>
+            <td>${p.status === "candidate" ? `<button class="btn btn-sm btn-primary" onclick="promotePattern('${p.id}')">Promote→Rule</button>` : ""}</td>
+        </tr>`;
+        }
+        html += "</tbody></table>";
+        el.innerHTML = html;
+      }
+
+      async function promotePattern(id) {
+        await api("/patterns/" + id + "/promote", { method: "POST" });
+        loadPatterns();
+      }
+
+      // ═══════════════════════════════════════
+      // 5. POLICIES
+      // ═══════════════════════════════════════
+      async function loadPolicies() {
+        const data = await api("/policies");
+        const el = document.getElementById("policiesList");
+
+        let html = '<h3 style="margin-bottom:12px">Brain Rules (Active)</h3>';
+        if (data.brain_rules?.length) {
+          html +=
+            "<table><thead><tr><th>Name</th><th>Behavior</th><th>Type</th><th>Priority</th><th></th></tr></thead><tbody>";
+          for (const r of data.brain_rules) {
+            html += `<tr><td>${r.name}</td><td>${behaviorTag(r.behavior)}</td><td><span class="tag tag-blue">${r.query_type || "any"}</span></td><td>${r.priority}</td>
+                <td><button class="btn btn-sm btn-outline" onclick="deactivatePolicy('${r.id}','rule')">Deactivate</button></td></tr>`;
+          }
+          html += "</tbody></table>";
+        } else
+          html +=
+            '<p style="color:var(--text-dim);margin-bottom:16px">No active brain rules</p>';
+
+        html += '<h3 style="margin:20px 0 12px">Knowledge Base (Approved)</h3>';
+        if (data.knowledge_entries?.length) {
+          html +=
+            "<table><thead><tr><th>Key</th><th>Category</th><th>Patterns</th></tr></thead><tbody>";
+          for (const kb of data.knowledge_entries) {
+            html += `<tr><td>${kb.knowledge_key}</td><td><span class="tag tag-blue">${kb.category}</span></td><td>${kb.question_patterns?.length || 0}</td></tr>`;
+          }
+          html += "</tbody></table>";
+        } else html += '<p style="color:var(--text-dim)">No KB entries</p>';
+
+        el.innerHTML = html;
+      }
+
+      async function deactivatePolicy(id, type) {
+        await api("/policies/" + id + "/deactivate", {
+          method: "POST",
+          body: JSON.stringify({ type }),
+        });
+        loadPolicies();
+      }
+
+      // ═══════════════════════════════════════
+      // 6. COVERAGE
+      // ═══════════════════════════════════════
+      async function loadCoverage() {
+        const data = await api("/coverage");
+        const el = document.getElementById("coverageGrid");
+
+        const modeColors = {
+          allow_autoreply: "tag-green",
+          shadow_only: "tag-yellow",
+          operator_review: "tag-orange",
+          blocked: "tag-red",
+        };
+
+        let html = '<div class="grid-3">';
+        for (const level of ["high", "medium", "low"]) {
+          const zones = data.grouped[level] || [];
+          html += `<div><h3 style="margin-bottom:10px;text-transform:capitalize">${level === "high" ? "🟢" : level === "medium" ? "🟡" : "🔴"} ${level} Coverage</h3>`;
+          for (const z of zones) {
+            html += `<div class="coverage-card" style="margin-bottom:8px">
+                <div class="level level-${level}"></div>
+                <div style="font-weight:600;font-size:13px">${z.zone.replace(/_/g, " ")}</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${z.description || ""}</div>
+                <div style="margin-top:6px"><span class="tag ${modeColors[z.autoreply_mode] || "tag-blue"}">${z.autoreply_mode.replace(/_/g, " ")}</span></div>
+            </div>`;
+          }
+          html += "</div>";
+        }
+        html += "</div>";
+        el.innerHTML = html;
+      }
+
+      // ═══════════════════════════════════════
+      // 7. STATS
+      // ═══════════════════════════════════════
+      async function loadStats() {
+        const data = await api("/stats?hours=24");
+        document.getElementById("statsGrid").innerHTML = `
+        <div class="grid-4" style="margin-bottom:20px">
+            <div class="stat-card"><div class="number">${data.decisions?.total || 0}</div><div class="label">Decisions (24h)</div></div>
+            <div class="stat-card"><div class="number">${data.decisions?.with_feedback || 0}</div><div class="label">With Feedback</div></div>
+            <div class="stat-card"><div class="number">${data.active_rules || 0}</div><div class="label">Active Rules</div></div>
+            <div class="stat-card"><div class="number">${data.kb_entries || 0}</div><div class="label">KB Entries</div></div>
+        </div>
+        <div class="grid-4">
+            <div class="stat-card"><div class="number">${data.corrections || 0}</div><div class="label">Corrections</div></div>
+            <div class="stat-card"><div class="number">${data.patterns || 0}</div><div class="label">Patterns</div></div>
+            <div class="stat-card"><div class="number" style="color:var(--green)">${data.coverage?.autoreply_enabled || 0}</div><div class="label">Autoreply Zones</div></div>
+            <div class="stat-card"><div class="number" style="color:var(--red)">${data.coverage?.blocked || 0}</div><div class="label">Blocked Zones</div></div>
+        </div>`;
+
+        // Update header stats
+        document.getElementById("headerStats").innerHTML = `
+        <span class="stat-pill"><b>${data.active_rules || 0}</b> rules</span>
+        <span class="stat-pill"><b>${data.kb_entries || 0}</b> KB</span>
+        <span class="stat-pill"><b>${data.coverage?.total_zones || 0}</b> zones</span>`;
+      }
+
+      // ─── Init ───
+      loadInbox();
+      loadStats();
+    </script>
+  </body>
+</html>

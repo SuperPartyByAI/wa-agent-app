@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
@@ -603,7 +605,14 @@ app.get('/api/ai/wave2/conflicts', async (req, res) => {
     }
 });
 
-const PORT = 3000;
+// ─── Brain Console ───
+import brainConsoleRoutes from './src/api/brainConsoleRoutes.mjs';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/api/ai/brain', brainConsoleRoutes);
+app.use('/brain', express.static(path.join(__dirname, 'public')));
+
+const PORT = parseInt(process.env.PORT || '3000', 10);
 app.listen(PORT, '0.0.0.0', () => {
     const mode = process.env.AI_SHADOW_MODE_ENABLED === 'true' ? 'SHADOW'
         : process.env.AI_SAFE_AUTOREPLY_ENABLED === 'true' ? 'SAFE_AUTOREPLY'

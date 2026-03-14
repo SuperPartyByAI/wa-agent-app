@@ -523,43 +523,126 @@ function openRoleModalById(id) {
 function openRoleModal(k = null) {
   const titleText = k ? 'Editează Fișa Postului' : 'Definește un Rol Nou';
   const idValue = k ? k.id : '';
-  const keyVal = k ? k.knowledge_key.replace('role_', '') : '';
+  const keyVal = k ? k.knowledge_key : 'role_animatie';
   const patVal = k && k.question_patterns ? k.question_patterns.join(', ') : '';
-  const rulesVal = k && k.answer_template ? k.answer_template : '';
+  
+  const pc = k && k.policy_config ? k.policy_config : null;
+  const pr = pc ? pc.pricing_rules : {};
+  const tr = pr && pr.transport_rules ? pr.transport_rules : {};
+  const cs = pc ? pc.constraints : {};
+  const cb = pc ? pc.copy_blocks : {};
+  
+  const minConf = pc && pc.triggers ? pc.triggers.min_confidence : 0.35;
+  const basePrice = pr?.base_price || 0;
+  const extraPrice = pr?.extra_hour_price || 0;
+  const incHours = pr?.included_duration_hours || 1;
+  const trBuc = tr?.bucharest || 0;
+  const trIf = tr?.if || 0;
+  const outIf = tr?.outside_if || 'manual_quote';
+  
+  const allowDisc = cs?.allow_discounts ? 'checked' : '';
+  const blockConf = cs?.must_not_confirm_availability !== false ? 'checked' : '';
+  const blockOv = cs?.must_not_override_approved_prices !== false ? 'checked' : '';
+  const reqFields = (cs?.must_collect_fields || ['date','location','duration']).join(', ');
+
+  const introText = cb?.intro || '';
+  const upsellText = cb?.upsell || '';
+  const closingText = cb?.closing_question || '';
+  
+  const legacyWarning = (k && !pc && k.answer_template) 
+    ? `<div style="background:var(--surface2); padding:12px; border-radius:8px; margin-bottom:16px; border-left:3px solid var(--orange);"><b>⚠️ Legacy Text Detected:</b><br><i style="font-size:12px">${k.answer_template.replace(/</g, '&lt;')}</i><br><span style="font-size:11px; color:var(--dim)">Te rog mută aceste reguli în câmpurile structurate de mai jos pentru a actualiza rolul.</span></div>` 
+    : '';
 
   const h = `
     <h2 style="margin-bottom:24px; font-size:24px">${titleText}</h2>
     <input type="hidden" id="rlEditId" value="${idValue}">
-    
-    <div style="margin-bottom:20px;">
-      <label style="font-size:16px; margin-bottom:8px; display:block"><b>1. Numele Rolului</b> (Selectează din listă)</label>
-      <select id="rlKey" class="input" style="font-size:16px; padding:12px">
-        <option value="Animatie" ${keyVal === 'animatie' ? 'selected' : ''}>Animație</option>
-        <option value="Ursitoare" ${keyVal === 'ursitoare' ? 'selected' : ''}>Ursitoare</option>
-        <option value="Arcada_pe_suport" ${keyVal === 'arcada_pe_suport' ? 'selected' : ''}>Arcadă pe suport</option>
-        <option value="Arcada_fara_suport" ${keyVal === 'arcada_fara_suport' ? 'selected' : ''}>Arcadă fără suport</option>
-        <option value="Vata_de_zahar" ${keyVal === 'vata_de_zahar' ? 'selected' : ''}>Vată de zahăr</option>
-        <option value="Popcorn" ${keyVal === 'popcorn' ? 'selected' : ''}>Popcorn</option>
-        <option value="Vata_si_popcorn" ${keyVal === 'vata_si_popcorn' ? 'selected' : ''}>Vată și popcorn</option>
-        <option value="Mos_Craciun" ${keyVal === 'mos_craciun' ? 'selected' : ''}>Moș Crăciun</option>
-        <option value="Parfumerie" ${keyVal === 'parfumerie' ? 'selected' : ''}>Parfumerie</option>
-        <option value="Arcada_cu_cifre_volumetrice" ${keyVal === 'arcada_cu_cifre_volumetrice' ? 'selected' : ''}>Arcadă cu cifre volumetrice</option>
-      </select>
-    </div>
+    ${legacyWarning}
 
     <div style="margin-bottom:20px;">
-      <label style="font-size:16px; margin-bottom:8px; display:block"><b>2. Când se activează acest rol?</b> (Ce caută clientul?)</label>
-      <input type="text" id="rlPatterns" class="input" style="font-size:16px; padding:12px" placeholder="Ex: animatori, spiderman, printesa" value="${patVal}">
-      <p style="font-size:13px; color:var(--dim); margin-top:8px">Când AI-ul vede aceste cuvinte în mesajul clientului, va descărca logica de dedesubt pentru a calcula prețul.</p>
+      <label style="font-size:16px; margin-bottom:8px; display:block"><b>1. Identitate & Declanșatori</b></label>
+      <div class="grid-2">
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Nume Rol (Whitelist)</label>
+          <select id="rlKey" class="input" style="padding:10px">
+            <option value="role_animatie" ${keyVal === 'role_animatie' ? 'selected' : ''}>Animație</option>
+            <option value="role_ursitoare" ${keyVal === 'role_ursitoare' ? 'selected' : ''}>Ursitoare</option>
+            <option value="role_arcada_pe_suport" ${keyVal === 'role_arcada_pe_suport' ? 'selected' : ''}>Arcadă pe suport</option>
+            <option value="role_arcada_fara_suport" ${keyVal === 'role_arcada_fara_suport' ? 'selected' : ''}>Arcadă fără suport</option>
+            <option value="role_vata_de_zahar" ${keyVal === 'role_vata_de_zahar' ? 'selected' : ''}>Vată de zahăr</option>
+            <option value="role_popcorn" ${keyVal === 'role_popcorn' ? 'selected' : ''}>Popcorn</option>
+            <option value="role_vata_si_popcorn" ${keyVal === 'role_vata_si_popcorn' ? 'selected' : ''}>Vată și popcorn</option>
+            <option value="role_mos_craciun" ${keyVal === 'role_mos_craciun' ? 'selected' : ''}>Moș Crăciun</option>
+            <option value="role_parfumerie" ${keyVal === 'role_parfumerie' ? 'selected' : ''}>Parfumerie</option>
+            <option value="role_arcada_cu_cifre_volumetrice" ${keyVal === 'role_arcada_cu_cifre_volumetrice' ? 'selected' : ''}>Arcadă cu cifre volumetrice</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Cuvinte cheie (virgulă)</label>
+          <input type="text" id="rlPatterns" class="input" style="padding:10px" value="${patVal}">
+        </div>
+      </div>
     </div>
-    
+
+    <div style="margin-bottom:20px; padding:16px; border:1px solid var(--border); border-radius:8px; background:var(--bg)">
+      <label style="font-size:16px; margin-bottom:12px; display:block"><b>2. Prețuri Oficiale (RON)</b></label>
+      <div class="grid-4">
+        <div><label style="font-size:11px;color:var(--dim)">Tarif de bază</label><input type="number" id="rlBasePrice" class="input" value="${basePrice}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Ore incluse</label><input type="number" step="0.5" id="rlIncHours" class="input" value="${incHours}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Tarif/Oră extra</label><input type="number" id="rlExtraPrice" class="input" value="${extraPrice}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Încredere AI (0-1)</label><input type="number" step="0.05" id="rlConf" class="input" value="${minConf}"></div>
+      </div>
+      <label style="font-size:12px; margin:16px 0 8px; display:block; color:var(--dim)">Reguli de Transport</label>
+      <div class="grid-3">
+        <div><label style="font-size:11px;color:var(--dim)">București</label><input type="number" id="rlTrBuc" class="input" value="${trBuc}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Ilfov</label><input type="number" id="rlTrIf" class="input" value="${trIf}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">În afara IF</label>
+          <select id="rlTrOut" class="input">
+            <option value="manual_quote" ${outIf==='manual_quote'?'selected':''}>Cere Ofertă Manuală</option>
+            <option value="numeric" ${outIf!=='manual_quote'?'selected':''}>Setează Sumă Fixă</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px; padding:16px; border:1px solid var(--border); border-radius:8px; background:var(--bg)">
+      <label style="font-size:16px; margin-bottom:12px; display:block"><b>3. Constrângeri & Reguli Stricte</b></label>
+      <div class="grid-2">
+        <div>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px">
+            <input type="checkbox" id="rlAllowDisc" ${allowDisc}> Permite reduceri de preț
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px">
+            <input type="checkbox" id="rlBlockConf" ${blockConf}> Nu confirma disponibilitatea ferm (doar operator)
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+            <input type="checkbox" id="rlBlockOv" ${blockOv}> Nu devia de la prețul oficial listat
+          </label>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Câmpuri Obligatorii de Colectat (virgulă)</label>
+          <input type="text" id="rlReqFields" class="input" value="${reqFields}">
+        </div>
+      </div>
+    </div>
+
     <div style="margin-bottom:24px;">
-      <label style="font-size:16px; margin-bottom:8px; display:block"><b>3. Fișa postului și Prețuri (Logica pentru AI)</b></label>
-      <textarea id="rlRules" class="input" style="height:180px; font-size:16px; padding:14px; line-height:1.5" placeholder="Pentru 2 ore tariful este 490 lei. Pentru orice ora extra se percepe 170 lei. Nu oferi reduceri de pret. Transport in IF este 50 lei.">${rulesVal}</textarea>
+      <label style="font-size:16px; margin-bottom:12px; display:block"><b>4. Tonul Vocii (Copywriting)</b></label>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Introducere / Pitch (Despre serviciu)</label>
+        <textarea id="rlIntro" class="input" rows="2">${introText}</textarea>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Sugestie Comercială (Upsell / Combinare)</label>
+        <textarea id="rlUpsell" class="input" rows="2">${upsellText}</textarea>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Întrebare de închidere (Call to action)</label>
+        <textarea id="rlClosing" class="input" rows="2">${closingText}</textarea>
+      </div>
     </div>
     
     <div style="display:flex; justify-content:space-between; margin-top:32px;">
-      ${k ? `<button class="btn btn-outline" style="color:var(--rd);border-color:var(--rd); border-radius:8px" onclick="deleteRoleRule('${idValue}')">🗑️ Desființează Rolul</button>` : '<div></div>'}
+      ${k ? `<button class="btn btn-outline" style="color:var(--red);border-color:var(--red); border-radius:8px" onclick="deleteRoleRule('${idValue}')">🗑️ Desființează Rolul</button>` : '<div></div>'}
       <div style="display:flex; gap:12px;">
         <button class="btn btn-outline" style="border-radius:8px" onclick="closeModal()">Anulează</button>
         <button class="btn btn-primary" style="font-size:16px; padding:0 24px; border-radius:8px" onclick="saveRoleRule()">Salvează Logica</button>
@@ -571,19 +654,51 @@ function openRoleModal(k = null) {
 
 async function saveRoleRule() {
   const id = document.getElementById('rlEditId').value;
-  const key = document.getElementById('rlKey').value.trim();
+  const key = document.getElementById('rlKey').value;
   const patStr = document.getElementById('rlPatterns').value;
-  const rulStr = document.getElementById('rlRules').value;
-
-  if(!key || !patStr || !rulStr) return alert('Te rog completează toate cele 3 câmpuri!');
+  
+  if(!key) return alert('Te rog selectează rolul!');
   
   const patterns = patStr.split(',').map(s=>s.trim()).filter(Boolean);
   
+  const policy_config = {
+    role_key: key,
+    active: true,
+    priority: 100,
+    triggers: {
+      keywords: patterns,
+      min_confidence: parseFloat(document.getElementById('rlConf').value) || 0.35
+    },
+    pricing_rules: {
+      base_price: parseInt(document.getElementById('rlBasePrice').value) || 0,
+      currency: 'RON',
+      included_duration_hours: parseFloat(document.getElementById('rlIncHours').value) || 1,
+      extra_hour_price: parseInt(document.getElementById('rlExtraPrice').value) || 0,
+      transport_rules: {
+        bucharest: parseInt(document.getElementById('rlTrBuc').value) || 0,
+        if: parseInt(document.getElementById('rlTrIf').value) || 0,
+        outside_if: document.getElementById('rlTrOut').value === 'manual_quote' ? 'manual_quote' : 0
+      }
+    },
+    constraints: {
+      allow_discounts: document.getElementById('rlAllowDisc').checked,
+      must_collect_fields: document.getElementById('rlReqFields').value.split(',').map(s=>s.trim()).filter(Boolean),
+      must_not_confirm_availability: document.getElementById('rlBlockConf').checked,
+      must_not_override_approved_prices: document.getElementById('rlBlockOv').checked
+    },
+    copy_blocks: {
+      intro: document.getElementById('rlIntro').value.trim(),
+      upsell: document.getElementById('rlUpsell').value.trim(),
+      closing_question: document.getElementById('rlClosing').value.trim()
+    }
+  };
+
   const payload = {
-    knowledge_key: 'role_' + key.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase(),
-    category: 'services', // Maps to valid enum in DB
+    knowledge_key: key,
+    category: 'role',
     question_patterns: patterns,
-    answer_template: rulStr,
+    answer_template: "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+    policy_config: policy_config,
     approval_status: 'approved'
   };
 

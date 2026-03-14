@@ -17,6 +17,7 @@ import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '../config/env.mjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { validateRoleConfigPayload } from '../policy/roleConfigSchema.mjs';
 
 const router = Router();
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -275,6 +276,13 @@ router.get('/pricing/kb', async (req, res) => {
 router.put('/pricing/kb/:id', async (req, res) => {
     try {
         const updates = { ...req.body, updated_at: new Date().toISOString() };
+        if (updates.policy_config) {
+            try {
+                updates.policy_config = validateRoleConfigPayload(updates.policy_config);
+            } catch (validationErr) {
+                return res.status(400).json({ error: `Policy Validation Failed: ${validationErr.message}` });
+            }
+        }
         delete updates.id;
         const { data, error } = await supabase.from('ai_knowledge_base').update(updates).eq('id', req.params.id).select().single();
         if (error) throw error;
@@ -286,6 +294,13 @@ router.put('/pricing/kb/:id', async (req, res) => {
 router.post('/pricing/kb', async (req, res) => {
     try {
         const payload = { ...req.body, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        if (payload.policy_config) {
+            try {
+                payload.policy_config = validateRoleConfigPayload(payload.policy_config);
+            } catch (validationErr) {
+                return res.status(400).json({ error: `Policy Validation Failed: ${validationErr.message}` });
+            }
+        }
         const { data, error } = await supabase.from('ai_knowledge_base').insert(payload).select().single();
         if (error) throw error;
         await logAudit('pricing', 'create', 'kb_entry', data.id, data);

@@ -14,6 +14,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '../config/env.mjs';
+import { legacyRoleEntryToConfig } from '../policy/roleConfigSchema.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -270,22 +271,25 @@ export function invalidateKBCache() {
  */
 export async function extractActiveRoles(clientMessage, eventPlan = {}) {
     const entries = await loadApprovedKB();
-    if (!entries || entries.length === 0) return '';
+    if (!entries || entries.length === 0) return [];
 
     // Filter only roles
     const roles = entries.filter(e => e.knowledge_key && e.knowledge_key.startsWith('role_'));
-    if (roles.length === 0) return '';
+    if (roles.length === 0) return [];
 
     const normMsg = normalize(clientMessage);
     const requestedServices = new Set((eventPlan?.requested_services || []).map(s => normalize(s)));
     
-    const matchedRoles = [];
+    const matchedRoles = []; // Array of structural policy_config objects
 
     for (const role of roles) {
         let isMatch = false;
 
-        // 1. Check if the role's service tag is explicitly requested in the plan
-        const roleTags = (role.service_tags || []).map(s => normalize(s));
+        // Upgrade legacy roles on the fly to structural format
+        const structuredRole = role.policy_config ? role.policy_config : legacyRoleEntryToConfig(role);
+
+        // 1. Check if the role's service key / sub-tags are requested in the plan
+        const roleTags = (structuredRole.triggers.service_tags || []).map(s => normalize(s));
         for (const tag of roleTags) {
             if (requestedServices.has(tag)) {
                 isMatch = true;
@@ -293,20 +297,19 @@ export async function extractActiveRoles(clientMessage, eventPlan = {}) {
             }
         }
 
-        // 2. If not already matched by plan, check chat text pattern match
+        // 2. If not matched by plan, check chat text against keywords
         if (!isMatch && normMsg.length >= MIN_MSG_LENGTH) {
-            const score = scorePatternMatch(normMsg, role.question_patterns);
-            if (score > 0.15) {
+            const minConf = structuredRole.triggers.min_confidence || 0.35;
+            const score = scorePatternMatch(normMsg, structuredRole.triggers.keywords || []);
+            if (score >= minConf) { // Use dynamic confidence threshold
                 isMatch = true;
             }
         }
 
-        if (isMatch && role.answer_template) {
-            matchedRoles.push(`ROL: ${role.knowledge_key.replace('role_', '').toUpperCase()}\n${role.answer_template}`);
+        if (isMatch) {
+            matchedRoles.push(structuredRole);
         }
     }
 
-    if (matchedRoles.length === 0) return '';
-
-    return matchedRoles.join('\n\n');
+    return matchedRoles;
 }

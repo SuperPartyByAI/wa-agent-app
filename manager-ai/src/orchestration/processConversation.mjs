@@ -12,6 +12,7 @@ import { evaluateReplyQuality } from '../replies/evaluateReplyQuality.mjs';
 import { buildReplyContext } from '../replies/buildReplyContext.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
 import { extractActiveRoles } from '../knowledge/knowledgeBase.mjs';
+import { buildActiveCommercialPoliciesBlock } from '../policy/buildActiveCommercialPoliciesBlock.mjs';
 import { loadRelationshipData } from '../memory/loadRelationshipData.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
 import { recordEvent, recordKbMiss } from '../analytics/recordAiEvent.mjs';
@@ -409,7 +410,8 @@ export async function processConversation(conversation_id, message_id = null, op
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
         }
 
-        const activeRolesText = await extractActiveRoles(lastClientMessageText, eventPlan);
+        const activeRoles = await extractActiveRoles(lastClientMessageText, eventPlan);
+        const activeRolesText = activeRoles && activeRoles.length > 0 ? buildActiveCommercialPoliciesBlock(activeRoles) : null;
         const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData, activeRolesText });
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);

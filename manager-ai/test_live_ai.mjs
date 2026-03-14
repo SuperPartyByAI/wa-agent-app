@@ -9,53 +9,55 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const API = 'http://89.167.115.150:3001/webhook/whts-up';
 
 const TESTS = [
-  { p: '1', msg: 'Vreau arcadă organică de 3 metri' },
-  { p: '2', msg: 'Vreau arcadă cu cifre volumetrice de 4 metri' },
-  { p: '3', msg: 'Vreau arcadă pe suport' }
+  { p: '1', msg: 'Bună seara' },
+  { p: '2', msg: 'ok' }
 ];
 
 async function createSupabaseData(testPayload) {
     const freshId = testPayload.id;
     const convId = testPayload.conv;
-    const clientId = testPayload.conv + "_client";
+    const clientId = crypto.randomUUID();
     
-    await supabase.from('clients').upsert({
+    const { error: cliErr } = await supabase.from('clients').upsert({
         id: clientId,
-        real_phone_e164: "+40700000000",
-        full_name: "Simulated User",
-        channel: "whatsapp",
-        status: "active"
+        real_phone_e164: "+4070" + Math.floor(Math.random() * 10000000).toString(),
+        full_name: "Simulated User"
     });
+    if (cliErr) throw cliErr;
 
-    await supabase.from('conversations').upsert({
+    const { error: convErr } = await supabase.from('conversations').upsert({
         id: convId,
         client_id: clientId,
         status: "open",
-        channel_thread_id: testPayload.conv
+        channel: "whatsapp",
+        session_id: testPayload.conv
     });
+    if (convErr) throw convErr;
 
-    await supabase.from('messages').insert({
+    const { error: msgErr } = await supabase.from('messages').insert({
         id: freshId,
         conversation_id: convId,
         sender_type: "client",
         content: testPayload.msg,
-        message_status: "delivered",
+        status: "delivered",
         message_type: "text",
         direction: "inbound"
     });
+    if (msgErr) throw msgErr;
 }
 
 async function run() {
     for (const test of TESTS) {
         
         const freshId = crypto.randomUUID();
-        const testPayload = { id: freshId, conv: 'sim_conv_' + test.p, msg: test.msg };
+        const convId = crypto.randomUUID();
+        const testPayload = { id: freshId, conv: convId, msg: test.msg };
         
         await createSupabaseData(testPayload);
         console.log(`\n============== SENDING TEST: ${test.msg} ==============`);
         const payload = JSON.stringify({
             message_id: freshId,
-            conversation_id: testPayload.conv,
+            conversation_id: convId,
             content: test.msg,
             sender_type: "client"
         });

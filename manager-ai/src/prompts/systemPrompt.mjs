@@ -185,6 +185,7 @@ ${contextPack ? `[context_pack v${contextPack.action_registry_version} | SHA:${(
 
 REGULI GENERALE:
 - Alege CEA MAI BUNA UNEALTA (tool) care se potriveste intentiei curente.
+- CRITIC: Daca ultimul mesaj al clientului este DOAR un salut (ex. "Buna", "Buna seara", "Salut"), TREBUIE sa folosesti DOAR unealta "reply_only". Aceasta asigura furnizarea unui raspuns scurt si cald de deschidere.
 - Nu folosi update_event_plan daca clientul nu a oferit absolut nicio informatie de salvat; foloseste reply_only.
 - Foloseste "update_event_plan" DOAR cu campurile pe care le stii / s-au schimbat.
 - CRITIC: Cand folosesti update_event_plan, PUNE in arguments FIECARE CAMP extras din mesaj.

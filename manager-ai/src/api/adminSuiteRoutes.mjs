@@ -80,7 +80,7 @@ router.get('/crm/clients/:id', async (req, res) => {
 
         // Decision history
         const { data: decisions } = await supabase.from('ai_reply_decisions')
-            .select('suggested_reply, tool_action_suggested, safety_class, reply_status, operator_verdict, confidence_score, created_at, id, conversation_id')
+            .select('suggested_reply, operator_edited_reply, tool_action_suggested, safety_class, reply_status, operator_verdict, confidence_score, created_at, id, conversation_id')
             .in('conversation_id', convIds.slice(0, 5))
             .order('created_at', { ascending: false })
             .limit(20);
@@ -103,7 +103,7 @@ router.get('/crm/clients/:id', async (req, res) => {
 
             return {
                 ...m,
-                ai_reply: decision?.suggested_reply || null,
+                ai_reply: decision?.operator_edited_reply || decision?.suggested_reply || null,
                 tool_action: decision?.tool_action_suggested || null,
                 safety_class: decision?.safety_class || null,
                 reply_status: decision?.reply_status || null,

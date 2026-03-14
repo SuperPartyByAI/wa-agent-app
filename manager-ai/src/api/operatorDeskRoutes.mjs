@@ -94,8 +94,7 @@ router.get('/inbox', async (req, res) => {
 
     // AI decisions
     const { data: decisions } = await supabase
-      .from('ai_reply_decisions')
-      .select('conversation_id, suggested_reply, tool_action_suggested, safety_class, reply_status, operator_verdict, confidence_score, created_at, id')
+      .select('conversation_id, suggested_reply, operator_edited_reply, tool_action_suggested, safety_class, reply_status, operator_verdict, confidence_score, created_at, id')
       .in('conversation_id', convIds.slice(0, 80))
       .order('created_at', { ascending: false })
       .limit(200);
@@ -137,7 +136,7 @@ router.get('/inbox', async (req, res) => {
         client_message: cm?.content || null,
         client_message_at: cm?.created_at || null,
         agent_reply: am?.content || null,
-        ai_reply: dec?.suggested_reply || null,
+        ai_reply: dec?.operator_edited_reply || dec?.suggested_reply || null,
         ai_decision_id: dec?.id || null,
         tool_action: dec?.tool_action_suggested || null,
         safety_class: dec?.safety_class || null,

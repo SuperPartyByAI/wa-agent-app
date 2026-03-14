@@ -621,6 +621,9 @@ import adminSuiteRoutes from './src/api/adminSuiteRoutes.mjs';
 app.use('/api/admin', authMiddleware, adminSuiteRoutes);
 app.use('/admin', express.static(path.join(__dirname, 'public')));
 
+// ─── Operator Desk (primary link) ───
+app.get('/operator', (req, res) => res.redirect('/admin/operator-desk.html'));
+
 // ─── Corrections Pipeline ───
 import correctionsRoutes from './src/api/correctionsRoutes.mjs';
 app.use('/api/admin/corrections', authMiddleware, correctionsRoutes);

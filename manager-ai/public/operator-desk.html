@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Operator Desk — Superparty</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1117;
+  --bg-card: #181b23;
+  --bg-hover: #1f2330;
+  --bg-selected: #252a38;
+  --border: #2a2e3a;
+  --text: #e4e6ed;
+  --text-muted: #8b8fa3;
+  --text-dim: #5c6070;
+  --accent: #6c8cff;
+  --accent-soft: rgba(108,140,255,0.12);
+  --green: #34d399;
+  --green-soft: rgba(52,211,153,0.12);
+  --orange: #fb923c;
+  --orange-soft: rgba(251,146,60,0.12);
+  --red: #f87171;
+  --red-soft: rgba(248,113,113,0.12);
+  --yellow: #fbbf24;
+  --yellow-soft: rgba(251,191,36,0.12);
+  --purple: #a78bfa;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; }
+
+/* ─── TOP NAV ─── */
+.topbar { display:flex; align-items:center; height:52px; background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 20px; gap:16px; }
+.topbar .logo { font-size:15px; font-weight:700; color:var(--accent); letter-spacing:-0.3px; }
+.topbar .logo span { color:var(--text-muted); font-weight:400; }
+.tabs { display:flex; gap:2px; margin-left:24px; }
+.tab { padding:8px 16px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-weight:500; color:var(--text-muted); transition:all .15s; user-select:none; }
+.tab:hover { color:var(--text); background:var(--bg-hover); }
+.tab.active { color:var(--accent); background:var(--accent-soft); }
+.tab .badge { display:inline-block; background:var(--red); color:#fff; font-size:10px; padding:1px 6px; border-radius:10px; margin-left:6px; font-weight:600; }
+.topbar-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+.topbar-right .health { font-size:11px; color:var(--green); display:flex; align-items:center; gap:4px; }
+.topbar-right .health::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--green); }
+.admin-link { font-size:12px; color:var(--text-muted); text-decoration:none; padding:6px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); transition:all .15s; }
+.admin-link:hover { color:var(--text); border-color:var(--text-muted); }
+
+/* ─── MAIN LAYOUT ─── */
+.main { display:flex; height:calc(100vh - 52px); }
+
+/* ─── CONVERSATIONS LIST (LEFT) ─── */
+.conv-list { width:340px; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--bg); }
+.conv-search { padding:12px; border-bottom:1px solid var(--border); }
+.conv-search input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card); color:var(--text); font-size:13px; outline:none; }
+.conv-search input:focus { border-color:var(--accent); }
+.conv-filters { display:flex; gap:4px; padding:8px 12px; border-bottom:1px solid var(--border); overflow-x:auto; }
+.conv-filter { padding:4px 10px; border-radius:12px; font-size:11px; font-weight:500; cursor:pointer; border:1px solid var(--border); color:var(--text-muted); background:transparent; white-space:nowrap; transition:all .15s; }
+.conv-filter.active { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
+.conv-items { flex:1; overflow-y:auto; }
+.conv-item { padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+.conv-item:hover { background:var(--bg-hover); }
+.conv-item.selected { background:var(--bg-selected); border-left:3px solid var(--accent); }
+.conv-item .conv-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.conv-item .conv-name { font-size:13px; font-weight:600; }
+.conv-item .conv-time { font-size:11px; color:var(--text-dim); }
+.conv-item .conv-last { font-size:12px; color:var(--text-muted); line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:6px; }
+.conv-item .conv-meta { display:flex; gap:6px; align-items:center; }
+.status-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:0.3px; }
+.status-sent { background:var(--green-soft); color:var(--green); }
+.status-shadow { background:var(--purple); background:rgba(167,139,250,0.12); color:var(--purple); }
+.status-pending { background:var(--orange-soft); color:var(--orange); }
+.status-blocked { background:var(--red-soft); color:var(--red); }
+.status-open { background:var(--yellow-soft); color:var(--yellow); }
+
+/* ─── CONVERSATION DETAIL (CENTER) ─── */
+.conv-detail { flex:1; display:flex; flex-direction:column; background:var(--bg); }
+.conv-detail-empty { flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:14px; }
+.conv-detail-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.conv-detail-header h2 { font-size:15px; font-weight:600; }
+.conv-detail-header .client-link { font-size:12px; color:var(--accent); cursor:pointer; }
+.messages-area { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:8px; }
+.msg { max-width:75%; padding:10px 14px; border-radius:var(--radius); font-size:13px; line-height:1.5; position:relative; }
+.msg.client { align-self:flex-start; background:var(--bg-card); border:1px solid var(--border); }
+.msg.agent { align-self:flex-end; background:var(--accent-soft); border:1px solid rgba(108,140,255,0.2); }
+.msg.ai { align-self:flex-end; background:rgba(167,139,250,0.08); border:1px solid rgba(167,139,250,0.2); }
+.msg .msg-time { font-size:10px; color:var(--text-dim); margin-top:4px; }
+.msg .msg-sender { font-size:10px; font-weight:600; color:var(--text-muted); margin-bottom:2px; text-transform:uppercase; letter-spacing:0.5px; }
+
+/* ─── AI REPLY BOX ─── */
+.ai-reply-box { border-top:1px solid var(--border); padding:16px 20px; background:var(--bg-card); }
+.ai-reply-label { font-size:11px; font-weight:600; color:var(--purple); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.ai-reply-label .safety { font-size:10px; padding:2px 6px; border-radius:8px; }
+.ai-reply-text { width:100%; min-height:60px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:13px; font-family:inherit; resize:vertical; outline:none; line-height:1.5; }
+.ai-reply-text:focus { border-color:var(--accent); }
+.ai-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.ai-actions .btn { padding:7px 14px; border:none; border-radius:var(--radius-sm); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+.btn-approve { background:var(--green); color:#0f1117; }
+.btn-approve:hover { filter:brightness(1.1); }
+.btn-edit { background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent) !important; }
+.btn-edit:hover { background:var(--accent); color:#fff; }
+.btn-clarify { background:var(--orange-soft); color:var(--orange); }
+.btn-clarify:hover { background:var(--orange); color:#fff; }
+.btn-operator { background:var(--red-soft); color:var(--red); }
+.btn-operator:hover { background:var(--red); color:#fff; }
+.btn-memory { background:var(--bg-hover); color:var(--text-muted); }
+.btn-memory:hover { color:var(--text); }
+
+/* ─── MEMORY PANEL (RIGHT) ─── */
+.memory-panel { width:360px; border-left:1px solid var(--border); background:var(--bg-card); display:flex; flex-direction:column; overflow:hidden; transition:width .2s; }
+.memory-panel.hidden { width:0; border:none; }
+.memory-header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.memory-header h3 { font-size:14px; font-weight:600; }
+.memory-close { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; padding:4px 8px; }
+.memory-content { flex:1; overflow-y:auto; padding:12px 16px; }
+.memory-section { margin-bottom:16px; }
+.memory-section h4 { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+.memory-field { background:var(--bg); padding:8px 10px; border-radius:var(--radius-sm); margin-bottom:6px; border:1px solid var(--border); }
+.memory-field .field-label { font-size:11px; color:var(--text-dim); margin-bottom:2px; }
+.memory-field .field-value { font-size:13px; }
+.memory-field .field-actions { display:flex; gap:4px; margin-top:6px; }
+.memory-field .field-actions button { font-size:10px; padding:2px 8px; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; }
+.memory-field .field-actions button:hover { color:var(--text); border-color:var(--text-muted); }
+.memory-field .field-actions button.mark-wrong { color:var(--red); border-color:var(--red); }
+.memory-note { margin-top:12px; }
+.memory-note textarea { width:100%; padding:8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:12px; font-family:inherit; resize:vertical; min-height:50px; outline:none; }
+.memory-note .btn-note { margin-top:6px; padding:5px 12px; font-size:11px; background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent); border-radius:var(--radius-sm); cursor:pointer; }
+
+/* ─── RULES TAB ─── */
+.rules-panel { display:none; flex:1; padding:20px 24px; overflow-y:auto; }
+.rules-panel.active { display:block; }
+.rules-panel h2 { font-size:16px; margin-bottom:16px; }
+.rule-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; transition:border-color .15s; }
+.rule-card:hover { border-color:var(--text-dim); }
+.rule-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.rule-name { font-size:14px; font-weight:600; }
+.rule-toggle { position:relative; width:36px; height:20px; }
+.rule-toggle input { display:none; }
+.rule-toggle label { display:block; width:36px; height:20px; border-radius:10px; background:var(--border); cursor:pointer; transition:background .2s; position:relative; }
+.rule-toggle label::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--text-muted); transition:all .2s; }
+.rule-toggle input:checked+label { background:var(--green); }
+.rule-toggle input:checked+label::after { left:18px; background:#fff; }
+.rule-desc { font-size:12px; color:var(--text-muted); line-height:1.4; margin-bottom:8px; }
+.rule-when { display:flex; gap:6px; flex-wrap:wrap; }
+.rule-tag { font-size:10px; padding:3px 8px; border-radius:4px; background:var(--bg); border:1px solid var(--border); color:var(--text-dim); }
+.add-rule-btn { padding:10px 16px; border:2px dashed var(--border); border-radius:var(--radius); color:var(--text-muted); font-size:13px; cursor:pointer; text-align:center; transition:all .15s; background:transparent; width:100%; }
+.add-rule-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ─── ADMIN TAB ─── */
+.admin-panel { display:none; flex:1; padding:20px 24px; overflow-y:auto; }
+.admin-panel.active { display:block; }
+.admin-panel h2 { font-size:16px; margin-bottom:16px; }
+.admin-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; }
+.admin-link-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; cursor:pointer; transition:all .15s; text-decoration:none; color:var(--text); display:block; }
+.admin-link-card:hover { border-color:var(--accent); transform:translateY(-1px); }
+.admin-link-card h4 { font-size:13px; font-weight:600; margin-bottom:4px; }
+.admin-link-card p { font-size:11px; color:var(--text-muted); line-height:1.3; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text-dim); }
+
+/* ─── MODAL ─── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; width:480px; max-height:80vh; overflow-y:auto; }
+.modal h3 { margin-bottom:12px; font-size:15px; }
+.modal input, .modal textarea, .modal select { width:100%; padding:8px 10px; margin-bottom:10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-size:13px; font-family:inherit; outline:none; }
+.modal .btn-row { display:flex; gap:8px; justify-content:flex-end; }
+.modal .btn-save { padding:8px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:12px; font-weight:600; }
+.modal .btn-cancel { padding:8px 16px; background:transparent; color:var(--text-muted); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; font-size:12px; }
+
+/* ─── TOAST ─── */
+.toast { position:fixed; bottom:20px; right:20px; padding:10px 16px; border-radius:var(--radius-sm); font-size:13px; font-weight:500; z-index:200; opacity:0; transition:opacity .3s; }
+.toast.show { opacity:1; }
+.toast.success { background:var(--green); color:#0f1117; }
+.toast.error { background:var(--red); color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">AI Operator Desk <span>by Superparty</span></div>
+  <div class="tabs">
+    <div class="tab active" data-tab="conversations">Conversații <span class="badge" id="convBadge">0</span></div>
+    <div class="tab" data-tab="rules">Reguli AI</div>
+    <div class="tab" data-tab="admin">Admin avansat</div>
+  </div>
+  <div class="topbar-right">
+    <div class="health" id="healthDot">OK</div>
+    <a class="admin-link" href="admin-suite.html" target="_blank">Admin Suite ↗</a>
+    <a class="admin-link" href="../brain/brain-console.html" target="_blank">Brain Console ↗</a>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- CONVERSATIONS TAB -->
+  <div class="conv-list" id="convListPanel">
+    <div class="conv-search"><input type="text" id="convSearch" placeholder="Caută client sau mesaj..."></div>
+    <div class="conv-filters">
+      <div class="conv-filter active" data-filter="all">Toate</div>
+      <div class="conv-filter" data-filter="pending">De revizuit</div>
+      <div class="conv-filter" data-filter="shadow">Shadow</div>
+      <div class="conv-filter" data-filter="open">Deschise</div>
+    </div>
+    <div class="conv-items" id="convItems"></div>
+  </div>
+
+  <div class="conv-detail" id="convDetail">
+    <div class="conv-detail-empty" id="emptyState">Selectează o conversație din stânga</div>
+  </div>
+
+  <div class="memory-panel hidden" id="memoryPanel">
+    <div class="memory-header">
+      <h3 id="memoryClientName">Memorie Client</h3>
+      <button class="memory-close" onclick="toggleMemory(false)">✕</button>
+    </div>
+    <div class="memory-content" id="memoryContent"></div>
+  </div>
+
+  <!-- RULES TAB -->
+  <div class="rules-panel" id="rulesPanel"></div>
+
+  <!-- ADMIN TAB -->
+  <div class="admin-panel" id="adminPanel"></div>
+</div>
+
+<!-- ADD RULE MODAL -->
+<div class="modal-overlay" id="ruleModal">
+  <div class="modal">
+    <h3 id="ruleModalTitle">Adaugă regulă nouă</h3>
+    <input type="text" id="ruleModalName" placeholder="Numele regulii (ex: Întâi durata la preț)">
+    <textarea id="ruleModalDesc" rows="2" placeholder="Descriere scurtă (ce face regula)"></textarea>
+    <select id="ruleModalTrigger">
+      <option value="">Când se aplică...</option>
+      <option value="PRICE_QUESTION">Întrebare despre preț</option>
+      <option value="COSTUME_QUERY">Întrebare despre costume</option>
+      <option value="RESCHEDULE">Reprogramare</option>
+      <option value="COMPLAINT">Plângere</option>
+      <option value="GENERAL">General / orice mesaj</option>
+    </select>
+    <select id="ruleModalBehavior">
+      <option value="">Ce face AI-ul...</option>
+      <option value="CLARIFY_FIRST">Cere clarificare mai întâi</option>
+      <option value="USE_KB">Răspunde din baza de cunoștințe</option>
+      <option value="HANDOFF">Trimite la operator</option>
+      <option value="AUTO_REPLY">Răspunde automat</option>
+      <option value="BLOCK">Blochează (nu răspunde)</option>
+    </select>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeRuleModal()">Anulează</button>
+      <button class="btn-save" onclick="saveRule()">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───
+const API = window.location.origin;
+const TOKEN = localStorage.getItem('admin_token') || '';
+const headers = () => ({ 'Content-Type':'application/json', ...(TOKEN ? {'Authorization':`Bearer ${TOKEN}`} : {}) });
+
+// ─── STATE ───
+let conversations = [];
+let selectedConvId = null;
+let currentClientId = null;
+let currentFilter = 'all';
+
+// ─── TOAST ───
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── TABS ───
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const name = tab.dataset.tab;
+    // Show/hide panels
+    document.getElementById('convListPanel').style.display = name === 'conversations' ? 'flex' : 'none';
+    document.getElementById('convDetail').style.display = name === 'conversations' ? 'flex' : 'none';
+    document.getElementById('memoryPanel').style.display = name === 'conversations' && !document.getElementById('memoryPanel').classList.contains('hidden') ? 'flex' : 'none';
+    document.getElementById('rulesPanel').classList.toggle('active', name === 'rules');
+    document.getElementById('adminPanel').classList.toggle('active', name === 'admin');
+    if (name === 'rules') loadRules();
+    if (name === 'admin') renderAdmin();
+  });
+});
+
+// ─── FILTERS ───
+document.querySelectorAll('.conv-filter').forEach(f => {
+  f.addEventListener('click', () => {
+    document.querySelectorAll('.conv-filter').forEach(x => x.classList.remove('active'));
+    f.classList.add('active');
+    currentFilter = f.dataset.filter;
+    renderConversations();
+  });
+});
+
+// ─── SEARCH ───
+document.getElementById('convSearch').addEventListener('input', e => {
+  renderConversations(e.target.value);
+});
+
+// ─── LOAD CONVERSATIONS ───
+async function loadConversations() {
+  try {
+    const r = await fetch(`${API}/api/admin/crm/clients?limit=100`, { headers: headers() });
+    const d = await r.json();
+    // Get recent conversations with messages
+    const cr = await fetch(`${API}/api/admin/crm/clients?limit=50&sort=updated_at`, { headers: headers() });
+    const cd = await cr.json();
+
+    // Build conversation list from clients with recent activity
+    conversations = (cd.clients || d.clients || []).map(c => ({
+      id: c.id,
+      client_id: c.id,
+      client_name: c.display_name || c.alias || c.mapped_alias || `Client ${(c.id||'').substring(0,6)}`,
+      channel: c.source || 'whatsapp',
+      status: c.ai_status || 'open',
+      updated_at: c.updated_at || c.created_at,
+      last_message: c.last_msg_snippet || '',
+      ai_reply: c.ai_last_reply || '',
+      safety_class: c.safety_class || null
+    }));
+
+    document.getElementById('convBadge').textContent = conversations.length;
+    renderConversations();
+  } catch (e) {
+    console.error('Load error:', e);
+    toast('Eroare la încărcare', 'error');
+  }
+}
+
+function renderConversations(search = '') {
+  const container = document.getElementById('convItems');
+  let items = conversations;
+
+  if (currentFilter !== 'all') {
+    items = items.filter(c => c.status === currentFilter);
+  }
+  if (search) {
+    const q = search.toLowerCase();
+    items = items.filter(c => c.client_name.toLowerCase().includes(q) || (c.last_message||'').toLowerCase().includes(q));
+  }
+
+  container.innerHTML = items.map(c => `
+    <div class="conv-item ${c.id === selectedConvId ? 'selected' : ''}" onclick="selectConversation('${c.id}')">
+      <div class="conv-header">
+        <span class="conv-name">${esc(c.client_name)}</span>
+        <span class="conv-time">${timeAgo(c.updated_at)}</span>
+      </div>
+      <div class="conv-last">${esc(c.last_message || 'Fără mesaje recente')}</div>
+      <div class="conv-meta">
+        <span class="status-badge status-${c.status}">${statusLabel(c.status)}</span>
+        ${c.channel ? `<span class="rule-tag">${c.channel}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── SELECT CONVERSATION ───
+async function selectConversation(clientId) {
+  selectedConvId = clientId;
+  currentClientId = clientId;
+  renderConversations(document.getElementById('convSearch')?.value || '');
+
+  const detail = document.getElementById('convDetail');
+  detail.innerHTML = '<div class="conv-detail-empty">Se încarcă...</div>';
+
+  try {
+    const r = await fetch(`${API}/api/admin/crm/clients/${clientId}`, { headers: headers() });
+    const d = await r.json();
+    const client = d.client || {};
+    const messages = d.latest_messages || [];
+    const plans = d.event_plans || [];
+
+    detail.innerHTML = `
+      <div class="conv-detail-header">
+        <div>
+          <h2>${esc(client.display_name || client.alias || client.mapped_alias || 'Client')}</h2>
+          <span style="font-size:11px;color:var(--text-dim)">${client.source || 'whatsapp'} · ${(d.conversations||[]).length} conversații · ${messages.length} mesaje</span>
+        </div>
+        <span class="conv-detail-header client-link" onclick="toggleMemory(true,'${clientId}')">📋 Vezi memorie</span>
+      </div>
+      <div class="messages-area" id="messagesArea">
+        ${messages.length ? messages.map(m => `
+          <div class="msg ${m.sender_type === 'client' ? 'client' : m.sender_type === 'ai' ? 'ai' : 'agent'}">
+            <div class="msg-sender">${m.sender_type === 'client' ? '👤 Client' : m.sender_type === 'ai' ? '🤖 AI' : '👨‍💼 Agent'}</div>
+            ${esc(m.content || '')}
+            <div class="msg-time">${new Date(m.created_at).toLocaleString('ro-RO')}</div>
+          </div>
+        `).join('') : '<div style="color:var(--text-dim);text-align:center;padding:40px">Nu sunt mesaje recente</div>'}
+      </div>
+      <div class="ai-reply-box">
+        <div class="ai-reply-label">
+          🤖 Răspuns AI propus
+          ${d.ai_decisions?.length ? `<span class="safety status-badge status-shadow">Shadow</span>` : ''}
+        </div>
+        <textarea class="ai-reply-text" id="aiReplyText" placeholder="Scrie sau editează răspunsul AI...">${esc(d.ai_decisions?.[0]?.decision?.response || '')}</textarea>
+        <div class="ai-actions">
+          <button class="btn btn-approve" onclick="approveReply('${clientId}')">✓ Aprobă</button>
+          <button class="btn btn-edit" onclick="editReply()">✎ Editează</button>
+          <button class="btn btn-clarify" onclick="markClarify('${clientId}')">? Clarificare</button>
+          <button class="btn btn-operator" onclick="sendToOperator('${clientId}')">→ Operator</button>
+          <button class="btn btn-memory" onclick="toggleMemory(true,'${clientId}')">📋 Memorie</button>
+        </div>
+      </div>
+    `;
+
+    // Scroll messages to bottom
+    const area = document.getElementById('messagesArea');
+    if (area) area.scrollTop = area.scrollHeight;
+  } catch (e) {
+    detail.innerHTML = `<div class="conv-detail-empty" style="color:var(--red)">Eroare: ${e.message}</div>`;
+  }
+}
+
+// ─── ACTIONS ───
+async function approveReply(clientId) {
+  const text = document.getElementById('aiReplyText')?.value;
+  if (!text) return toast('Răspunsul e gol', 'error');
+  try {
+    await fetch(`${API}/api/admin/corrections`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ trace_id: `approve-${clientId}-${Date.now()}`, request: { client_id: clientId }, corrected_decision: { action: 'approved', response: text }, tags: ['approved'], policy_version: 'v1.0.0' })
+    });
+    toast('✓ Răspuns aprobat');
+  } catch (e) { toast('Eroare: '+e.message, 'error'); }
+}
+
+function editReply() {
+  const el = document.getElementById('aiReplyText');
+  if (el) { el.focus(); el.select(); }
+}
+
+async function markClarify(clientId) {
+  try {
+    await fetch(`${API}/api/admin/corrections`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ trace_id: `clarify-${clientId}-${Date.now()}`, request: { client_id: clientId }, original_decision: {}, corrected_decision: { action: 'needs_clarification' }, tags: ['clarification'], policy_version: 'v1.0.0' })
+    });
+    toast('Marcat: necesită clarificare');
+  } catch (e) { toast('Eroare', 'error'); }
+}
+
+async function sendToOperator(clientId) {
+  try {
+    await fetch(`${API}/api/admin/corrections`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ trace_id: `handoff-${clientId}-${Date.now()}`, request: { client_id: clientId }, original_decision: {}, corrected_decision: { action: 'handoff_to_operator' }, tags: ['handoff'], policy_version: 'v1.0.0' })
+    });
+    toast('Trimis la operator');
+  } catch (e) { toast('Eroare', 'error'); }
+}
+
+// ─── MEMORY PANEL ───
+function toggleMemory(show, clientId) {
+  const panel = document.getElementById('memoryPanel');
+  if (show) {
+    panel.classList.remove('hidden');
+    panel.style.display = 'flex';
+    loadMemory(clientId || currentClientId);
+  } else {
+    panel.classList.add('hidden');
+    panel.style.display = 'none';
+  }
+}
+
+async function loadMemory(clientId) {
+  if (!clientId) return;
+  const content = document.getElementById('memoryContent');
+  content.innerHTML = '<div style="color:var(--text-dim);padding:20px">Se încarcă...</div>';
+
+  try {
+    const r = await fetch(`${API}/api/admin/memory/${clientId}`, { headers: headers() });
+    const d = await r.json();
+    const mem = d.memory || {};
+    const plans = d.event_plans || [];
+    const quotes = d.quotes || [];
+    const goals = d.goal_states || [];
+
+    document.getElementById('memoryClientName').textContent = mem.client_name || 'Client';
+
+    content.innerHTML = `
+      <!-- Profile -->
+      <div class="memory-section">
+        <h4>Profil</h4>
+        ${memField('Nume', mem.client_name || '—', clientId, 'client_name')}
+        ${memField('Locație', mem.location || mem.preferences?.location || '—', clientId, 'location')}
+        ${memField('Servicii cerute', (mem.services_requested||[]).join(', ') || '—', clientId, 'services_requested')}
+        ${memField('Client recurent', mem.is_recurring ? '✓ Da' : '✗ Nu', clientId, 'is_recurring')}
+      </div>
+
+      <!-- Preferințe -->
+      ${mem.preferences ? `<div class="memory-section">
+        <h4>Preferințe</h4>
+        ${Object.entries(mem.preferences || {}).map(([k,v]) =>
+          memField(k.replace(/_/g,' '), typeof v === 'object' ? JSON.stringify(v) : v, clientId, 'preferences.'+k)
+        ).join('')}
+      </div>` : ''}
+
+      <!-- Restricții -->
+      ${(mem.restrictions||[]).length ? `<div class="memory-section">
+        <h4>Restricții</h4>
+        ${(mem.restrictions||[]).map(r => `<div class="memory-field"><div class="field-value" style="color:var(--red)">${esc(r)}</div></div>`).join('')}
+      </div>` : ''}
+
+      <!-- Planuri eveniment -->
+      ${plans.length ? `<div class="memory-section">
+        <h4>Planuri eveniment (${plans.length})</h4>
+        ${plans.map(p => `
+          <div class="memory-field">
+            <div class="field-label">${p.event_type || 'Eveniment'} · ${p.status || '?'}</div>
+            <div class="field-value">${p.event_date ? new Date(p.event_date).toLocaleDateString('ro-RO') : '—'} ${p.location || ''}</div>
+          </div>
+        `).join('')}
+      </div>` : ''}
+
+      <!-- Citate -->
+      ${quotes.length ? `<div class="memory-section">
+        <h4>Cotații (${quotes.length})</h4>
+        ${quotes.map(q => `
+          <div class="memory-field">
+            <div class="field-value">${q.total_amount||'—'} RON · ${q.status||'?'}</div>
+          </div>
+        `).join('')}
+      </div>` : ''}
+
+      <!-- Obiective AI -->
+      ${goals.length ? `<div class="memory-section">
+        <h4>Stare AI</h4>
+        ${goals.map(g => `
+          <div class="memory-field">
+            <div class="field-label">Goal: ${g.current_goal || '—'}</div>
+            <div class="field-value">Stage: ${g.stage || '—'}</div>
+          </div>
+        `).join('')}
+      </div>` : ''}
+
+      <!-- Notă nouă -->
+      <div class="memory-section memory-note">
+        <h4>Adaugă notă</h4>
+        <textarea id="memoryNoteText" placeholder="Notă despre client..."></textarea>
+        <button class="btn-note" onclick="addMemoryNote('${clientId}')">Salvează notă</button>
+      </div>
+    `;
+  } catch (e) {
+    content.innerHTML = `<div style="color:var(--red);padding:20px">Eroare la încărcarea memoriei: ${e.message}</div>`;
+  }
+}
+
+function memField(label, value, clientId, fieldKey) {
+  return `<div class="memory-field">
+    <div class="field-label">${esc(label)}</div>
+    <div class="field-value">${esc(String(value))}</div>
+    <div class="field-actions">
+      <button onclick="markMemory('${clientId}','${fieldKey}','correct')">✓ Corect</button>
+      <button class="mark-wrong" onclick="markMemory('${clientId}','${fieldKey}','wrong')">✗ Greșit</button>
+      <button onclick="markMemory('${clientId}','${fieldKey}','outdated')">⏰ Învechit</button>
+    </div>
+  </div>`;
+}
+
+async function markMemory(clientId, field, status) {
+  try {
+    await fetch(`${API}/api/admin/memory/${clientId}/note`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ note: `[${status.toUpperCase()}] Câmpul "${field}" marcat ca ${status} de operator`, changed_by: 'operator' })
+    });
+    toast(`Câmp marcat: ${status}`);
+  } catch (e) { toast('Eroare', 'error'); }
+}
+
+async function addMemoryNote(clientId) {
+  const note = document.getElementById('memoryNoteText')?.value;
+  if (!note) return;
+  try {
+    await fetch(`${API}/api/admin/memory/${clientId}/note`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ note, changed_by: 'operator' })
+    });
+    toast('Notă salvată');
+    document.getElementById('memoryNoteText').value = '';
+  } catch (e) { toast('Eroare', 'error'); }
+}
+
+// ─── RULES ───
+async function loadRules() {
+  const panel = document.getElementById('rulesPanel');
+  panel.innerHTML = '<h2>Reguli AI</h2><div style="color:var(--text-dim)">Se încarcă...</div>';
+
+  try {
+    const r = await fetch(`${API}/api/ai/brain/rules`, { headers: headers() });
+    const d = await r.json();
+    const rules = d.rules || d || [];
+
+    const behaviorLabels = {
+      'CLARIFY_FIRST': '🔍 Cere clarificare',
+      'USE_KB': '📖 Răspunde din KB',
+      'HANDOFF': '👤 Trimite la operator',
+      'AUTO_REPLY': '✓ Răspuns automat',
+      'BLOCK': '🚫 Blochează'
+    };
+    const triggerLabels = {
+      'PRICE_QUESTION': 'Întrebare de preț',
+      'COSTUME_QUERY': 'Costume / personaje',
+      'RESCHEDULE': 'Reprogramare',
+      'COMPLAINT': 'Plângere / reclamație',
+      'GENERAL': 'General'
+    };
+
+    panel.innerHTML = `
+      <h2>Reguli AI <span style="font-size:12px;color:var(--text-muted);font-weight:400">${rules.length} reguli</span></h2>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Definește cum răspunde AI-ul la diferite tipuri de mesaje. Regulile se aplică în ordinea priorității.</p>
+      ${rules.map(r => `
+        <div class="rule-card">
+          <div class="rule-top">
+            <span class="rule-name">${esc(r.name || r.rule_name || 'Regulă')}</span>
+            <div class="rule-toggle">
+              <input type="checkbox" id="rt_${r.id}" ${r.status === 'active' ? 'checked' : ''} onchange="toggleRule('${r.id}', this.checked)">
+              <label for="rt_${r.id}"></label>
+            </div>
+          </div>
+          <div class="rule-desc">${esc(r.description || behaviorLabels[r.behavior] || r.behavior || '')}</div>
+          <div class="rule-when">
+            <span class="rule-tag">Când: ${triggerLabels[r.trigger] || r.trigger || '?'}</span>
+            <span class="rule-tag">Face: ${behaviorLabels[r.behavior] || r.behavior || '?'}</span>
+            ${r.stage ? `<span class="rule-tag">Etapă: ${r.stage}</span>` : ''}
+            ${r.priority ? `<span class="rule-tag">Prioritate: ${r.priority}</span>` : ''}
+          </div>
+        </div>
+      `).join('')}
+      <button class="add-rule-btn" onclick="openRuleModal()">+ Adaugă regulă nouă</button>
+    `;
+  } catch (e) {
+    panel.innerHTML = `<h2>Reguli AI</h2><div style="color:var(--red)">Eroare: ${e.message}</div>`;
+  }
+}
+
+async function toggleRule(id, active) {
+  try {
+    await fetch(`${API}/api/ai/brain/rules/${id}`, {
+      method: 'PUT', headers: headers(),
+      body: JSON.stringify({ status: active ? 'active' : 'inactive' })
+    });
+    toast(active ? 'Regulă activată' : 'Regulă dezactivată');
+  } catch (e) { toast('Eroare la actualizare', 'error'); }
+}
+
+// ─── RULE MODAL ───
+function openRuleModal() { document.getElementById('ruleModal').classList.add('show'); }
+function closeRuleModal() { document.getElementById('ruleModal').classList.remove('show'); }
+
+async function saveRule() {
+  const name = document.getElementById('ruleModalName').value;
+  const desc = document.getElementById('ruleModalDesc').value;
+  const trigger = document.getElementById('ruleModalTrigger').value;
+  const behavior = document.getElementById('ruleModalBehavior').value;
+  if (!name || !trigger || !behavior) return toast('Completează toate câmpurile', 'error');
+
+  try {
+    await fetch(`${API}/api/ai/brain/rules`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ name, description: desc, trigger, behavior, stage: 'DISCOVERY', priority: 50, status: 'active' })
+    });
+    toast('Regulă adăugată');
+    closeRuleModal();
+    loadRules();
+  } catch (e) { toast('Eroare: '+e.message, 'error'); }
+}
+
+// ─── ADMIN ───
+function renderAdmin() {
+  document.getElementById('adminPanel').innerHTML = `
+    <h2>Admin avansat</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Module tehnice și configurare avansată. Folosește doar când e necesar.</p>
+    <div class="admin-grid">
+      <a class="admin-link-card" href="admin-suite.html" target="_blank"><h4>📊 Dashboard</h4><p>Statistici generale, overview complet</p></a>
+      <a class="admin-link-card" href="admin-suite.html#crm" target="_blank"><h4>👥 CRM complet</h4><p>Toți clienții, filtrare, detalii</p></a>
+      <a class="admin-link-card" href="admin-suite.html#pricing" target="_blank"><h4>💰 Pricing avansat</h4><p>Catalog servicii, reguli comerciale</p></a>
+      <a class="admin-link-card" href="admin-suite.html#employees" target="_blank"><h4>👤 Angajați & Payroll</h4><p>Echipă, roluri, salarii</p></a>
+      <a class="admin-link-card" href="admin-suite.html#rollout" target="_blank"><h4>🚀 Rollout & Safety</h4><p>Shadow/canary, feature flags, wave control</p></a>
+      <a class="admin-link-card" href="admin-suite.html#audit" target="_blank"><h4>📋 Audit & Incidente</h4><p>Toate acțiunile loggate, incidente</p></a>
+      <a class="admin-link-card" href="../brain/brain-console.html" target="_blank"><h4>🧠 Brain Console</h4><p>Configurare avansată AI, politici, coverage</p></a>
+      <a class="admin-link-card" href="../brain/brain-console.html#coverage" target="_blank"><h4>📡 Coverage zones</h4><p>Zone de acoperire, mod de operare</p></a>
+      <a class="admin-link-card" href="../brain/brain-console.html#kb" target="_blank"><h4>📚 Knowledge Base</h4><p>Baza de cunoștințe AI</p></a>
+      <a class="admin-link-card" href="${API}/health" target="_blank"><h4>💚 Health check</h4><p>Status server, policy, memorie</p></a>
+    </div>
+  `;
+}
+
+// ─── HEALTH ───
+async function checkHealth() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    const dot = document.getElementById('healthDot');
+    dot.textContent = `${d.status} · v${d.policy_version || '?'} · ${d.policy_rules || 0} reguli`;
+    dot.style.color = d.status === 'ok' ? 'var(--green)' : 'var(--red)';
+  } catch (e) { document.getElementById('healthDot').textContent = 'Offline'; document.getElementById('healthDot').style.color = 'var(--red)'; }
+}
+
+// ─── HELPERS ───
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff/60000);
+  if (m < 1) return 'acum';
+  if (m < 60) return m + 'm';
+  const h = Math.floor(m/60);
+  if (h < 24) return h + 'h';
+  return Math.floor(h/24) + 'z';
+}
+function statusLabel(s) {
+  const labels = { sent:'Trimis', shadow:'Shadow', pending:'De revizuit', blocked:'Blocat', open:'Deschis', closed:'Închis' };
+  return labels[s] || s || 'Necunoscut';
+}
+
+// ─── AUTH PROMPT ───
+if (!TOKEN) {
+  const t = prompt('Introdu tokenul de acces (ADMIN_API_TOKEN):');
+  if (t) { localStorage.setItem('admin_token', t); location.reload(); }
+}
+
+// ─── INIT ───
+checkHealth();
+loadConversations();
+setInterval(checkHealth, 30000);
+setInterval(loadConversations, 60000);
+</script>
+</body>
+</html>

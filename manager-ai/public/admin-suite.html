@@ -532,6 +532,7 @@ function openRoleModal(k = null) {
   const cs = pc ? pc.constraints : {};
   const cb = pc ? pc.copy_blocks : {};
   
+  const API = window.location.hostname === 'localhost' ? 'http://localhost:3001/api/admin' : 'http://89.167.115.150:3001/api/admin';
   const isActive = pc ? pc.active !== false : true;
   const priority = pc ? pc.priority || 100 : 100;
   const svcTags = pc?.triggers?.service_tags ? pc.triggers.service_tags.join(', ') : '';

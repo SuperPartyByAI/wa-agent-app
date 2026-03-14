@@ -372,6 +372,13 @@ async function selConv(id){
       }catch(e){}
     }
 
+    // Use identity from inbox item (already resolved server-side)
+    const cName = it?.client_name || cl.full_name || cl.public_alias || 'Client';
+    const cPhone = it?.client_phone || null;
+    const cAvatar = it?.client_avatar || cl.avatar_url || null;
+    const cBrand = it?.client_brand || cl.brand_key || null;
+    const isRecurrent = (d.conversations||[]).length > 1;
+
     // Build the "Zen" Unified Sections
     // 1. Unified Identity & Context Header
     let html = `

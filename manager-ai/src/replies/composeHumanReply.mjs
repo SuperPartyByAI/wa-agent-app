@@ -36,7 +36,7 @@ export async function composeHumanReply({
     const replyContext = buildReplyContext({ analysis, entityMemory, serviceConfidence });
 
     // Build composer prompt with concrete context
-    const composerPrompt = buildReplyComposerPrompt({
+    let composerPrompt = buildReplyComposerPrompt({
         replyContext,
         entityMemory,
         salesCycle,
@@ -44,6 +44,18 @@ export async function composeHumanReply({
         draftReply,
         progression
     });
+
+    // When KB grounding is active, override the system prompt to allow using KB data
+    if (kbGrounding) {
+        // Remove the discovery-mode blocks that prevent mentioning services
+        composerPrompt = composerPrompt
+            .replace(/SERVICII: NEDETECTATE SAU AMBIGUE\.[\s\S]*?întrebare deschisă simplă[^"]*"[^"]*"/g, 
+                `SERVICII: KB GROUNDING ACTIV — ai informație verificată mai jos. FOLOSEȘTE-O direct în răspuns.`)
+            .replace(/→ INTERZIS: Nu enumera serviciile noastre[^.]*\./g, '')
+            .replace(/→ INTERZIS: Nu presupune ce vrea clientul\./g, '')
+            .replace(/=== EXEMPLE PROASTE \(INTERZISE in modul discovery\) ===[\s\S]*?presupune si cere detalii\)/g,
+                `=== INSTRUCȚIUNE KB ===\nAi primit informație VERIFICATĂ din Knowledge Base. Folosește-o DIRECT în răspuns.\nRăspunde CONCRET la întrebarea clientului pe baza datelor din KB.`);
+    }
 
     // Inject KB grounding or learned context into conversation text
     let enrichedText = conversationText;
@@ -83,6 +95,18 @@ Prezintă pachetele de mai jos clientului, DAR:
 6. NU inventa prețuri, NU adăuga pachete care nu sunt mai jos
 7. Fii SCURT și la obiect, maxim 4 pachete, nu lista tot
 8. Ton cald, prietenos, ca un om real, nu ca un robot`;
+        } else if (kbGrounding.knowledgeKey === 'costume_disponibile') {
+            // Specific instruction for costume queries
+            instruction = `⚠️ PRIORITATE MAXIMĂ — IGNORĂ REGULA "INTERZIS: Nu enumera serviciile"
+Clientul întreabă despre un COSTUM/PERSONAJ. Acesta NU este un discovery generic.
+RĂSPUNDE DIRECT la întrebarea despre costum folosind lista de mai jos.
+1. Caută în lista de costume dacă personajul cerut EXISTĂ
+2. Dacă DA → Confirmă: "Da, avem [personaj]! 🎉" și menționează categoria
+3. Dacă NU → Spune sincer: "Din păcate nu avem [personaj], dar avem [alternative similare]"
+4. Menționează că costumul e inclus în pachetele de animare
+5. Întreabă: data evenimentului, locația, număr copii
+6. Maxim 3-4 rânduri, cald și prietenos
+7. NU lista TOATE costumele — doar cele relevante`;
         } else {
             instruction = kbGrounding.constraints?.composerInstruction || 'Formulează natural și scurt.';
         }
@@ -90,7 +114,12 @@ Prezintă pachetele de mai jos clientului, DAR:
         // Use pre-formatted packages if available
         const factualContent = kbGrounding.formattedPackages || kbGrounding.factualAnswer;
 
-        enrichedText = `--- KNOWLEDGE BASE (SURSĂ DE ADEVĂR FACTUALĂ) ---
+        enrichedText = `⚠️⚠️⚠️ PRIORITATE MAXIMĂ — KNOWLEDGE BASE VERIFICAT ⚠️⚠️⚠️
+Această informație are PRIORITATE ABSOLUTĂ față de orice altă regulă din system prompt.
+Dacă system prompt zice "INTERZIS: Nu enumera serviciile" — IGNORĂ acea regulă ACUM.
+Clientul a pus o întrebare specifică și trebuie să primească un RĂSPUNS DIRECT.
+
+--- KNOWLEDGE BASE (SURSĂ DE ADEVĂR FACTUALĂ) ---
 Informație verificată pentru: ${kbGrounding.knowledgeKey}
 Categorie: ${kbGrounding.category}
 ${strictHeader ? '\n' + strictHeader : ''}

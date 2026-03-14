@@ -12,7 +12,37 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+private fun formatBadgeValue(raw: String?): String {
+    if (raw == null) return "—"
+    val mapped = mapOf(
+        "active_cycle_client_messaging" to "Client activ",
+        "no_previous" to "Fără",
+        "no_previous_cycle" to "Prima dată",
+        "global_switch_off" to "Oprit",
+        "safe_autoreply_allowed" to "Sigur",
+        "needs_operator_review" to "Review",
+        "blocked_autoreply" to "Blocat",
+        "shadow_mode" to "Shadow",
+        "warm_sales" to "Cald",
+        "collecting_info" to "Colectare",
+        "discover_services" to "Descoperire",
+        "event_qualification" to "Calificare",
+        "service_selection" to "Selecție",
+        "new_lead" to "Lead nou",
+        "greeting" to "Salut",
+        "discovery" to "Descoperire",
+        "No detectable changes" to "Fără modificări",
+        "Fara schimbare" to "Fără modif."
+    )
+    mapped[raw]?.let { return it }
+    // Truncate if still too long
+    val cleaned = raw.replace("_", " ")
+    return if (cleaned.length > 14) cleaned.take(12) + "…" else cleaned
+}
 
 @Composable
 fun AiSchemaRenderer(
@@ -55,10 +85,12 @@ private fun RenderNode(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = item.value ?: "—",
+                            text = formatBadgeValue(item.value),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
-                            color = if (isEscalation) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                            color = if (isEscalation) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = item.label,
@@ -86,14 +118,16 @@ private fun RenderNode(
                     val isEligible = item.value == "Eligible"
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = item.value ?: "?",
+                            text = formatBadgeValue(item.value),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = when {
                                 isBlocked -> MaterialTheme.colorScheme.error
                                 isEligible -> Color(0xFF4CAF50)
                                 else -> MaterialTheme.colorScheme.tertiary
-                            }
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = item.label,
@@ -534,6 +568,101 @@ private fun RenderNode(
                             label = { Text(item.label) },
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             singleLine = true
+                        )
+                    }
+                }
+            }
+        }
+        "cycle_badge" -> {
+            // Conversation cycle status badge
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF00BCD4).copy(alpha = 0.12f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                node.items?.forEach { item ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = formatBadgeValue(item.value),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF00838F),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = item.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        "quality_badge" -> {
+            // AI reply quality indicator
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF4CAF50).copy(alpha = 0.12f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                node.items?.forEach { item ->
+                    val isLow = item.value?.contains("low") == true || item.value?.contains("bad") == true
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = formatBadgeValue(item.value),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isLow) MaterialTheme.colorScheme.error else Color(0xFF2E7D32),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = item.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        "event_status_badge" -> {
+            // Event plan completion status badge
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFFF9800).copy(alpha = 0.12f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                node.items?.forEach { item ->
+                    val isComplete = item.value == "100%" || item.value?.contains("complet") == true
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = formatBadgeValue(item.value),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isComplete) Color(0xFF4CAF50) else Color(0xFFE65100),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = item.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

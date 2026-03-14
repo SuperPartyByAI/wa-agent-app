@@ -48,7 +48,7 @@ function buildToolsFromLiveRegistry() {
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null, goalDirective = null } = {}) {
+export function buildSystemPrompt(existingMemory = null, { eventPlan = null, partyDraft = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null, goalDirective = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
 
     let roleBlock = '';
@@ -91,7 +91,7 @@ IMPORTANT: Daca este client recurent, saluta-l cald si scurt. Nu-l trata ca pe u
         }
     }
 
-    // Build event plan context block
+    // Build event plan context block (Legacy Phase 1/2)
     let planBlock = '';
     if (eventPlan && eventPlan.id) {
         const parts = [];
@@ -121,8 +121,38 @@ IMPORTANT: Daca este client recurent, saluta-l cald si scurt. Nu-l trata ca pe u
         planBlock = `\n=== PLAN EVENIMENT CURENT ===
 ${parts.join('\n')}
 IMPORTANT: Nu intreba informatii deja completate. Cere DOAR campurile lipsa. Daca planul e gata de oferta, ofera sa faci propunere.
-Daca trebuie detalii comerciale (plata/factura/avans), intreaba natural, nu agresiv.
 === SFARSIT PLAN ===\n`;
+    }
+
+    // Build Party Draft context block (Phase 3 Event Dossier)
+    let draftBlock = '';
+    if (partyDraft && partyDraft.conversation_id && (Object.keys(partyDraft.date_generale || {}).length > 0 || partyDraft.comercial?.campuri_obligatorii_lipsa?.length > 0)) {
+        const pd = partyDraft;
+        const gFields = Object.keys(pd.date_generale || {}).map(k => `${k}: ${pd.date_generale[k]}`).join(', ');
+        const bFields = Object.keys(pd.facturare || {}).map(k => `${k}: ${pd.facturare[k]}`).join(', ');
+        const missing = (pd.comercial?.campuri_obligatorii_lipsa || []).join(', ');
+        const readyForQuote = pd.comercial?.gata_pentru_oferta ? 'DA' : 'NU';
+        
+        let sFields = '';
+        if (pd.detalii_servicii) {
+            sFields = Object.entries(pd.detalii_servicii).map(([svc, details]) => {
+                return `  - ${svc}: ${Object.keys(details).map(k => `${k}=${details[k]}`).join(', ')}`;
+            }).join('\n');
+        }
+
+        draftBlock = `\n=== DOSAR EVENIMENT ACTUALIZAT (PARTY DRAFT Phase 3) ===
+Date Generale: ${gFields || 'Niciuna'}
+Servicii și Detalii:
+${sFields || '  Niciun detaliu'}
+Facturare: ${bFields || 'Niciuna'}
+
+>>> CAMPURI LIPSA OBLIGATORII: ${missing || 'Niciunul'}
+>>> GATA PENTRU OFERTA: ${readyForQuote}
+
+CRITIC IMPORTANT: Nu intreba din nou ce stii deja! AXEAZA-TE pe a obtine informatiile din lista de "CAMPURI LIPSA". Daca "GATA PENTRU OFERTA" este DA, poti genera oferta sau oferi pretul.
+=== SFARSIT DOSAR ===\n`;
+        // Phase 3 overrides legacy plan
+        planBlock = draftBlock;
     }
 
     // Build quote context block

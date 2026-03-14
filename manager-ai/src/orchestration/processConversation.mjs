@@ -416,10 +416,18 @@ export async function processConversation(conversation_id, message_id = null, op
         const { computeMissingFields } = await import('../agent/missingFieldsEngine.mjs');
         const { computeNextBestAction } = await import('../agent/nextBestActionPlanner.mjs');
 
+        // ── AUTONOMOUS COMMERCIAL AGENT: Phase 3 Party Builder ──
+        const { loadPartyDraft } = await import('../party/loadPartyDraft.mjs');
+        const { savePartyDraft } = await import('../party/savePartyDraft.mjs');
+        const { updatePartyDraftFromMessage } = await import('../party/updatePartyDraftFromMessage.mjs');
+        const { computeMissingPartyFields } = await import('../party/partyMissingFieldsEngine.mjs');
+
         const runtimeState = await loadLeadRuntimeState(conversation_id);
+        let partyDraft = await loadPartyDraft(conversation_id, clientId);
 
         const activeRoles = await extractActiveRoles(lastClientMessageText, eventPlan);
         const activeRolesText = activeRoles && activeRoles.length > 0 ? buildActiveCommercialPoliciesBlock(activeRoles) : null;
+        const activeRoleKeys = activeRoles ? activeRoles.map(r => r.service_key) : [];
         
         if (!runtimeState.primary_service && eventPlan?.selected_package) {
             runtimeState.primary_service = eventPlan.selected_package;
@@ -454,7 +462,7 @@ export async function processConversation(conversation_id, message_id = null, op
         
         console.log(`[Agent] State=${runtimeState.lead_state}, Score=${scoring.score}(${scoring.temperature}), Primary=${runtimeState.primary_service}, NBA=${nextTarget.action}, NextState=${nextTarget.nextState}`);
 
-        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
+        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, partyDraft, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();
@@ -815,6 +823,24 @@ export async function processConversation(conversation_id, message_id = null, op
             console.warn(`[Pipeline] Action failed or blocked: ${actionResult.message}`);
             // If it's a critical failure, we might want to tell the user or override the reply, 
             // but for now we degrade gracefully and keep the reply.
+        }
+
+        // ── Phase 3: Synchronize Party Draft Post Action ──
+        if (toolAction.name === 'update_event_plan' && partyDraft) {
+            try {
+                partyDraft = updatePartyDraftFromMessage(partyDraft, toolAction.arguments, activeRoleKeys);
+                const p3Eval = computeMissingPartyFields(partyDraft, activeRoleKeys);
+                
+                partyDraft.comercial.campuri_obligatorii_lipsa = p3Eval.missingForBooking;
+                partyDraft.comercial.gata_pentru_oferta = p3Eval.isReadyForQuote;
+                
+                const saveSuccess = await savePartyDraft(partyDraft);
+                if (saveSuccess) {
+                    console.log(`[Phase3 PartyBuilder] Synced Party Draft. Missing booking fields: ${p3Eval.missingForBooking.length}. Ready for quote: ${p3Eval.isReadyForQuote}`);
+                }
+            } catch (e) {
+                console.error(`[Phase3 PartyBuilder] Sync exception: ${e.message}`);
+            }
         }
 
         const statePayload = {

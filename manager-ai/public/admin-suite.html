@@ -532,6 +532,11 @@ function openRoleModal(k = null) {
   const cs = pc ? pc.constraints : {};
   const cb = pc ? pc.copy_blocks : {};
   
+  const isActive = pc ? pc.active !== false : true;
+  const priority = pc ? pc.priority || 100 : 100;
+  const svcTags = pc?.triggers?.service_tags ? pc.triggers.service_tags.join(', ') : '';
+  const labelVal = pc?.label || '';
+  
   const minConf = pc && pc.triggers ? pc.triggers.min_confidence : 0.35;
   const basePrice = pr?.base_price || 0;
   const extraPrice = pr?.extra_hour_price || 0;
@@ -559,11 +564,16 @@ function openRoleModal(k = null) {
     ${legacyWarning}
 
     <div style="margin-bottom:20px;">
-      <label style="font-size:16px; margin-bottom:8px; display:block"><b>1. Identitate & Declanșatori</b></label>
-      <div class="grid-2">
+      <label style="font-size:16px; margin-bottom:8px; display:flex; align-items:center; gap:12px;">
+        <b>1. Identitate & Declanșatori</b>
+        <label style="display:flex; align-items:center; gap:6px; font-size:14px; font-weight:normal; background:var(--surface2); padding:4px 12px; border-radius:12px;">
+          <input type="checkbox" id="rlActive" ${isActive ? 'checked' : ''}> Activ
+        </label>
+      </label>
+      <div class="grid-2" style="margin-bottom:12px">
         <div>
           <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Nume Rol (Whitelist)</label>
-          <select id="rlKey" class="input" style="padding:10px">
+          <select id="rlKey" class="input" style="padding:10px" onchange="document.getElementById('rlSvcKey').value = this.value.replace('role_', '')">
             <option value="role_animatie" ${keyVal === 'role_animatie' ? 'selected' : ''}>Animație</option>
             <option value="role_ursitoare" ${keyVal === 'role_ursitoare' ? 'selected' : ''}>Ursitoare</option>
             <option value="role_arcada_pe_suport" ${keyVal === 'role_arcada_pe_suport' ? 'selected' : ''}>Arcadă pe suport</option>
@@ -577,8 +587,28 @@ function openRoleModal(k = null) {
           </select>
         </div>
         <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Service Key (Auto-legat)</label>
+          <input type="text" id="rlSvcKey" class="input" style="padding:10px; background:var(--surface2); color:var(--dim)" value="${keyVal.replace('role_','')}" disabled>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-bottom:12px">
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Nume Afișat (Label)</label>
+          <input type="text" id="rlLabel" class="input" style="padding:10px" value="${labelVal}">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Prioritate Execuție</label>
+          <input type="number" id="rlPriority" class="input" style="padding:10px" value="${priority}">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
           <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Cuvinte cheie (virgulă)</label>
           <input type="text" id="rlPatterns" class="input" style="padding:10px" value="${patVal}">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Service Tags (virgulă)</label>
+          <input type="text" id="rlSvcTags" class="input" style="padding:10px" value="${svcTags}">
         </div>
       </div>
     </div>
@@ -595,11 +625,8 @@ function openRoleModal(k = null) {
       <div class="grid-3">
         <div><label style="font-size:11px;color:var(--dim)">București</label><input type="number" id="rlTrBuc" class="input" value="${trBuc}"></div>
         <div><label style="font-size:11px;color:var(--dim)">Ilfov</label><input type="number" id="rlTrIf" class="input" value="${trIf}"></div>
-        <div><label style="font-size:11px;color:var(--dim)">În afara IF</label>
-          <select id="rlTrOut" class="input">
-            <option value="manual_quote" ${outIf==='manual_quote'?'selected':''}>Cere Ofertă Manuală</option>
-            <option value="numeric" ${outIf!=='manual_quote'?'selected':''}>Setează Sumă Fixă</option>
-          </select>
+        <div><label style="font-size:11px;color:var(--dim)">În afara IF (RON / "manual_quote")</label>
+          <input type="text" id="rlTrOut" class="input" value="${outIf}">
         </div>
       </div>
     </div>
@@ -663,10 +690,13 @@ async function saveRoleRule() {
   
   const policy_config = {
     role_key: key,
-    active: true,
-    priority: 100,
+    service_key: document.getElementById('rlSvcKey').value,
+    label: document.getElementById('rlLabel').value.trim() || 'Nespecificat',
+    active: document.getElementById('rlActive').checked,
+    priority: parseInt(document.getElementById('rlPriority').value) || 100,
     triggers: {
       keywords: patterns,
+      service_tags: document.getElementById('rlSvcTags').value.split(',').map(s=>s.trim()).filter(Boolean),
       min_confidence: parseFloat(document.getElementById('rlConf').value) || 0.35
     },
     pricing_rules: {
@@ -677,7 +707,7 @@ async function saveRoleRule() {
       transport_rules: {
         bucharest: parseInt(document.getElementById('rlTrBuc').value) || 0,
         if: parseInt(document.getElementById('rlTrIf').value) || 0,
-        outside_if: document.getElementById('rlTrOut').value === 'manual_quote' ? 'manual_quote' : 0
+        outside_if: document.getElementById('rlTrOut').value === 'manual_quote' ? 'manual_quote' : (parseInt(document.getElementById('rlTrOut').value) || 0)
       }
     },
     constraints: {

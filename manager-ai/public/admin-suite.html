@@ -80,17 +80,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 <div class="sidebar">
   <div class="sidebar-header"><h1>⚡ <span>Admin</span> Suite</h1></div>
   <div class="nav">
-    <div class="nav-item active" data-module="dashboard"><span class="icon">📊</span>Dashboard</div>
+    <div class="nav-item" data-module="operator"><span class="icon">💬</span>Operator Desk</div>
     <div class="nav-divider"></div>
-    <div class="nav-item" data-module="crm"><span class="icon">👥</span>CRM / Clients<span class="badge" id="navCrmCount">-</span></div>
-    <div class="nav-item" data-module="memory"><span class="icon">🧠</span>Memory Inspector</div>
-    <div class="nav-item" data-module="brain"><span class="icon">🤖</span>AI Brain</div>
-    <div class="nav-divider"></div>
-    <div class="nav-item" data-module="pricing"><span class="icon">💰</span>Pricing & Rules</div>
-    <div class="nav-item" data-module="employees"><span class="icon">👔</span>Employees</div>
-    <div class="nav-divider"></div>
-    <div class="nav-item" data-module="rollout"><span class="icon">🛡️</span>Rollout / Safety</div>
-    <div class="nav-item" data-module="audit"><span class="icon">📋</span>Audit / Incidents</div>
+    <div class="nav-item" data-module="creier"><span class="icon">🧠</span>Creier AI</div>
+    <div class="nav-item" data-module="roles"><span class="icon">🎭</span>Roluri & Logică</div>
   </div>
 </div>
 
@@ -101,40 +94,23 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
   </div>
   <div class="content">
 
-    <!-- ═══ DASHBOARD ═══ -->
-    <div class="panel active" id="mod-dashboard"><div class="loader"><div class="spinner"></div></div></div>
+  <div class="content" id="mainContentArea">
 
-    <!-- ═══ CRM ═══ -->
-    <div class="panel" id="mod-crm"><div class="loader"><div class="spinner"></div></div></div>
-
-    <!-- ═══ MEMORY INSPECTOR ═══ -->
-    <div class="panel" id="mod-memory">
-      <div class="form-group"><label>Client ID</label><div style="display:flex;gap:8px"><input type="text" id="memClientId" placeholder="Enter client UUID..."><button class="btn btn-primary" onclick="loadMemory()">Inspect</button></div></div>
-      <div id="memoryContent"></div>
+    <!-- ═══ OPERATOR DESK (IFRAME) ═══ -->
+    <div class="panel" id="mod-operator" style="height: calc(100vh - 58px); padding: 0; margin: -20px -24px;">
+      <iframe src="/admin/operator-desk.html?embed=1" style="width: 100%; height: 100%; border: none; display: block;"></iframe>
     </div>
 
-    <!-- ═══ AI BRAIN ═══ -->
-    <div class="panel" id="mod-brain">
-      <div class="card" style="text-align:center;padding:32px">
-        <div style="font-size:48px;margin-bottom:12px">🧠</div>
-        <h3>AI Brain Console</h3>
-        <p style="color:var(--dim);margin:8px 0 16px">Full Brain Console with Inbox, Rules, Patterns, Coverage and Stats</p>
-        <a href="/brain/brain-console.html" class="btn btn-primary" target="_blank">Open Brain Console →</a>
-      </div>
-      <div id="brainQuickStats"></div>
+    <!-- ═══ LOGISTICS (BLANK) ═══ -->
+    <div class="panel" id="mod-logistics">
+      <div class="empty"><div class="icon">📅</div><p>Modulul de Calendar & Logistică va fi implementat aici.</p></div>
     </div>
 
-    <!-- ═══ PRICING ═══ -->
-    <div class="panel" id="mod-pricing"><div class="loader"><div class="spinner"></div></div></div>
+    <!-- ═══ CREIER AI (SIMPLIFICAT) ═══ -->
+    <div class="panel" id="mod-creier"><div class="loader"><div class="spinner"></div></div></div>
 
-    <!-- ═══ EMPLOYEES ═══ -->
-    <div class="panel" id="mod-employees"><div class="loader"><div class="spinner"></div></div></div>
-
-    <!-- ═══ ROLLOUT / SAFETY ═══ -->
-    <div class="panel" id="mod-rollout"><div class="loader"><div class="spinner"></div></div></div>
-
-    <!-- ═══ AUDIT ═══ -->
-    <div class="panel" id="mod-audit"><div class="loader"><div class="spinner"></div></div></div>
+    <!-- ═══ ROLES ═══ -->
+    <div class="panel" id="mod-roles"><div class="loader"><div class="spinner"></div></div></div>
 
   </div>
 </div>
@@ -154,12 +130,32 @@ document.querySelectorAll('.nav-item').forEach(n=>{
     const mod=n.dataset.module;
     document.getElementById('mod-'+mod).classList.add('active');
     document.getElementById('pageTitle').textContent=n.textContent.trim();
+    
+    // Toggle topbar for full-screen modules like Operator Desk
+    const topbar = document.querySelector('.topbar');
+    const content = document.querySelector('.content');
+    if(mod === 'operator') {
+      topbar.style.display = 'none';
+      content.style.padding = '0';
+      document.getElementById('mod-operator').style.height = '100vh';
+      document.getElementById('mod-operator').style.margin = '0';
+    } else {
+      topbar.style.display = 'flex';
+      content.style.padding = '20px 24px';
+    }
+    
     loadModule(mod);
   });
 });
 
-function loadModule(m){const l={dashboard:loadDashboard,crm:loadCRM,memory:()=>{},brain:loadBrainQuick,pricing:loadPricing,employees:loadEmployees,rollout:loadRollout,audit:loadAudit};if(l[m])l[m]()}
-async function api(path,opts={}){const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts});return r.json()}
+function loadModule(m){const l={operator:()=>{},creier:loadCreier,roles:loadRoles};if(l[m])l[m]()}
+async function api(path,opts={}) {
+  const token = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const r = await fetch(path, { headers, ...opts });
+  return r.json();
+}
 function timeAgo(d){const s=Math.floor((new Date()-new Date(d))/1e3);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago'}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 function openModal(h){document.getElementById('modalContent').innerHTML=h;document.getElementById('modal').classList.add('open')}
@@ -378,35 +374,238 @@ async function loadBrainQuick(){
 }
 
 // ═══════════════════════════════════════
-// PRICING
+// CREIER AI (ULTRA SIMPLU)
 // ═══════════════════════════════════════
-async function loadPricing(){
-  const d=await api(API+'/pricing/catalog');
-  const kb=await api(API+'/pricing/kb');
-  const el=document.getElementById('mod-pricing');
+let _creierCache = [];
 
-  let h=`<div class="tabs-inline"><div class="tab-inline active" onclick="showPricingTab('catalog',this)">Service Catalog (${d.total_services})</div><div class="tab-inline" onclick="showPricingTab('kb',this)">Knowledge Base (${kb.total})</div></div>`;
+async function loadCreier(){
+  const kb = await api(API+'/pricing/kb');
+  _creierCache = kb.entries || [];
+  const el = document.getElementById('mod-creier');
 
-  h+=`<div id="pricingCatalog"><table><thead><tr><th>Service</th><th>Display Name</th><th>Required Fields</th><th>Tags</th><th>Autonomy</th></tr></thead><tbody>`;
-  for(const s of d.catalog||[]){
-    h+=`<tr><td><b>${s.service_key}</b></td><td>${s.display_name}</td><td style="font-size:11px">${(s.required_fields||[]).join(', ')}</td>
-      <td>${(s.tags||[]).map(t=>'<span class="tag tag-blue">'+t+'</span> ').join('')}</td>
-      <td>${s.autonomy_allowed?'<span class="tag tag-green">YES</span>':'<span class="tag tag-red">NO</span>'}</td></tr>`}
-  h+='</tbody></table></div>';
+  let h = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+    <h2>Informații Învățate (${kb.total})</h2>
+    <button class="btn btn-primary" style="font-size:16px; padding:12px 24px; box-shadow: 0 4px 12px rgba(99,102,241,0.3)" onclick="openCreierModal()">+ Adaugă Informație Nouă</button>
+  </div>`;
 
-  h+=`<div id="pricingKb" style="display:none"><table><thead><tr><th>Key</th><th>Category</th><th>Status</th><th>Patterns</th><th>Updated</th></tr></thead><tbody>`;
-  for(const k of kb.entries||[]){
-    h+=`<tr><td><b>${k.knowledge_key}</b></td><td><span class="tag tag-blue">${k.category||'—'}</span></td>
-      <td><span class="tag tag-${k.status==='approved'?'green':'yellow'}">${k.status}</span></td>
-      <td>${k.question_patterns?.length||0}</td><td style="font-size:11px">${k.updated_at?timeAgo(k.updated_at):'—'}</td></tr>`}
-  h+='</tbody></table></div>';
+  h += `<div class="grid-3" style="gap:16px; display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">`;
+  for(const k of _creierCache){
+    h+=`<div class="card" style="cursor:pointer; transition:transform 0.2s; border:1px solid var(--border);" onclick="openCreierModalById('${k.id}')" onmouseover="this.style.borderColor='var(--pr)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="color:var(--dim); font-size:12px; margin-bottom:8px; font-weight:600">Dacă clientul întreabă despre:</div>
+      <div style="margin-bottom:12px; font-size:15px; color:var(--text); line-height:1.4">${k.question_patterns?.join(', ') || '<i>Niciun cuvânt cheie setat</i>'}</div>
+      
+      <div style="color:var(--dim); font-size:12px; margin-bottom:8px; font-weight:600">AI-ul îi va răspunde:</div>
+      <div style="font-size:14px; color:var(--text); opacity:0.9; white-space:pre-wrap;">${(k.business_rules||[]).join('\n').substring(0,250)}${(k.business_rules||[]).join('\n').length > 250 ? '...' : ''}</div>
+    </div>`;
+  }
+  h+='</div>';
   el.innerHTML=h;
 }
 
-function showPricingTab(tab,btn){
-  document.querySelectorAll('.tab-inline').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
-  document.getElementById('pricingCatalog').style.display=tab==='catalog'?'':'none';
-  document.getElementById('pricingKb').style.display=tab==='kb'?'':'none';
+function openCreierModalById(id) {
+  const k = _creierCache.find(x => x.id === id);
+  if(k) openCreierModal(k);
+}
+
+function openCreierModal(k = null) {
+  const titleText = k ? 'Editează Informația' : 'Învață AI-ul Ceva Nou';
+  const idValue = k ? k.id : '';
+  const patVal = k && k.question_patterns ? k.question_patterns.join(', ') : '';
+  const rulesVal = k && k.business_rules ? k.business_rules.join('\n') : '';
+
+  const h = `
+    <h2 style="margin-bottom:24px; font-size:24px">${titleText}</h2>
+    <input type="hidden" id="crEditId" value="${idValue}">
+    
+    <div style="margin-bottom:24px;">
+      <label style="font-size:16px; margin-bottom:8px; display:block"><b>1. Ce ar putea întreba clientul?</b></label>
+      <input type="text" id="crPatterns" class="input" style="font-size:16px; padding:14px" placeholder="Ex: cat costa ursitoarea, tarif ursitoare, pret pachet" value="${patVal}">
+      <p style="font-size:13px; color:var(--dim); margin-top:8px">Folosește cuvinte cheie despărțite prin virgulă. Când clientul folosește aceste cuvinte, AI-ul își va aminti răspunsul tău.</p>
+    </div>
+    
+    <div style="margin-bottom:24px;">
+      <label style="font-size:16px; margin-bottom:8px; display:block"><b>2. Ce trebuie să știe/răspundă asistentul AI?</b></label>
+      <textarea id="crRules" class="input" style="height:180px; font-size:16px; padding:14px; line-height:1.5" placeholder="Avem pachet cu 3 zane ursitoare la pretul de 400 RON.\nInclude masina de baloane si masina de fum.">${rulesVal}</textarea>
+    </div>
+    
+    <div style="display:flex; justify-content:space-between; margin-top:32px;">
+      ${k ? `<button class="btn btn-outline" style="color:var(--rd);border-color:var(--rd); border-radius:8px" onclick="deleteCreierRule('${idValue}')">🗑️ Șterge Accesul</button>` : '<div></div>'}
+      <div style="display:flex; gap:12px;">
+        <button class="btn btn-outline" style="border-radius:8px" onclick="closeModal()">Anulează</button>
+        <button class="btn btn-primary" style="font-size:16px; padding:0 24px; border-radius:8px" onclick="saveCreierRule()">Gata! Salvează</button>
+      </div>
+    </div>
+  `;
+  openModal(h);
+}
+
+async function saveCreierRule() {
+  const id = document.getElementById('crEditId').value;
+  const patStr = document.getElementById('crPatterns').value;
+  const rulStr = document.getElementById('crRules').value;
+
+  if(!patStr || !rulStr) return alert('Te rog completează ambele câmpuri!');
+  
+  const patterns = patStr.split(',').map(s=>s.trim()).filter(Boolean);
+  
+  let keyVal = undefined;
+  if (!id) {
+    const baseWord = patterns[0] ? patterns[0].replace(/[^a-zA-Z0-9]/g, '').slice(0, 15) : 'kb';
+    keyVal = baseWord + '_' + Math.floor(Math.random()*1000000);
+  }
+
+  const payload = {
+    category: 'general',
+    question_patterns: patterns,
+    answer_template: rulStr,
+    approval_status: 'approved'
+  };
+  if (keyVal) payload.knowledge_key = keyVal;
+
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? API+'/pricing/kb/'+id : API+'/pricing/kb';
+
+  try {
+    const btn = document.querySelector('.modal .btn-primary');
+    if(btn) { btn.textContent = 'Se salvează...'; btn.disabled = true; }
+    await api(url, { method, body: JSON.stringify(payload) });
+    closeModal();
+    loadCreier();
+  } catch(e) { alert('Eroare: ' + e.message); }
+}
+
+async function deleteCreierRule(id) {
+  if(!confirm('Ești sigur că vrei să ștergi? AI-ul va uita imediat această informație.')) return;
+  try {
+    await api(API+'/pricing/kb/'+id, { method: 'DELETE' });
+    closeModal();
+    loadCreier();
+  } catch(e) { alert('Eroare: ' + e.message); }
+}
+
+// ═══════════════════════════════════════
+// ROLURI & LOGICĂ
+// ═══════════════════════════════════════
+let _rolesCache = [];
+
+async function loadRoles(){
+  const kb = await api(API+'/pricing/kb');
+  _rolesCache = (kb.entries || []).filter(x => x.knowledge_key && x.knowledge_key.startsWith('role_'));
+  const el = document.getElementById('mod-roles');
+
+  let h = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+    <h2>Rolurile și Logica Asistentului (${_rolesCache.length})</h2>
+    <button class="btn btn-primary" style="font-size:16px; padding:12px 24px" onclick="openRoleModal()">+ Crează Rol Nou</button>
+  </div>`;
+
+  h += `<div class="grid-3" style="gap:16px; display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">`;
+  for(const k of _rolesCache){
+    h+=`<div class="card" style="cursor:pointer; transition:transform 0.2s; border:1px solid var(--border);" onclick="openRoleModalById('${k.id}')" onmouseover="this.style.borderColor='var(--pr)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <b style="font-size:16px; color:var(--text)">${k.knowledge_key.replace('role_','').toUpperCase()}</b>
+      </div>
+      <div style="color:var(--dim); font-size:12px; margin-bottom:4px; font-weight:600">Declanșatori (Ce vrea clientul?):</div>
+      <div style="margin-bottom:12px; font-size:14px; color:var(--text);">${k.question_patterns?.join(', ') || '<i>Niciunul</i>'}</div>
+      
+      <div style="color:var(--dim); font-size:12px; margin-bottom:4px; font-weight:600">Matematica/Logica Rolului:</div>
+      <div style="font-size:13px; color:var(--text); opacity:0.9; white-space:pre-wrap;">${(k.answer_template||'').substring(0,250)}</div>
+    </div>`;
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function openRoleModalById(id) {
+  const k = _rolesCache.find(x => x.id === id);
+  if(k) openRoleModal(k);
+}
+
+function openRoleModal(k = null) {
+  const titleText = k ? 'Editează Fișa Postului' : 'Definește un Rol Nou';
+  const idValue = k ? k.id : '';
+  const keyVal = k ? k.knowledge_key.replace('role_', '') : '';
+  const patVal = k && k.question_patterns ? k.question_patterns.join(', ') : '';
+  const rulesVal = k && k.answer_template ? k.answer_template : '';
+
+  const h = `
+    <h2 style="margin-bottom:24px; font-size:24px">${titleText}</h2>
+    <input type="hidden" id="rlEditId" value="${idValue}">
+    
+    <div style="margin-bottom:20px;">
+      <label style="font-size:16px; margin-bottom:8px; display:block"><b>1. Numele Rolului</b> (Selectează din listă)</label>
+      <select id="rlKey" class="input" style="font-size:16px; padding:12px">
+        <option value="Animatie" ${keyVal === 'animatie' ? 'selected' : ''}>Animație</option>
+        <option value="Ursitoare" ${keyVal === 'ursitoare' ? 'selected' : ''}>Ursitoare</option>
+        <option value="Arcada_pe_suport" ${keyVal === 'arcada_pe_suport' ? 'selected' : ''}>Arcadă pe suport</option>
+        <option value="Arcada_fara_suport" ${keyVal === 'arcada_fara_suport' ? 'selected' : ''}>Arcadă fără suport</option>
+        <option value="Vata_de_zahar" ${keyVal === 'vata_de_zahar' ? 'selected' : ''}>Vată de zahăr</option>
+        <option value="Popcorn" ${keyVal === 'popcorn' ? 'selected' : ''}>Popcorn</option>
+        <option value="Vata_si_popcorn" ${keyVal === 'vata_si_popcorn' ? 'selected' : ''}>Vată și popcorn</option>
+        <option value="Mos_Craciun" ${keyVal === 'mos_craciun' ? 'selected' : ''}>Moș Crăciun</option>
+        <option value="Parfumerie" ${keyVal === 'parfumerie' ? 'selected' : ''}>Parfumerie</option>
+        <option value="Arcada_cu_cifre_volumetrice" ${keyVal === 'arcada_cu_cifre_volumetrice' ? 'selected' : ''}>Arcadă cu cifre volumetrice</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:16px; margin-bottom:8px; display:block"><b>2. Când se activează acest rol?</b> (Ce caută clientul?)</label>
+      <input type="text" id="rlPatterns" class="input" style="font-size:16px; padding:12px" placeholder="Ex: animatori, spiderman, printesa" value="${patVal}">
+      <p style="font-size:13px; color:var(--dim); margin-top:8px">Când AI-ul vede aceste cuvinte în mesajul clientului, va descărca logica de dedesubt pentru a calcula prețul.</p>
+    </div>
+    
+    <div style="margin-bottom:24px;">
+      <label style="font-size:16px; margin-bottom:8px; display:block"><b>3. Fișa postului și Prețuri (Logica pentru AI)</b></label>
+      <textarea id="rlRules" class="input" style="height:180px; font-size:16px; padding:14px; line-height:1.5" placeholder="Pentru 2 ore tariful este 490 lei. Pentru orice ora extra se percepe 170 lei. Nu oferi reduceri de pret. Transport in IF este 50 lei.">${rulesVal}</textarea>
+    </div>
+    
+    <div style="display:flex; justify-content:space-between; margin-top:32px;">
+      ${k ? `<button class="btn btn-outline" style="color:var(--rd);border-color:var(--rd); border-radius:8px" onclick="deleteRoleRule('${idValue}')">🗑️ Desființează Rolul</button>` : '<div></div>'}
+      <div style="display:flex; gap:12px;">
+        <button class="btn btn-outline" style="border-radius:8px" onclick="closeModal()">Anulează</button>
+        <button class="btn btn-primary" style="font-size:16px; padding:0 24px; border-radius:8px" onclick="saveRoleRule()">Salvează Logica</button>
+      </div>
+    </div>
+  `;
+  openModal(h);
+}
+
+async function saveRoleRule() {
+  const id = document.getElementById('rlEditId').value;
+  const key = document.getElementById('rlKey').value.trim();
+  const patStr = document.getElementById('rlPatterns').value;
+  const rulStr = document.getElementById('rlRules').value;
+
+  if(!key || !patStr || !rulStr) return alert('Te rog completează toate cele 3 câmpuri!');
+  
+  const patterns = patStr.split(',').map(s=>s.trim()).filter(Boolean);
+  
+  const payload = {
+    knowledge_key: 'role_' + key.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase(),
+    category: 'services', // Maps to valid enum in DB
+    question_patterns: patterns,
+    answer_template: rulStr,
+    approval_status: 'approved'
+  };
+
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? API+'/pricing/kb/'+id : API+'/pricing/kb';
+
+  try {
+    const btn = document.querySelector('.modal .btn-primary');
+    if(btn) { btn.textContent = 'Se salvează...'; btn.disabled = true; }
+    await api(url, { method, body: JSON.stringify(payload) });
+    closeModal();
+    loadRoles();
+  } catch(e) { alert('Eroare: ' + e.message); }
+}
+
+async function deleteRoleRule(id) {
+  if(!confirm('Dacă ștergi, AI-ul nu va mai știi prețurile pentru acest rol! Continuăm?')) return;
+  try {
+    await api(API+'/pricing/kb/'+id, { method: 'DELETE' });
+    closeModal();
+    loadRoles();
+  } catch(e) { alert('Eroare: ' + e.message); }
 }
 
 // ═══════════════════════════════════════
@@ -509,7 +708,7 @@ async function loadAudit(){
 }
 
 // ── Init ──
-loadDashboard();
+loadCreier();
 </script>
 </body>
 </html>

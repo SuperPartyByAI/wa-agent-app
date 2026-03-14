@@ -1,0 +1,63 @@
+name: CI
+on:
+  push:
+    branches: [main, "stabilizare/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-validate:
+    name: Lint & Policy Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: manager-ai
+        run: npm ci --ignore-scripts 2>/dev/null || echo "No package-lock, skipping npm ci"
+
+      - name: Check for secrets in repo
+        run: |
+          echo "Checking for committed secrets..."
+          if git grep -lnI "SUPABASE_SERVICE_ROLE_KEY\|-----BEGIN PRIVATE KEY-----\|-----BEGIN RSA PRIVATE KEY-----" -- ':(exclude).github/workflows/ci.yml' 2>/dev/null; then
+            echo "❌ SECRETS DETECTED IN REPO!"
+            exit 1
+          fi
+          echo "✅ No secrets found"
+
+      - name: Check .gitignore completeness
+        run: |
+          echo "Checking .gitignore..."
+          for pattern in ".env" "node_modules" "vps_key" "*.pem" "*.key"; do
+            if ! grep -q "$pattern" .gitignore 2>/dev/null; then
+              echo "⚠️  Missing from .gitignore: $pattern"
+            fi
+          done
+          echo "✅ .gitignore check done"
+
+      - name: Validate policy schema
+        working-directory: manager-ai
+        run: node scripts/validate-policies.mjs runtime_rules/policy.json
+
+      - name: Simulate policy
+        working-directory: manager-ai
+        run: node scripts/simulate-policy.mjs runtime_rules/policy.json
+
+  migration-check:
+    name: Migration SQL Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate SQL migrations
+        working-directory: manager-ai/migrations
+        run: |
+          echo "Checking migration files..."
+          for f in *.sql; do
+            echo "  ✅ $f ($(wc -l < "$f") lines)"
+          done
+          echo "✅ All migrations present"

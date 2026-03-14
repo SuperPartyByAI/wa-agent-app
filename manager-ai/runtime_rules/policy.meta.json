@@ -1,0 +1,12 @@
+{
+  "version": "v1.0.0",
+  "checksum": "sha256:e40c0372d926d4c14e521bb4bb5463b270bbf26e4fb283f081d23c1e1357c2cf",
+  "rules_count": 4,
+  "coverage_count": 6,
+  "policies_count": 0,
+  "loaded_at": "2026-03-14T10:00:00.000Z",
+  "source": "initial_seed",
+  "signature_kid": "KMS://projects/superparty/keys/antigravity-sign-key",
+  "issued_at": "2026-03-14T10:00:00.000Z",
+  "expires_at": "2026-04-14T10:00:00.000Z"
+}

@@ -1,0 +1,23 @@
+# CODEOWNERS — Superparty wa-agent-app
+# Ticket: stabilizare/antigravity - Access Control
+
+# Runtime rules & policies — requires ops-team review
+/manager-ai/runtime_rules/ @SuperPartyByAI/ops-team
+/manager-ai/src/lib/ruleLoader.mjs @SuperPartyByAI/ops-team
+
+# Admin Suite & Brain Console — requires ops-team review
+/manager-ai/public/ @SuperPartyByAI/ops-team
+/manager-ai/src/api/adminSuiteRoutes.mjs @SuperPartyByAI/ops-team
+/manager-ai/src/api/brainConsoleRoutes.mjs @SuperPartyByAI/ops-team
+
+# Auth & Security — requires admin review
+/manager-ai/src/middleware/ @SuperPartyByAI/ops-team
+
+# Migrations — requires DBA/ops review
+/manager-ai/migrations/ @SuperPartyByAI/ops-team
+
+# CI/CD — requires ops review
+/.github/workflows/ @SuperPartyByAI/ops-team
+
+# Backend core
+/manager-ai/manager-ai-api.mjs @SuperPartyByAI/ops-team

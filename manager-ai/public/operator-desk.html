@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Operator Desk — Superparty</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f1117;--bg2:#181b23;--bg3:#1f2330;--bg4:#252a38;--bd:#2a2e3a;
+  --tx:#e4e6ed;--tx2:#8b8fa3;--tx3:#5c6070;
+  --ac:#6c8cff;--ac2:rgba(108,140,255,.12);
+  --gr:#34d399;--gr2:rgba(52,211,153,.12);
+  --or:#fb923c;--or2:rgba(251,146,60,.12);
+  --rd:#f87171;--rd2:rgba(248,113,113,.12);
+  --yl:#fbbf24;--yl2:rgba(251,191,36,.12);
+  --pu:#a78bfa;--pu2:rgba(167,139,250,.12);
+  --r:10px;--rs:6px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:100vh;overflow:hidden}
+
+/* TOP */
+.top{display:flex;align-items:center;height:46px;background:var(--bg2);border-bottom:1px solid var(--bd);padding:0 14px;gap:10px}
+.logo{font-size:13px;font-weight:700;color:var(--ac)}.logo span{color:var(--tx3);font-weight:400;font-size:11px}
+.tabs{display:flex;gap:2px;margin-left:14px}
+.tab{padding:5px 12px;border-radius:var(--rs);cursor:pointer;font-size:11px;font-weight:500;color:var(--tx2);transition:.15s;user-select:none}
+.tab:hover{color:var(--tx);background:var(--bg3)}.tab.act{color:var(--ac);background:var(--ac2)}
+.tab .bg{display:inline-block;background:var(--rd);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:3px;font-weight:700}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.hp{font-size:10px;color:var(--gr);display:flex;align-items:center;gap:3px}.hp::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--gr)}
+.el{font-size:10px;color:var(--tx3);text-decoration:none;padding:3px 8px;border:1px solid var(--bd);border-radius:var(--rs)}.el:hover{color:var(--tx)}
+
+/* LAYOUT */
+.main{display:flex;height:calc(100vh - 46px)}
+.left{width:290px;min-width:220px;border-right:1px solid var(--bd);display:flex;flex-direction:column}
+.sb{padding:7px 9px;border-bottom:1px solid var(--bd)}
+.sb input{width:100%;padding:6px 9px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg2);color:var(--tx);font-size:11px;outline:none}
+.sb input:focus{border-color:var(--ac)}
+.flt{display:flex;gap:2px;padding:5px 9px;border-bottom:1px solid var(--bd);overflow-x:auto}
+.fb{padding:2px 7px;border-radius:10px;font-size:9px;font-weight:500;cursor:pointer;border:1px solid var(--bd);color:var(--tx2);background:transparent;white-space:nowrap}
+.fb.act{background:var(--ac2);color:var(--ac);border-color:var(--ac)}
+.cl{flex:1;overflow-y:auto}
+.cv{padding:9px 10px;border-bottom:1px solid var(--bd);cursor:pointer;transition:.1s;display:flex;gap:8px;align-items:flex-start}
+.cv:hover{background:var(--bg3)}.cv.sel{background:var(--bg4);border-left:3px solid var(--ac)}
+.cv-a{width:32px;height:32px;border-radius:50%;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--ac)}
+.cv-a img{width:100%;height:100%;object-fit:cover}
+.cv-i{flex:1;min-width:0}
+.cv-t{display:flex;justify-content:space-between;margin-bottom:1px}
+.cv-n{font-size:11px;font-weight:600}.cv-d{font-size:9px;color:var(--tx3)}
+.cv-p{font-size:8px;color:var(--tx3);margin-bottom:1px}
+.cv-m{font-size:10px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+.cv-b{display:flex;gap:3px;flex-wrap:wrap}
+.bs{font-size:8px;font-weight:600;padding:1px 5px;border-radius:7px;text-transform:uppercase;letter-spacing:.3px}
+.b-open{background:var(--yl2);color:var(--yl)}.b-shadow{background:var(--pu2);color:var(--pu)}.b-pending{background:var(--or2);color:var(--or)}
+.b-blocked{background:var(--rd2);color:var(--rd)}.b-sent{background:var(--gr2);color:var(--gr)}.b-info{background:var(--bg3);color:var(--tx3)}
+.b-appr{background:var(--gr2);color:var(--gr)}.b-plan{background:var(--ac2);color:var(--ac)}
+
+/* CENTER */
+.center{flex:1;display:flex;flex-direction:column;min-width:0}
+.es{flex:1;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:12px}
+.dh{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.dh-l{display:flex;align-items:center;gap:10px}
+.dh-av{width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;background:var(--ac)}
+.dh-av img{width:100%;height:100%;object-fit:cover}
+.dh h2{font-size:13px;font-weight:600}.dh .sub{font-size:9px;color:var(--tx3)}
+.dh .sub .ph{color:var(--tx2);font-weight:500}
+.dh .ml{font-size:10px;color:var(--ac);cursor:pointer}
+.msgs{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:5px}
+.m{max-width:72%;padding:7px 10px;border-radius:var(--r);font-size:11px;line-height:1.4}
+.m.mc{align-self:flex-start;background:var(--bg2);border:1px solid var(--bd)}
+.m.ag{align-self:flex-end;background:var(--ac2);border:1px solid rgba(108,140,255,.15)}
+.m.ai{align-self:flex-end;background:var(--pu2);border:1px solid rgba(167,139,250,.15)}
+.mw{font-size:8px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px}
+.mt{font-size:8px;color:var(--tx3);margin-top:1px}
+
+/* PLAN CARD */
+.pc{margin:6px 14px;padding:9px 10px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r)}
+.pc h4{font-size:10px;font-weight:600;color:var(--ac);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.pr{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:3px}
+.pf{font-size:10px}.pf .l{color:var(--tx3)}.pf .v{color:var(--tx);font-weight:500}
+.pm{font-size:9px;color:var(--or);margin-top:3px}
+.pbar{height:3px;background:var(--bd);border-radius:2px;margin-top:4px;overflow:hidden}
+.pbar-f{height:100%;background:var(--ac);border-radius:2px;transition:.3s}
+
+/* AI BOX */
+.ab{border-top:1px solid var(--bd);padding:10px 14px;background:var(--bg2)}
+.al{font-size:9px;font-weight:600;color:var(--pu);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.al .ta{font-size:8px;padding:1px 5px;border-radius:3px;background:var(--ac2);color:var(--ac)}
+.al .sf{font-size:8px;padding:1px 5px;border-radius:3px}
+.m.ai{background:var(--bg3);border:1px solid var(--bd)}
+.m.ag{background:var(--pu2);color:var(--pu)}
+.mw{font-size:9px;font-weight:600;margin-bottom:2px;color:var(--tx3)}
+.mt{font-size:8px;color:var(--tx3);text-align:right;margin-top:4px}
+.ab{padding:14px;border-top:1px solid var(--bd);background:var(--bg)}
+.al{font-size:11px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.at{width:100%;height:60px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);color:var(--tx);font-family:inherit;font-size:12px;padding:8px;resize:none;margin-bottom:10px}
+.at:focus{outline:none;border-color:var(--ac)}
+.aa{display:flex;gap:6px;flex-wrap:wrap}
+.btn{padding:8px 12px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;border:none;color:#fff;transition:.1s}
+.btn:hover{opacity:.9}
+.ba{background:var(--gr)} .be{background:var(--bg3);color:var(--tx);border:1px solid var(--bd)}
+.bc{background:var(--or)} .bh{background:var(--rd)}
+.bm{background:var(--tx2)} .br{background:var(--ac)}
+.ta{background:var(--yl2);color:var(--yl);padding:1px 5px;border-radius:4px;font-size:9px}
+
+/* New structured blocks */
+.block{padding:14px;border-bottom:1px solid var(--bd)}
+.block-hd{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--tx3);margin-bottom:8px;letter-spacing:.5px}
+.es-card{display:flex;gap:12px;flex-wrap:wrap;background:var(--bg2);padding:10px;border-radius:var(--r);border:1px solid var(--bd)}
+.es-i{display:flex;flex-direction:column;gap:2px}
+.es-l{font-size:9px;color:var(--tx3)}
+.es-v{font-size:11px;font-weight:600}
+.qk-list{display:flex;flex-wrap:wrap;gap:6px}
+.qk-i{background:var(--gr2);color:var(--gr);border:1px solid transparent;padding:4px 8px;border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:4px}
+.qk-m{background:var(--rd2);color:var(--rd);border:1px solid transparent;padding:4px 8px;border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:4px}
+.nq-card{background:var(--ac2);color:var(--ac);padding:14px;border-radius:8px;border:1px solid var(--ac);font-size:14px;font-weight:600;text-align:center}
+
+.rp-hid{display:none!important}
+.rt{position:absolute;top:0;right:0;width:320px;height:100%;background:var(--bg);border-left:1px solid var(--bd);display:flex;flex-direction:column;z-index:20;transition:.2s;transform:translateX(100%)}
+.rt:not(.hid){transform:translateX(0)}
+.rt-h{padding:14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+
+/* FIELD WRITE LOG */
+.fw{margin:6px 14px;padding:7px 9px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--rs)}
+.fw h5{font-size:9px;font-weight:600;color:var(--tx2);text-transform:uppercase;margin-bottom:4px}
+.fw-r{font-size:9px;margin-bottom:2px;padding:2px 0;border-bottom:1px solid var(--bd)}
+.fw-r:last-child{border:none}
+.fw-ok{color:var(--gr)}.fw-bl{color:var(--or)}.fw-er{color:var(--rd)}
+
+/* RIGHT PANEL */
+.right{width:300px;border-left:1px solid var(--bd);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;transition:.2s}
+.right.hid{width:0;border:none}
+.rh{padding:9px 10px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.rh h3{font-size:12px;font-weight:600}
+.rx{background:none;border:none;color:var(--tx2);cursor:pointer;font-size:13px;padding:2px 5px}
+.rb{flex:1;overflow-y:auto;padding:9px 10px}
+.ms{margin-bottom:12px}.ms h4{font-size:9px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.mf{background:var(--bg);padding:5px 7px;border-radius:var(--rs);margin-bottom:3px;border:1px solid var(--bd)}
+.mf .l{font-size:9px;color:var(--tx3)}.mf .v{font-size:11px}
+.mf-a{display:flex;gap:2px;margin-top:3px}
+.mf-a button{font-size:8px;padding:1px 5px;border-radius:3px;border:1px solid var(--bd);background:transparent;color:var(--tx2);cursor:pointer}
+.mf-a button:hover{color:var(--tx)}.mf-a .w{color:var(--rd);border-color:var(--rd)}
+.na{margin-top:8px}.na textarea{width:100%;padding:5px 7px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg);color:var(--tx);font-size:10px;font-family:inherit;resize:vertical;min-height:36px;outline:none}
+.nb{margin-top:3px;padding:3px 8px;font-size:9px;background:var(--ac2);color:var(--ac);border:1px solid var(--ac);border-radius:var(--rs);cursor:pointer}
+
+/* TABS VIEWS */
+.tv{display:none;flex:1;padding:14px 18px;overflow-y:auto}.tv.act{display:block}
+
+/* RULES + SERVICES */
+.rc{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:7px}
+.rc:hover{border-color:var(--tx3)}
+.rc-t{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.rc-n{font-size:12px;font-weight:600}
+.tgl{position:relative;width:30px;height:16px}
+.tgl input{display:none}
+.tgl label{display:block;width:30px;height:16px;border-radius:8px;background:var(--bd);cursor:pointer;transition:.2s}
+.tgl label::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--tx2);transition:.2s}
+.tgl input:checked+label{background:var(--gr)}.tgl input:checked+label::after{left:16px;background:#fff}
+.rc-d{font-size:10px;color:var(--tx2);line-height:1.3;margin-bottom:4px}
+.rc-tg{display:flex;gap:3px;flex-wrap:wrap}
+.rt{font-size:8px;padding:1px 5px;border-radius:3px;background:var(--bg);border:1px solid var(--bd);color:var(--tx3)}
+.adb{padding:7px 12px;border:2px dashed var(--bd);border-radius:var(--r);color:var(--tx2);font-size:11px;cursor:pointer;text-align:center;background:transparent;width:100%}
+.adb:hover{border-color:var(--ac);color:var(--ac)}
+
+/* FIELD REGISTRY */
+.fr-sec{margin-top:18px}
+.fr-h{font-size:13px;font-weight:600;margin-bottom:4px}
+.fr-sub{font-size:10px;color:var(--tx2);margin-bottom:10px}
+.fr-c{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.fr-c:hover{border-color:var(--tx3)}
+.fr-l{flex:1}
+.fr-n{font-size:11px;font-weight:600;margin-bottom:2px}
+.fr-k{font-size:8px;color:var(--tx3);font-family:monospace;margin-bottom:3px}
+.fr-d{font-size:9px;color:var(--tx2);margin-bottom:3px}
+.fr-tg{display:flex;gap:3px;flex-wrap:wrap}
+.ft{font-size:7px;padding:1px 5px;border-radius:3px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.ft-auto{background:var(--gr2);color:var(--gr)}.ft-sens{background:var(--rd2);color:var(--rd)}.ft-cust{background:var(--or2);color:var(--or)}
+.ft-req{background:var(--ac2);color:var(--ac)}.ft-opt{background:var(--bg3);color:var(--tx3)}.ft-map{background:var(--bg);color:var(--tx3);border:1px solid var(--bd)}
+.fr-r{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:60px}
+.fr-st{font-size:8px;padding:2px 6px;border-radius:3px;font-weight:600;text-transform:uppercase}
+.st-auto{background:var(--gr2);color:var(--gr)}.st-sens{background:var(--rd2);color:var(--rd)}.st-cust{background:var(--or2);color:var(--or)}.st-no{background:var(--bg3);color:var(--tx3)}
+.fr-ed{font-size:8px;color:var(--ac);cursor:pointer;text-decoration:underline}
+
+/* SVC CARDS */
+.sc{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:7px}
+.sc h4{font-size:11px;font-weight:600;margin-bottom:5px}
+.sc h4 span{color:var(--tx3);font-weight:400;font-size:9px}
+.sc .fl{display:flex;flex-wrap:wrap;gap:3px}
+.sc .fi{font-size:8px;padding:1px 5px;border-radius:3px}
+.fi-r{background:var(--ac2);color:var(--ac)}.fi-o{background:var(--bg);color:var(--tx3);border:1px solid var(--bd)}
+.sc .qs{margin-top:4px;font-size:9px;color:var(--tx3)}
+.sc .stat{margin-top:4px;display:flex;gap:6px;font-size:8px;color:var(--tx3)}
+.sc .sn{color:var(--gr)}.sc .ss{color:var(--rd)}.sc .sc_{color:var(--or)}
+
+/* ADMIN */
+.ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.ac{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:10px;cursor:pointer;text-decoration:none;color:var(--tx);display:block}
+.ac:hover{border-color:var(--ac)}.ac h4{font-size:11px;font-weight:600;margin-bottom:2px}.ac p{font-size:9px;color:var(--tx2)}
+
+/* MODAL */
+.mo-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}.mo-bg.sh{display:flex}
+.mo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:14px;width:460px;max-height:80vh;overflow-y:auto}
+.mo h3{margin-bottom:8px;font-size:13px}
+.mo input,.mo textarea,.mo select{width:100%;padding:6px 7px;margin-bottom:6px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg);color:var(--tx);font-size:11px;font-family:inherit;outline:none}
+.mo .fg{margin-bottom:8px}.mo .fl{font-size:9px;color:var(--tx2);margin-bottom:2px}
+.mo .mr{display:flex;gap:5px;justify-content:flex-end;margin-top:8px}
+.mo .ms_{padding:5px 12px;background:var(--ac);color:#fff;border:none;border-radius:var(--rs);cursor:pointer;font-size:10px;font-weight:600}
+.mo .mc{padding:5px 12px;background:transparent;color:var(--tx2);border:1px solid var(--bd);border-radius:var(--rs);cursor:pointer;font-size:10px}
+.mo .chk{display:flex;align-items:center;gap:5px;font-size:10px;margin-bottom:4px}
+.mo .chk input{width:auto;margin:0}
+
+/* TOAST */
+.toast{position:fixed;bottom:14px;right:14px;padding:7px 12px;border-radius:var(--rs);font-size:11px;font-weight:500;z-index:200;opacity:0;transition:.3s}
+.toast.sh{opacity:1}.toast.ok{background:var(--gr);color:#0f1117}.toast.er{background:var(--rd);color:#fff}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="logo">AI Operator Desk <span>· Superparty</span></div>
+  <div class="top-r">
+    <div class="hp" id="hDot">OK</div>
+    <a class="el" href="admin-suite.html" target="_blank">Admin Suite ↗</a>
+    <a class="el" href="../brain/brain-console.html" target="_blank">Brain Console ↗</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="left" id="lP">
+    <div class="sb"><input type="text" id="sBox" placeholder="Caută client sau mesaj..."></div>
+    <div class="flt">
+      <div class="fb act" data-f="all">Toate</div>
+      <div class="fb" data-f="pending">De revizuit</div>
+      <div class="fb" data-f="shadow">Shadow</div>
+      <div class="fb" data-f="open">Deschise</div>
+    </div>
+    <div class="cl" id="cList"></div>
+  </div>
+
+  <div class="center" id="cP"><div class="es" id="emS">Selectează o conversație</div></div>
+  <div class="right hid" id="rP">
+    <div class="rh"><h3 id="mN">Profil & Memorie</h3><button class="rx" onclick="tgMem(0)">✕</button></div>
+    <div class="rb" id="mB"></div>
+  </div>
+</div>
+
+<!-- FIELD MODAL -->
+<div class="mo-bg" id="fM">
+<div class="mo">
+  <h3 id="fMT">Câmp nou</h3>
+  <div class="fg"><div class="fl">Cheie câmp *</div><input id="fK" placeholder="ex: indoor_outdoor"></div>
+  <div class="fg"><div class="fl">Etichetă *</div><input id="fL" placeholder="ex: Interior/Exterior"></div>
+  <div class="fg"><div class="fl">Tip</div><select id="fTy"><option value="text">Text</option><option value="number">Număr</option><option value="boolean">Da/Nu</option><option value="date">Dată</option><option value="time">Oră</option><option value="select">Selecție</option><option value="multiselect">Selecție multiplă</option><option value="list">Listă</option><option value="notes">Note</option></select></div>
+  <div class="fg"><div class="fl">Servicii (separate cu virgulă)</div><input id="fSvc" placeholder="animator, personaje, mascote"></div>
+  <div class="fg"><div class="fl">Întrebarea de pus</div><textarea id="fQ" rows="2" placeholder="Ce întreabă AI-ul?"></textarea></div>
+  <div class="fg"><div class="fl">Text clarificare</div><input id="fCl" placeholder="Text suplimentar dacă e ambiguu"></div>
+  <div class="fg"><div class="fl">Ordinea întrebării</div><input id="fOr" type="number" value="50"></div>
+  <div class="fg"><div class="fl">Entitate stocare</div><input id="fSE" value="ai_event_plans"></div>
+  <div class="fg"><div class="fl">Coloană stocare *</div><input id="fSP" placeholder="ex: venue_type"></div>
+  <div class="fg"><div class="fl">Tip stocare</div><select id="fST"><option value="column">Coloană directă</option><option value="json_path">Cale JSON</option><option value="array_merge">Array (adaugă)</option><option value="array_replace">Array (înlocuiește)</option></select></div>
+  <div class="fg"><div class="fl">Valori permise (separate cu virgulă)</div><input id="fAV" placeholder="ex: interior, exterior"></div>
+  <div class="chk"><input type="checkbox" id="fReq"><label for="fReq">Obligatoriu</label></div>
+  <div class="chk"><input type="checkbox" id="fCR"><label for="fCR">Necesar la creare</label></div>
+  <div class="chk"><input type="checkbox" id="fQR"><label for="fQR">Necesar pentru cotație</label></div>
+  <div class="chk"><input type="checkbox" id="fUA" checked><label for="fUA">Permite actualizare</label></div>
+  <div class="chk"><input type="checkbox" id="fCA" checked><label for="fCA">Cere clarificare dacă e ambiguu</label></div>
+  <div class="chk"><input type="checkbox" id="fSn"><label for="fSn">⚠ Sensibil (necesită operator)</label></div>
+  <div class="chk"><input type="checkbox" id="fCH"><label for="fCH">🔧 Necesită handler special</label></div>
+  <div class="chk"><input type="checkbox" id="fAc" checked><label for="fAc">Activ</label></div>
+  <div class="mr"><button class="mc" onclick="closeFM()">Anulează</button><button class="ms_" onclick="saveFM()">Salvează</button></div>
+</div>
+</div>
+
+<!-- RULE MODAL -->
+<div class="mo-bg" id="rM">
+<div class="mo">
+  <h3>Regulă nouă</h3>
+  <input id="rmN" placeholder="Nume regulă">
+  <textarea id="rmD" rows="2" placeholder="Descriere"></textarea>
+  <select id="rmT"><option value="">Când se aplică...</option><option value="PRICE_QUESTION">Preț</option><option value="COSTUME_QUERY">Costume</option><option value="RESCHEDULE">Reprogramare</option><option value="COMPLAINT">Plângere</option><option value="GENERAL">General</option></select>
+  <select id="rmB"><option value="">Ce face AI-ul...</option><option value="CLARIFY_FIRST">Clarificare</option><option value="USE_KB">Răspunde din KB</option><option value="HANDOFF">Operator</option><option value="AUTO_REPLY">Auto</option><option value="BLOCK">Blochează</option></select>
+  <div class="mr"><button class="mc" onclick="closeRM()">Anulează</button><button class="ms_" onclick="saveR()">Salvează</button></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API=location.origin;
+const TK=localStorage.getItem('admin_token')||'';
+const H=()=>({'Content-Type':'application/json',...(TK?{'Authorization':`Bearer ${TK}`}:{})});
+let inbox=[],selId=null,curCl=null,curDec=null,filt='all',editFieldId=null;
+
+function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.className=`toast ${ok?'ok':'er'} sh`;setTimeout(()=>t.classList.remove('sh'),2500)}
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+function ago(iso){if(!iso)return'';const mn=Math.floor((Date.now()-new Date(iso))/60000);return mn<1?'acum':mn<60?mn+'m':mn<1440?Math.floor(mn/60)+'h':Math.floor(mn/1440)+'z'}
+function sfC(s){if(!s)return'';if(s.includes('block'))return'sf-b';if(s.includes('review')||s.includes('warn'))return'sf-w';return'sf-ok'}
+
+// Avatar helper: WhatsApp photo or initials
+const avColors=['#6366f1','#ec4899','#14b8a6','#f97316','#8b5cf6','#06b6d4','#84cc16','#e11d48','#0ea5e9','#d946ef'];
+function avHtml(url, name, sz) {
+  if (url) return `<img src="${esc(url)}" onerror="this.parentElement.innerHTML=avInit('${esc(name)}')" alt="">`;
+  return avInit(name);
+}
+function avInit(name) {
+  const n = (name||'?').replace(/[^a-zA-Z0-9ăîșțâ ]/g,'').trim();
+  const parts = n.split(/\s+/);
+  const ini = parts.length>1 ? (parts[0][0]+(parts[1]?.[0]||'')).toUpperCase() : n.substring(0,2).toUpperCase();
+  const ci = Math.abs([...n].reduce((a,c)=>a+c.charCodeAt(0),0)) % avColors.length;
+  return `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${avColors[ci]};border-radius:50%;font-size:inherit">${ini}</span>`;
+}
+
+// INIT HELPER
+function checkH(){fetch(`${API}/health`).then(r=>r.json()).then(d=>{
+  const h=document.getElementById('hDot');h.textContent=`${d.status} · v2.2 (UI Nou)`;h.style.color=d.status==='ok'?'var(--gr)':'var(--rd)';
+}).catch(e=>{const h=document.getElementById('hDot');h.textContent='Offline';h.style.color='var(--rd)';})}
+
+document.querySelectorAll('.fb').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.fb').forEach(x=>x.classList.remove('act'));f.classList.add('act');filt=f.dataset.f;renderList()}));
+document.getElementById('sBox').addEventListener('input',e=>renderList(e.target.value));
+
+// INBOX
+async function loadInbox(){
+  try{
+    const r=await fetch(`${API}/api/operator/inbox?limit=80&_t=${Date.now()}`,{headers:H(), cache: 'no-store'});
+    const d=await r.json();
+    inbox=d.inbox||[];
+    const cBg=document.getElementById('cBg');
+    if(cBg) cBg.textContent=inbox.length;
+    renderList();
+  }
+  catch(e){console.error(e);toast('Eroare încărcare inbox',false)}
+}
+function renderList(q=''){
+  let it=inbox;if(filt!=='all')it=it.filter(c=>c.status===filt||(filt==='pending'&&!c.operator_verdict));
+  if(q){const lq=q.toLowerCase();it=it.filter(c=>(c.client_name||'').toLowerCase().includes(lq)||(c.client_message||'').toLowerCase().includes(lq)||(c.client_phone||'').includes(lq))}
+  document.getElementById('cList').innerHTML=it.map(c=>`
+    <div class="cv ${c.id===selId?'sel':''}" onclick="selConv('${c.id}')">
+      <div class="cv-a">${avHtml(c.client_avatar, c.client_name)}</div>
+      <div class="cv-i">
+        <div class="cv-t"><span class="cv-n">${esc(c.client_name)}</span><span class="cv-d">${ago(c.updated_at)}</span></div>
+        ${c.client_phone?`<div class="cv-p">📞 ${esc(c.client_phone)}</div>`:''}
+        <div class="cv-m">${esc(c.client_message||'Fără mesaje')}</div>
+        <div class="cv-b">
+          <span class="bs b-${c.operator_verdict==='approved'?'appr':c.status}">${c.operator_verdict==='approved'?'Aprobat':c.status==='shadow'?'Shadow':c.status==='pending'?'Revizuire':c.status==='blocked'?'Blocat':'Deschis'}</span>
+          ${c.tool_action?`<span class="bs b-info">🔧 ${esc(c.tool_action)}</span>`:''}
+          ${c.has_event_plan?`<span class="bs b-plan">📋 Plan</span>`:''}
+          ${c.safety_class?`<span class="bs ${c.safety_class.includes('block')?'b-blocked':c.safety_class.includes('review')?'b-pending':'b-sent'}">${esc(c.safety_class.replace(/_/g,' '))}</span>`:''}
+        </div>
+      </div>
+    </div>`).join('')}
+
+// SELECT CONVERSATION
+async function selConv(id){
+  selId=id;const it=inbox.find(i=>i.id===id);curCl=it?.client_id;curDec=it?.ai_decision_id;
+  renderList(document.getElementById('sBox')?.value||'');
+  const cp=document.getElementById('cP');cp.innerHTML='<div class="es">Se încarcă...</div>';
+  try{
+    const r=await fetch(`${API}/api/admin/crm/clients/${curCl}?_t=${Date.now()}`,{headers:H(), cache: 'no-store'});const d=await r.json();
+    const cl=d.client||{},msgs=d.latest_messages||[],plans=d.event_plans||[];
+    window.curDecisions = d.ai_decisions || []; // cache for dashboard
+    const newestClientMsg = msgs.find(m => m.sender_type === 'client') || msgs[0];
+    const aiR = newestClientMsg?.ai_reply || it?.ai_reply || '';
+    const tool = newestClientMsg?.tool_action || it?.tool_action || '';
+    const safe = newestClientMsg?.safety_class || it?.safety_class || '';
+    const conf = newestClientMsg?.confidence || it?.confidence || '';
+    const ap=plans.find(p=>['draft','active'].includes(p.status));
+
+    // Get field analysis if plan exists
+    let ad={};
+    if(ap&&ap.requested_services?.length){
+      try{
+        const ar=await fetch(`${API}/api/operator/services/${ap.requested_services[0]}/analyze?plan_id=${ap.id}`,{headers:H()});
+        ad=await ar.json();
+      }catch(e){}
+    }
+
+    // Use identity from inbox item (already resolved server-side)
+    const cName = it?.client_name || cl.full_name || cl.public_alias || 'Client';
+    const cPhone = it?.client_phone || null;
+    const cAvatar = it?.client_avatar || cl.avatar_url || null;
+    const cBrand = it?.client_brand || cl.brand_key || null;
+    const isRecurrent = (d.conversations||[]).length > 1;
+
+    // Build the "Zen" Unified Sections
+    // 1. Unified Identity & Context Header
+    let html = `
+      <div class="dh">
+        <div class="dh-l">
+          <div class="dh-av">${avHtml(cAvatar, cName, 46)}</div>
+          <div>
+            <h2 style="font-size:16px">${esc(cName)}</h2>
+            <span class="sub" style="font-size:11px">
+              ${cPhone?`<span class="ph" style="color:var(--tx)">📞 ${esc(cPhone)}</span> · `:''}
+              ${isRecurrent ? '<span style="color:var(--ac);font-weight:700">🔄 Recurent</span> · ' : '<span style="color:var(--gr);font-weight:700">Nou</span> · '}
+              ${msgs.length} mesaje
+            </span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span class="es-v ${safe?.includes('block')?'b-blocked':safe?.includes('review')?'b-pending':'b-info'}" style="padding:4px 8px;border-radius:4px">${safe ? esc(safe.replace(/_/g,' ')) : (ap ? 'Detectare rutare...' : (tool ? 'Acțiune Generală' : 'Fără plan'))}</span>
+            <span style="font-size:9px;color:var(--tx3)">${it?.operator_verdict==='approved'?'✓ Verificat Operator':'Rutare Automată AI'}</span>
+          </div>
+          <button class="btn bm" onclick="tgMem(1,'${curCl}')">📋 Profil Client</button>
+        </div>
+      </div>`;
+
+    // 2. Compact Context Pills (Ce stim / Ce lipseste)
+    if (ad.next_question) {
+        html += `<div style="margin-top:10px;padding:8px 12px;background:rgba(108,140,255,0.08);border-left:3px solid var(--ac);font-size:12px;color:var(--ac);font-weight:500;"><strong>Întrebarea care urmează:</strong> „${esc(ad.next_question)}"</div>`;
+      }
+
+    // 3. Full Conversation + AI Draft appended inline
+    // 3. Full Conversation (Clickable Client Messages)
+    html += `
+      <div class="msgs" id="mA" style="background:var(--bg); flex:1">
+      ${msgs.length?[...msgs].reverse().map(m=>{
+        const w=m.sender_type==='client'?'mc':m.sender_type==='ai'?'ai':'ag';
+        const isC = w==='mc';
+        const dJson = isC ? encodeURIComponent(JSON.stringify({
+            txt: m.ai_reply || '',
+            tool: m.tool_action || '',
+            safe: m.safety_class || '',
+            conf: m.confidence || '',
+            dec: m.ai_decision_id || curDec
+        })) : '';
+        const clk = isC ? `onclick="xpD(this, '${dJson}')" style="cursor:pointer; transition:transform 0.1s" onmouseover="this.style.transform='scale(1.01)'" onmouseout="this.style.transform='scale(1)'"` : '';
+        return`<div class="m ${w}" ${clk}><div class="mw">${isC?'👤 Client (Apasă pentru Draft AI)' : w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`
+      }).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}
+    </div>`;
+
+    cp.innerHTML = html;
+    setTimeout(()=>{const a=document.getElementById('mA');if(a)a.scrollTop=a.scrollHeight;},50);
+  }catch(e){cp.innerHTML=`<div class="es" style="color:var(--rd)">Eroare: ${e.message}</div>`}
+}
+
+// TIMELINE INLINE DRAFT
+let cDbx = null;
+function xpD(el, j) {
+    if (cDbx) cDbx.remove();
+    if (!j) return;
+    const p = JSON.parse(decodeURIComponent(j));
+    if (!p.txt && !p.tool) { toast('Nu există draft pentru acest mesaj.', false); return; }
+    
+    const bx = document.createElement('div');
+    bx.className = 'ab inline-draft';
+    bx.style.cssText = 'background:var(--bg2);padding:14px;border-radius:var(--r);margin-top:4px;margin-bottom:16px;border:1px solid var(--ac);margin-left:auto;width:95%;box-shadow:0 4px 12px rgba(0,0,0,0.1);animation:si 0.2s ease-out;';
+    
+    bx.innerHTML = `
+        <div class="al" style="font-size:11px;color:var(--tx);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+          <div>🤖 Draft Răspuns AI:
+            ${p.tool?`<span class="ta">🔧 ${esc(p.tool)}</span>`:''}
+            ${p.conf?`<span class="sf sf-ok" style="background:transparent;border:1px solid var(--bd);color:var(--tx3)">${p.conf}% acuratețe</span>`:''}
+          </div>
+          <button onclick="this.parentElement.parentElement.remove()" style="background:transparent;border:none;color:var(--tx3);cursor:pointer;font-size:16px">×</button>
+        </div>
+        <textarea class="at rxInl" style="height:70px;font-size:13px;border-color:#3b4054">${esc(p.txt)}</textarea>
+        <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn ok" onclick="doActI('approve', '${p.dec}', this)">✅ Aprobă Răspunsul</button>
+            <button class="btn wr" onclick="doActI('save_edit', '${p.dec}', this)">🎓 Corectează Manual</button>
+        </div>
+    `;
+    el.parentNode.insertBefore(bx, el.nextSibling);
+    cDbx = bx;
+}
+
+// REAL OPERATOR ACTIONS (INLINE)
+async function doActI(type, did, btn){
+  const txt = btn.parentElement.parentElement.querySelector('.rxInl').value||'';
+  try{
+    let ep,body;
+    if(type==='approve'){
+      ep='/api/operator/action/approve';body={conversation_id:selId,decision_id:did||curDec,reply_text:txt};
+    }else if(type==='save_edit'){
+      ep='/api/operator/action/edit';body={conversation_id:selId,decision_id:did||curDec,original_reply:'',edited_reply:txt};
+    }else return;
+    const r=await fetch(`${API}${ep}`,{method:'POST',headers:H(),body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.ok){toast({approve:'✓ Aprobat — efect real',save_edit:'💾 Editare salvată — corecție înregistrată'}[type]||'Salvat');if(cDbx)cDbx.remove();await loadInbox()}
+    else toast('Eroare: '+(d.error||'necunoscut'),false);
+  }catch(e){toast('Eroare: '+e.message,false)}
+}
+
+
+// MEMORY
+function tgMem(show,cid){const p=document.getElementById('rP');if(show){p.classList.remove('hid');p.style.display='flex';loadMem(cid||curCl)}else{p.classList.add('hid');p.style.display='none'}}
+async function loadMem(cid){if(!cid)return;const b=document.getElementById('mB');b.innerHTML='<div style="color:var(--tx3);padding:14px">Se încarcă...</div>';
+  try{const r=await fetch(`${API}/api/admin/memory/${cid}?_t=${Date.now()}`,{headers:H(), cache: 'no-store'});const d=await r.json();const mem=d.memory||{},plans=d.event_plans||[],quotes=d.quotes||[];
+    document.getElementById('mN').textContent=mem.client_name||'Client';
+    const autoActs=(window.curDecisions||[]).filter(x=>x.reply_status==='sent'||x.operational_mode==='safe_autoreply_mode');
+    b.innerHTML=`
+      <div class="ms" style="border-left: 3px solid var(--ac)">
+        <h4>⚡️ Dashboard Activitate Automată AI</h4>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">Acțiunile trimise direct de AI fără validarea ta.</div>
+        ${autoActs.length ? autoActs.map(x=>`<div class="mf" style="flex-direction:column;align-items:flex-start;gap:6px;background:var(--bg);padding:10px;border-radius:6px;margin-bottom:8px">
+            <div class="l" style="font-size:10px;color:var(--ac)">${new Date(x.created_at).toLocaleString('ro-RO')} · ${x.confidence_score||'?'}% Siguranță</div>
+            <div class="v" style="font-size:12px;color:var(--tx);white-space:normal;line-height:1.4">${esc(x.suggested_reply||x.tool_action_suggested)}</div>
+        </div>`).join('') : '<div style="font-size:12px;color:var(--tx3);text-align:center;padding:10px">Nicio acțiune autonomă recentă.</div>'}
+      </div>
+      
+      <div class="ms"><h4>📋 Profil Client</h4>${mf('Nume',mem.client_name||'—')}${mf('Locație',mem.location||mem.preferences?.location||'—')}${mf('Servicii',(mem.services_requested||[]).join(', ')||'—')}</div>
+      ${plans.length?`<div class="ms"><h4>Planuri (${plans.length})</h4>${plans.map(p=>`<div class="mf"><div class="l">${p.event_type||'Eveniment'} · ${p.status}</div><div class="v">${p.event_date||'—'} ${p.location||''}</div></div>`).join('')}</div>`:''}
+      <div class="ms na"><h4>Notă internă</h4><textarea id="nT" placeholder="Scrie o notă..."></textarea><button class="nb" style="width:100%" onclick="addNote('${cid}')">📝 Salvează</button></div>
+    `}
+  catch(e){b.innerHTML=`<div style="color:var(--rd);padding:14px">${e.message}</div>`}}
+function mf(l,v){return`<div class="mf"><div class="l">${esc(l)}</div><div class="v">${esc(String(v))}</div></div>`}
+async function addNote(cid){const n=document.getElementById('nT')?.value;if(!n)return;try{await fetch(`${API}/api/admin/memory/${cid}/note`,{method:'POST',headers:H(),body:JSON.stringify({note:n,changed_by:'operator'})});toast('Notă salvată');document.getElementById('nT').value=''}catch(e){toast('Eroare',false)}}
+
+// REMOVED COMPLEX RULES/FIELDS LOGIC FOR ZEN UI
+
+function openRMFromChat() {
+  document.getElementById('rmD').value = "Când un client scrie ceva de genul '" + (document.getElementById('sBox')?.value || '...') + "', răspunde mereu așa: " + (document.getElementById('aiTx')?.value || '...');
+  document.getElementById('rM').classList.add('sh');
+}
+
+// RULES MODAL ONLY (for quick training)
+function closeRM(){document.getElementById('rM').classList.remove('sh')}
+async function saveR(){const n=document.getElementById('rmN').value,d=document.getElementById('rmD').value,t=document.getElementById('rmT').value,b=document.getElementById('rmB').value;
+  if(!n||!t||!b)return toast('Completează câmpurile obligatorii',false);
+  try{await fetch(`${API}/api/ai/brain/rules`,{method:'POST',headers:H(),body:JSON.stringify({name:n,description:d,trigger:t,behavior:b,stage:'DISCOVERY',priority:50,status:'active'})});toast('Regulă adăugată');closeRM();}catch(e){toast('Eroare',false)}
+}
+
+// AUTH
+if(!TK){const t=prompt('Token de acces:');if(t){localStorage.setItem('admin_token',t);location.reload()}}
+
+// INIT
+checkH();loadInbox();setInterval(checkH,60000);setInterval(loadInbox,60000);
+</script>
+</body>
+</html>

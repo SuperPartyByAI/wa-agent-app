@@ -80,10 +80,38 @@ router.get('/crm/clients/:id', async (req, res) => {
 
         // Decision history
         const { data: decisions } = await supabase.from('ai_reply_decisions')
-            .select('id, conversation_id, suggested_reply, operator_verdict, safety_class, confidence_score, created_at')
+            .select('suggested_reply, operator_edited_reply, tool_action_suggested, safety_class, reply_status, operator_verdict, confidence_score, created_at, id, conversation_id')
             .in('conversation_id', convIds.slice(0, 5))
             .order('created_at', { ascending: false })
             .limit(20);
+
+        // Map decisions to messages
+        const decisionsMap = new Map();
+        (decisions || []).forEach(d => {
+            if (!decisionsMap.has(d.conversation_id)) {
+                decisionsMap.set(d.conversation_id, []);
+            }
+            decisionsMap.get(d.conversation_id).push(d);
+        });
+
+        const messagesWithDecisions = latestMessages.map(m => {
+            const conversationDecisions = decisionsMap.get(m.conversation_id) || [];
+            // Find the decision that is closest in time and created AFTER the message
+            const decision = conversationDecisions
+                .filter(d => new Date(d.created_at) >= new Date(m.created_at))
+                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+
+            return {
+                ...m,
+                ai_reply: decision?.operator_edited_reply || decision?.suggested_reply || null,
+                tool_action: decision?.tool_action_suggested || null,
+                safety_class: decision?.safety_class || null,
+                reply_status: decision?.reply_status || null,
+                operator_verdict: decision?.operator_verdict || null,
+                confidence: decision?.confidence_score || null,
+                ai_decision_id: decision?.id || null
+            };
+        });
 
         res.json({
             client: clientR.data,
@@ -91,7 +119,7 @@ router.get('/crm/clients/:id', async (req, res) => {
             conversations: convsR.data || [],
             event_plans: plansR.data || [],
             quotes: quotesR.data || [],
-            latest_messages: latestMessages,
+            latest_messages: messagesWithDecisions,
             ai_decisions: decisions || []
         });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -252,6 +280,25 @@ router.put('/pricing/kb/:id', async (req, res) => {
         if (error) throw error;
         await logAudit('pricing', 'update', 'kb_entry', req.params.id, updates, req.body._reason || '');
         res.json({ status: 'updated', entry: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/pricing/kb', async (req, res) => {
+    try {
+        const payload = { ...req.body, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        const { data, error } = await supabase.from('ai_knowledge_base').insert(payload).select().single();
+        if (error) throw error;
+        await logAudit('pricing', 'create', 'kb_entry', data.id, data);
+        res.json({ status: 'created', entry: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/pricing/kb/:id', async (req, res) => {
+    try {
+        const { error } = await supabase.from('ai_knowledge_base').delete().eq('id', req.params.id);
+        if (error) throw error;
+        await logAudit('pricing', 'delete', 'kb_entry', req.params.id, null, req.query._reason || '');
+        res.json({ status: 'deleted' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

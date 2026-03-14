@@ -1,0 +1,49 @@
+{
+  "version": "v1.0.0",
+  "loaded_at": "2026-03-14T10:00:00.000Z",
+  "source": "initial_seed",
+  "rules": [
+    {
+      "name": "Costume Query → KB Direct",
+      "trigger": "COSTUME_QUERY",
+      "behavior": "USE_KB",
+      "stage": "DISCOVERY",
+      "priority": 80,
+      "status": "active"
+    },
+    {
+      "name": "Price → Ask Duration",
+      "trigger": "PRICE_QUESTION",
+      "behavior": "CLARIFY_FIRST",
+      "stage": "DISCOVERY",
+      "priority": 70,
+      "status": "active"
+    },
+    {
+      "name": "Ambiguous Reschedule → Clarify",
+      "trigger": "RESCHEDULE",
+      "behavior": "CLARIFY_FIRST",
+      "stage": "COORDINATION",
+      "priority": 60,
+      "status": "active"
+    },
+    {
+      "name": "Complaint → Human Handoff",
+      "trigger": "COMPLAINT",
+      "behavior": "HANDOFF",
+      "stage": "ANY",
+      "priority": 90,
+      "status": "active"
+    }
+  ],
+  "coverage": [
+    { "zone": "greeting", "allowed_mode": "allow_autoreply", "confidence": "high" },
+    { "zone": "simple_clarification", "allowed_mode": "allow_autoreply", "confidence": "high" },
+    { "zone": "price_question", "allowed_mode": "shadow_only", "confidence": "medium" },
+    { "zone": "service_discovery", "allowed_mode": "shadow_only", "confidence": "medium" },
+    { "zone": "sensitive_policy", "allowed_mode": "blocked", "confidence": "low" },
+    { "zone": "complaint", "allowed_mode": "blocked", "confidence": "low" }
+  ],
+  "policies": [],
+  "checksum": null
+}

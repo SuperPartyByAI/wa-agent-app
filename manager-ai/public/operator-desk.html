@@ -404,23 +404,9 @@ async function selConv(id){
       </div>`;
 
     // 2. Compact Context Pills (Ce stim / Ce lipseste)
-    if (ad.filled?.length || ad.missing_required?.length || ad.next_question) {
-      html += `<div class="block" style="background:var(--bg2);padding:10px 14px;border-bottom:1px solid var(--bd);">`;
-      
-      html += `<div class="qk-list">`;
-      if (ad.filled?.length) {
-        html += ad.filled.map(f => `<div class="qk-i">✓ <strong>${esc(f.label)}:</strong> ${esc(String(f.value))}</div>`).join('');
-      }
-      if (ad.missing_required?.length) {
-        html += ad.missing_required.map(f => `<div class="qk-m">⚠ Lipsă: <strong>${esc(f.label)}</strong></div>`).join('');
-      }
-      html += `</div>`;
-
-      if (ad.next_question) {
+    if (ad.next_question) {
         html += `<div style="margin-top:10px;padding:8px 12px;background:rgba(108,140,255,0.08);border-left:3px solid var(--ac);font-size:12px;color:var(--ac);font-weight:500;"><strong>Întrebarea care urmează:</strong> „${esc(ad.next_question)}"</div>`;
       }
-      html += `</div>`;
-    }
 
     // 3. Full Conversation + AI Draft appended inline
     html += `

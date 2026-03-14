@@ -507,8 +507,8 @@ async function loadRoles(){
       <div style="color:var(--dim); font-size:12px; margin-bottom:4px; font-weight:600">Declanșatori (Ce vrea clientul?):</div>
       <div style="margin-bottom:12px; font-size:14px; color:var(--text);">${k.question_patterns?.join(', ') || '<i>Niciunul</i>'}</div>
       
-      <div style="color:var(--dim); font-size:12px; margin-bottom:4px; font-weight:600">Matematica/Logica Rolului:</div>
-      <div style="font-size:13px; color:var(--text); opacity:0.9; white-space:pre-wrap;">${(k.answer_template||'').substring(0,250)}</div>
+      <div style="color:var(--dim); font-size:12px; margin-bottom:4px; font-weight:600">Configurație Comercială:</div>
+      <div style="font-size:13px; color:var(--text); opacity:0.9; white-space:pre-wrap;">${k.policy_config ? `💰 <b>${k.policy_config.pricing_rules?.base_price||0} RON</b> / ${k.policy_config.pricing_rules?.included_duration_hours||1}h<br>✍️ <i>${(k.policy_config.copy_blocks?.intro||'').substring(0, 100)}...</i>` : (k.answer_template||'').substring(0,250)}</div>
     </div>`;
   }
   h+='</div>';

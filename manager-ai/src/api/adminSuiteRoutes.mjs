@@ -96,10 +96,10 @@ router.get('/crm/clients/:id', async (req, res) => {
 
         const messagesWithDecisions = latestMessages.map(m => {
             const conversationDecisions = decisionsMap.get(m.conversation_id) || [];
-            // Find the decision that is closest in time but not after the message
+            // Find the decision that is closest in time and created AFTER the message
             const decision = conversationDecisions
-                .filter(d => new Date(d.created_at) <= new Date(m.created_at))
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+                .filter(d => new Date(d.created_at) >= new Date(m.created_at))
+                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
 
             return {
                 ...m,

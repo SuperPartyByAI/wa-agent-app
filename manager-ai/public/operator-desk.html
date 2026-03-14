@@ -434,17 +434,6 @@ async function selConv(id){
           ${conf?`<span class="sf sf-ok" style="background:transparent;border:1px solid var(--bd);color:var(--tx3)">${conf}% acuratețe</span>`:''}
         </div>
         <textarea class="at" id="aiTx" style="height:70px;font-size:13px;border-color:#3b4054" ${!aiR && !tool ? 'placeholder="Scrie un răspuns manual..."' : ''}>${esc(aiR)}</textarea>
-        
-        <div class="aa" style="display:flex;gap:10px;margin-top:6px;justify-content:space-between;align-items:center">
-          <div style="display:flex;gap:8px">
-            <button class="btn ba" style="font-size:12px;padding:10px 16px" onclick="doAct('approve')">✅ Aprobă Răspunsul</button>
-            <button class="btn br" style="background:transparent;border:2px solid var(--ac);color:var(--ac);font-size:12px;padding:8px 14px" onclick="doAct('save_edit')">🎓 Corectează</button>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="btn be" style="background:var(--pu2);color:var(--pu);border:1px solid var(--pu);font-size:11px" onclick="openRMFromChat()">🧠 Regulă nouă</button>
-            <button class="btn bh" style="background:transparent;border:1px solid var(--rd);color:var(--rd)" onclick="doAct('handoff')">🛑 Preiau Manual</button>
-          </div>
-        </div>
       </div>
     </div>`;
 

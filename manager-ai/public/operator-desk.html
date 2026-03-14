@@ -422,13 +422,13 @@ async function selConv(id){
       html += `</div>`;
     }
 
-    // 3. Full Conversation
+    // 3. Full Conversation + AI Draft appended inline
     html += `
-      <div class="msgs" id="mA" style="background:var(--bg); flex:1">${msgs.length?msgs.map(m=>{const w=m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='cl'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}</div>`;
-
-    // 4. AI Training & Reply Box
-    html += `
-      <div class="ab" style="background:var(--bg2);padding:16px;">
+      <div class="msgs" id="mA" style="background:var(--bg); flex:1">
+      ${msgs.length?msgs.map(m=>{const w=m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='cl'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}
+      
+      <!-- AI Draft Inline Block -->
+      <div class="ab" style="background:var(--bg2);padding:16px;border-radius:var(--r);margin-top:14px;border:1px solid var(--bd);">
         <div class="al" style="font-size:11px;color:var(--tx);margin-bottom:8px">🤖 Draft Răspuns AI:
           ${tool?`<span class="ta">🔧 ${esc(tool)}</span>`:''}
           ${conf?`<span class="sf sf-ok" style="background:transparent;border:1px solid var(--bd);color:var(--tx3)">${conf}% acuratețe</span>`:''}
@@ -438,17 +438,18 @@ async function selConv(id){
         <div class="aa" style="display:flex;gap:10px;margin-top:6px;justify-content:space-between;align-items:center">
           <div style="display:flex;gap:8px">
             <button class="btn ba" style="font-size:12px;padding:10px 16px" onclick="doAct('approve')">✅ Aprobă Răspunsul</button>
-            <button class="btn br" style="background:transparent;border:2px solid var(--ac);color:var(--ac);font-size:12px;padding:8px 14px" onclick="doAct('save_edit')">🎓 Corectează și Învață AI-ul</button>
+            <button class="btn br" style="background:transparent;border:2px solid var(--ac);color:var(--ac);font-size:12px;padding:8px 14px" onclick="doAct('save_edit')">🎓 Corectează</button>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn be" style="background:var(--pu2);color:var(--pu);border:1px solid var(--pu);font-size:11px" onclick="openRMFromChat()">🧠 Regulă nouă din context</button>
+            <button class="btn be" style="background:var(--pu2);color:var(--pu);border:1px solid var(--pu);font-size:11px" onclick="openRMFromChat()">🧠 Regulă nouă</button>
             <button class="btn bh" style="background:transparent;border:1px solid var(--rd);color:var(--rd)" onclick="doAct('handoff')">🛑 Preiau Manual</button>
           </div>
         </div>
-      </div>`;
+      </div>
+    </div>`;
 
     cp.innerHTML = html;
-    const a=document.getElementById('mA');if(a)a.scrollTop=a.scrollHeight;
+    setTimeout(()=>{const a=document.getElementById('mA');if(a)a.scrollTop=a.scrollHeight;},50);
   }catch(e){cp.innerHTML=`<div class="es" style="color:var(--rd)">Eroare: ${e.message}</div>`}
 }
 

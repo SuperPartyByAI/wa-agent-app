@@ -41,10 +41,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:
 .fb{padding:2px 7px;border-radius:10px;font-size:9px;font-weight:500;cursor:pointer;border:1px solid var(--bd);color:var(--tx2);background:transparent;white-space:nowrap}
 .fb.act{background:var(--ac2);color:var(--ac);border-color:var(--ac)}
 .cl{flex:1;overflow-y:auto}
-.cv{padding:9px 10px;border-bottom:1px solid var(--bd);cursor:pointer;transition:.1s}
+.cv{padding:9px 10px;border-bottom:1px solid var(--bd);cursor:pointer;transition:.1s;display:flex;gap:8px;align-items:flex-start}
 .cv:hover{background:var(--bg3)}.cv.sel{background:var(--bg4);border-left:3px solid var(--ac)}
-.cv-t{display:flex;justify-content:space-between;margin-bottom:2px}
+.cv-a{width:32px;height:32px;border-radius:50%;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--ac)}
+.cv-a img{width:100%;height:100%;object-fit:cover}
+.cv-i{flex:1;min-width:0}
+.cv-t{display:flex;justify-content:space-between;margin-bottom:1px}
 .cv-n{font-size:11px;font-weight:600}.cv-d{font-size:9px;color:var(--tx3)}
+.cv-p{font-size:8px;color:var(--tx3);margin-bottom:1px}
 .cv-m{font-size:10px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
 .cv-b{display:flex;gap:3px;flex-wrap:wrap}
 .bs{font-size:8px;font-weight:600;padding:1px 5px;border-radius:7px;text-transform:uppercase;letter-spacing:.3px}
@@ -56,7 +60,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:
 .center{flex:1;display:flex;flex-direction:column;min-width:0}
 .es{flex:1;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:12px}
 .dh{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.dh-l{display:flex;align-items:center;gap:10px}
+.dh-av{width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;background:var(--ac)}
+.dh-av img{width:100%;height:100%;object-fit:cover}
 .dh h2{font-size:13px;font-weight:600}.dh .sub{font-size:9px;color:var(--tx3)}
+.dh .sub .ph{color:var(--tx2);font-weight:500}
 .dh .ml{font-size:10px;color:var(--ac);cursor:pointer}
 .msgs{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:5px}
 .m{max-width:72%;padding:7px 10px;border-radius:var(--r);font-size:11px;line-height:1.4}
@@ -80,17 +88,38 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:
 .al{font-size:9px;font-weight:600;color:var(--pu);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;display:flex;align-items:center;gap:5px}
 .al .ta{font-size:8px;padding:1px 5px;border-radius:3px;background:var(--ac2);color:var(--ac)}
 .al .sf{font-size:8px;padding:1px 5px;border-radius:3px}
-.sf-ok{background:var(--gr2);color:var(--gr)}.sf-w{background:var(--or2);color:var(--or)}.sf-b{background:var(--rd2);color:var(--rd)}
-.at{width:100%;min-height:44px;padding:7px 9px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg);color:var(--tx);font-size:11px;font-family:inherit;resize:vertical;outline:none;line-height:1.35}
-.at:focus{border-color:var(--ac)}
-.aa{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
-.btn{padding:5px 10px;border:none;border-radius:var(--rs);font-size:10px;font-weight:600;cursor:pointer;transition:.15s}
-.ba{background:var(--gr);color:#0f1117}.ba:hover{filter:brightness(1.1)}
-.be{background:var(--ac2);color:var(--ac);border:1px solid var(--ac)!important}.be:hover{background:var(--ac);color:#fff}
-.bc{background:var(--or2);color:var(--or)}.bc:hover{background:var(--or);color:#fff}
-.bh{background:var(--rd2);color:var(--rd)}.bh:hover{background:var(--rd);color:#fff}
-.bm{background:var(--bg3);color:var(--tx2)}.bm:hover{color:var(--tx)}
-.br{background:transparent;color:var(--tx3);border:1px solid var(--bd)!important}
+.m.ai{background:var(--bg3);border:1px solid var(--bd)}
+.m.ag{background:var(--pu2);color:var(--pu)}
+.mw{font-size:9px;font-weight:600;margin-bottom:2px;color:var(--tx3)}
+.mt{font-size:8px;color:var(--tx3);text-align:right;margin-top:4px}
+.ab{padding:14px;border-top:1px solid var(--bd);background:var(--bg)}
+.al{font-size:11px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.at{width:100%;height:60px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);color:var(--tx);font-family:inherit;font-size:12px;padding:8px;resize:none;margin-bottom:10px}
+.at:focus{outline:none;border-color:var(--ac)}
+.aa{display:flex;gap:6px;flex-wrap:wrap}
+.btn{padding:8px 12px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;border:none;color:#fff;transition:.1s}
+.btn:hover{opacity:.9}
+.ba{background:var(--gr)} .be{background:var(--bg3);color:var(--tx);border:1px solid var(--bd)}
+.bc{background:var(--or)} .bh{background:var(--rd)}
+.bm{background:var(--tx2)} .br{background:var(--ac)}
+.ta{background:var(--yl2);color:var(--yl);padding:1px 5px;border-radius:4px;font-size:9px}
+
+/* New structured blocks */
+.block{padding:14px;border-bottom:1px solid var(--bd)}
+.block-hd{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--tx3);margin-bottom:8px;letter-spacing:.5px}
+.es-card{display:flex;gap:12px;flex-wrap:wrap;background:var(--bg2);padding:10px;border-radius:var(--r);border:1px solid var(--bd)}
+.es-i{display:flex;flex-direction:column;gap:2px}
+.es-l{font-size:9px;color:var(--tx3)}
+.es-v{font-size:11px;font-weight:600}
+.qk-list{display:flex;flex-wrap:wrap;gap:6px}
+.qk-i{background:var(--gr2);color:var(--gr);border:1px solid transparent;padding:4px 8px;border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:4px}
+.qk-m{background:var(--rd2);color:var(--rd);border:1px solid transparent;padding:4px 8px;border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:4px}
+.nq-card{background:var(--ac2);color:var(--ac);padding:14px;border-radius:8px;border:1px solid var(--ac);font-size:14px;font-weight:600;text-align:center}
+
+.rp-hid{display:none!important}
+.rt{position:absolute;top:0;right:0;width:320px;height:100%;background:var(--bg);border-left:1px solid var(--bd);display:flex;flex-direction:column;z-index:20;transition:.2s;transform:translateX(100%)}
+.rt:not(.hid){transform:translateX(0)}
+.rt-h{padding:14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
 
 /* FIELD WRITE LOG */
 .fw{margin:6px 14px;padding:7px 9px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--rs)}
@@ -280,6 +309,20 @@ function esc(s){const d=document.createElement('div');d.textContent=s||'';return
 function ago(iso){if(!iso)return'';const mn=Math.floor((Date.now()-new Date(iso))/60000);return mn<1?'acum':mn<60?mn+'m':mn<1440?Math.floor(mn/60)+'h':Math.floor(mn/1440)+'z'}
 function sfC(s){if(!s)return'';if(s.includes('block'))return'sf-b';if(s.includes('review')||s.includes('warn'))return'sf-w';return'sf-ok'}
 
+// Avatar helper: WhatsApp photo or initials
+const avColors=['#6366f1','#ec4899','#14b8a6','#f97316','#8b5cf6','#06b6d4','#84cc16','#e11d48','#0ea5e9','#d946ef'];
+function avHtml(url, name, sz) {
+  if (url) return `<img src="${esc(url)}" onerror="this.parentElement.innerHTML=avInit('${esc(name)}')" alt="">`;
+  return avInit(name);
+}
+function avInit(name) {
+  const n = (name||'?').replace(/[^a-zA-Z0-9ăîșțâ ]/g,'').trim();
+  const parts = n.split(/\s+/);
+  const ini = parts.length>1 ? (parts[0][0]+(parts[1]?.[0]||'')).toUpperCase() : n.substring(0,2).toUpperCase();
+  const ci = Math.abs([...n].reduce((a,c)=>a+c.charCodeAt(0),0)) % avColors.length;
+  return `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${avColors[ci]};border-radius:50%;font-size:inherit">${ini}</span>`;
+}
+
 // TABS
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('act'));t.classList.add('act');
@@ -300,16 +343,20 @@ async function loadInbox(){
 }
 function renderList(q=''){
   let it=inbox;if(filt!=='all')it=it.filter(c=>c.status===filt||(filt==='pending'&&!c.operator_verdict));
-  if(q){const lq=q.toLowerCase();it=it.filter(c=>(c.client_name||'').toLowerCase().includes(lq)||(c.client_message||'').toLowerCase().includes(lq))}
+  if(q){const lq=q.toLowerCase();it=it.filter(c=>(c.client_name||'').toLowerCase().includes(lq)||(c.client_message||'').toLowerCase().includes(lq)||(c.client_phone||'').includes(lq))}
   document.getElementById('cList').innerHTML=it.map(c=>`
     <div class="cv ${c.id===selId?'sel':''}" onclick="selConv('${c.id}')">
-      <div class="cv-t"><span class="cv-n">${esc(c.client_name)}</span><span class="cv-d">${ago(c.updated_at)}</span></div>
-      <div class="cv-m">${esc(c.client_message||'Fără mesaje')}</div>
-      <div class="cv-b">
-        <span class="bs b-${c.operator_verdict==='approved'?'appr':c.status}">${c.operator_verdict==='approved'?'Aprobat':c.status==='shadow'?'Shadow':c.status==='pending'?'Revizuire':c.status==='blocked'?'Blocat':'Deschis'}</span>
-        ${c.tool_action?`<span class="bs b-info">🔧 ${esc(c.tool_action)}</span>`:''}
-        ${c.has_event_plan?`<span class="bs b-plan">📋 Plan</span>`:''}
-        ${c.safety_class?`<span class="bs ${c.safety_class.includes('block')?'b-blocked':c.safety_class.includes('review')?'b-pending':'b-sent'}">${esc(c.safety_class.replace(/_/g,' '))}</span>`:''}
+      <div class="cv-a">${avHtml(c.client_avatar, c.client_name)}</div>
+      <div class="cv-i">
+        <div class="cv-t"><span class="cv-n">${esc(c.client_name)}</span><span class="cv-d">${ago(c.updated_at)}</span></div>
+        ${c.client_phone?`<div class="cv-p">📞 ${esc(c.client_phone)}</div>`:''}
+        <div class="cv-m">${esc(c.client_message||'Fără mesaje')}</div>
+        <div class="cv-b">
+          <span class="bs b-${c.operator_verdict==='approved'?'appr':c.status}">${c.operator_verdict==='approved'?'Aprobat':c.status==='shadow'?'Shadow':c.status==='pending'?'Revizuire':c.status==='blocked'?'Blocat':'Deschis'}</span>
+          ${c.tool_action?`<span class="bs b-info">🔧 ${esc(c.tool_action)}</span>`:''}
+          ${c.has_event_plan?`<span class="bs b-plan">📋 Plan</span>`:''}
+          ${c.safety_class?`<span class="bs ${c.safety_class.includes('block')?'b-blocked':c.safety_class.includes('review')?'b-pending':'b-sent'}">${esc(c.safety_class.replace(/_/g,' '))}</span>`:''}
+        </div>
       </div>
     </div>`).join('')}
 
@@ -325,53 +372,102 @@ async function selConv(id){
     const ap=plans.find(p=>['draft','active'].includes(p.status));
 
     // Get field analysis if plan exists
-    let fieldLog='';
+    let ad={};
     if(ap&&ap.requested_services?.length){
       try{
         const ar=await fetch(`${API}/api/operator/services/${ap.requested_services[0]}/analyze?plan_id=${ap.id}`,{headers:H()});
-        const ad=await ar.json();
-        if(ad.filled||ad.missing_required){
-          fieldLog=`<div class="fw"><h5>📊 Analiză câmpuri (${ad.service_key||''})</h5>
-            ${(ad.filled||[]).map(f=>`<div class="fw-r fw-ok">✓ ${esc(f.label)}: ${esc(String(f.value))}</div>`).join('')}
-            ${(ad.missing_required||[]).map(f=>`<div class="fw-r fw-bl">⚠ ${esc(f.label)} — lipsește</div>`).join('')}
-            <div class="fw-r" style="color:var(--ac)">Completare: ${ad.completion_pct||0}% · ${ad.readiness||'?'}</div>
-          </div>`;
-        }
+        ad=await ar.json();
       }catch(e){}
     }
 
-    cp.innerHTML=`
-      <div class="dh"><div><h2>${esc(cl.display_name||cl.alias||cl.mapped_alias||'Client')}</h2><span class="sub">${cl.source||'whatsapp'} · ${(d.conversations||[]).length} conv · ${msgs.length} msg</span></div>
-        <span class="ml" onclick="tgMem(1,'${curCl}')">📋 Memorie client</span></div>
-      ${ap?renderPlan(ap):''}
-      ${fieldLog}
-      <div class="msgs" id="mA">${msgs.length?msgs.map(m=>{const w=m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='cl'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}</div>
+    // Use identity from inbox item (already resolved server-side)
+    const cName = it?.client_name || cl.full_name || cl.public_alias || 'Client';
+    const cPhone = it?.client_phone || null;
+    const cAvatar = it?.client_avatar || cl.avatar_url || null;
+    const cBrand = it?.client_brand || cl.brand_key || null;
+    const isRecurrent = (d.conversations||[]).length > 1;
+
+    // Build the 8 Sections strictly
+    // 1. Identity
+    let html = `
+      <div class="dh">
+        <div class="dh-l">
+          <div class="dh-av">${avHtml(cAvatar, cName, 40)}</div>
+          <div>
+            <h2>${esc(cName)}</h2>
+            <span class="sub">
+              ${cPhone?`<span class="ph">📞 ${esc(cPhone)}</span> · `:''}
+              ${isRecurrent ? '<span style="color:var(--ac);font-weight:600">🔄 Recurent</span> · ' : 'Nou · '}
+              ${cl.source||'whatsapp'} · ${msgs.length} msg
+            </span>
+          </div>
+        </div>
+        <span class="ml" onclick="tgMem(1,'${curCl}')">📋 Profil Client</span>
+      </div>`;
+
+    // 2. Quick Summary
+    html += `
+      <div class="block">
+        <div class="block-hd">Rezumat Rutare</div>
+        <div class="es-card">
+          <div class="es-i"><span class="es-l">Serviciu</span><span class="es-v">${ap ? esc(ap.event_type||'Detectare...') : (tool ? 'Acțiune Generală' : 'Fără plan')}</span></div>
+          <div class="es-i"><span class="es-l">Intenție AI</span><span class="es-v">${it?.operator_verdict==='approved'?'✓ Aprobat': (tool ? esc(tool) : 'Chat')}</span></div>
+          <div class="es-i"><span class="es-l">Status Plan</span><span class="es-v">${ap?.status==='draft'?'Draft':(ap?.status||'N/A')}</span></div>
+          <div class="es-i"><span class="es-l">Siguranță</span><span class="es-v ${safe?.includes('block')?'b-blocked':safe?.includes('review')?'b-pending':''}">${safe ? esc(safe.replace(/_/g,' ')) : 'Verificat'}</span></div>
+        </div>
+      </div>`;
+
+    // 3 & 4. Knowns & Missing Fields
+    if (ad.filled?.length || ad.missing_required?.length) {
+      html += `<div class="block">`;
+      if (ad.filled?.length) {
+        html += `<div class="block-hd">Ce știm deja</div><div class="qk-list" style="margin-bottom:14px">`;
+        html += ad.filled.map(f => `<div class="qk-i">✓ ${esc(f.label)}: <strong>${esc(String(f.value))}</strong></div>`).join('');
+        html += `</div>`;
+      }
+      if (ad.missing_required?.length) {
+        html += `<div class="block-hd">Ce mai lipsește</div><div class="qk-list">`;
+        html += ad.missing_required.map(f => `<div class="qk-m">⚠ ${esc(f.label)}</div>`).join('');
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+
+    // 5. Next Recommended Question
+    if (ad.next_question) {
+      html += `
+      <div class="block" style="border-bottom:none">
+        <div class="block-hd">Întrebarea recomandată acum</div>
+        <div class="nq-card">${esc(ad.next_question)}</div>
+      </div>`;
+    }
+
+    // 6. Full Conversation
+    html += `
+      <div class="block-hd" style="padding:14px 14px 0 14px;margin:0">Conversația completă</div>
+      <div class="msgs" id="mA">${msgs.length?msgs.map(m=>{const w=m.sender_type==='client'?'cl':m.sender_type==='ai'?'ai':'ag';return`<div class="m ${w}"><div class="mw">${w==='cl'?'👤 Client':w==='ai'?'🤖 AI':'👨‍💼 Agent'}</div>${esc(m.content||'')}<div class="mt">${new Date(m.created_at).toLocaleString('ro-RO')}</div></div>`}).join(''):'<div style="color:var(--tx3);text-align:center;padding:24px">Fără mesaje</div>'}</div>`;
+
+    // 7. AI Proposed Reply & Actions
+    html += `
       <div class="ab">
         <div class="al">🤖 Răspuns AI propus
           ${tool?`<span class="ta">🔧 ${esc(tool)}</span>`:''}
-          ${safe?`<span class="sf ${sfC(safe)}">${esc(safe.replace(/_/g,' '))}</span>`:''}
           ${conf?`<span class="sf sf-ok">${conf}% încredere</span>`:''}
         </div>
-        <textarea class="at" id="aiTx">${esc(aiR)}</textarea>
+        <textarea class="at" id="aiTx" ${!aiR && !tool ? 'placeholder="Scrie un răspuns manual..."' : ''}>${esc(aiR)}</textarea>
         <div class="aa">
           <button class="btn ba" onclick="doAct('approve')">✓ Aprobă</button>
           <button class="btn be" onclick="document.getElementById('aiTx').focus()">✎ Editează</button>
           <button class="btn bc" onclick="doAct('clarify')">? Clarificare</button>
-          <button class="btn bh" onclick="doAct('handoff')">→ Trimite la operator</button>
-          <button class="btn bm" onclick="tgMem(1,'${curCl}')">📋 Memorie</button>
+          <button class="btn bh" onclick="doAct('handoff')">→ Respinge / Operator</button>
           <button class="btn br" onclick="doAct('save_edit')">💾 Salvează editare</button>
         </div>
       </div>`;
+
+    cp.innerHTML = html;
     const a=document.getElementById('mA');if(a)a.scrollTop=a.scrollHeight;
   }catch(e){cp.innerHTML=`<div class="es" style="color:var(--rd)">Eroare: ${e.message}</div>`}
 }
-
-function renderPlan(p){
-  const mis=p.missing_fields||[];
-  return`<div class="pc"><h4>📋 ${p.status==='draft'?'Plan draft':'Plan'} · ${esc(p.event_type||'?')}</h4>
-    <div class="pr">${p.event_date?`<div class="pf"><span class="l">Dată: </span><span class="v">${p.event_date}</span></div>`:''} ${p.event_time?`<div class="pf"><span class="l">Oră: </span><span class="v">${p.event_time}</span></div>`:''} ${p.location?`<div class="pf"><span class="l">Loc: </span><span class="v">${esc(p.location)}</span></div>`:''} <div class="pf"><span class="l">Status: </span><span class="v">${p.status}</span></div> <div class="pf"><span class="l">Cotație: </span><span class="v">${p.readiness_for_quote?'✓ gata':'✗ incomplet'}</span></div></div>
-    ${mis.length?`<div class="pm">⚠ Câmpuri lipsă: ${mis.join(', ')}</div>`:''}
-  </div>`}
 
 // REAL OPERATOR ACTIONS
 async function doAct(type){

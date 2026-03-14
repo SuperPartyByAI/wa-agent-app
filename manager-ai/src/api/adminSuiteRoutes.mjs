@@ -25,7 +25,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ── Audit helper ──
 async function logAudit(module, action, entityType, entityId, changes = {}, reason = '', changedBy = 'operator') {
-    await supabase.from('admin_audit_log').insert({ module, action, entity_type: entityType, entity_id: entityId, changes, reason, changed_by: changedBy }).catch(() => {});
+    try { await supabase.from('admin_audit_log').insert({ module, action, entity_type: entityType, entity_id: entityId, changes, reason, changed_by: changedBy }); } catch (e) {}
 }
 
 // ═══════════════════════════════════════════════════

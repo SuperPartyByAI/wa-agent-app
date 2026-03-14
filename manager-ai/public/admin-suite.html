@@ -154,7 +154,10 @@ async function api(path,opts={}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const r = await fetch(path, { headers, ...opts });
-  return r.json();
+  let data;
+  try { data = await r.json(); } catch(e) { data = { error: await r.text() }; }
+  if (!r.ok) throw new Error(data.error || 'Status ' + r.status);
+  return data;
 }
 function timeAgo(d){const s=Math.floor((new Date()-new Date(d))/1e3);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago'}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
@@ -726,7 +729,7 @@ async function saveRoleRule() {
 
   const payload = {
     knowledge_key: key,
-    category: 'role',
+    category: 'services',
     question_patterns: patterns,
     answer_template: "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
     policy_config: policy_config,

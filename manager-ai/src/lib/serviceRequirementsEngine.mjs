@@ -252,6 +252,15 @@ export function extractFieldsFromMessage(message) {
     fields.linear_meters = parseInt(metersMatch[1]);
   }
 
+  // Arcade Model Choice
+  const modelMatch = message.match(/(organica|organic|anorganica|anorganic|clasica|clasic)/i);
+  if (modelMatch) {
+    let raw = modelMatch[1].toLowerCase();
+    if (raw.startsWith('organic')) fields.model_choice = 'organica';
+    else if (raw.startsWith('anorganic')) fields.model_choice = 'anorganica';
+    else if (raw.startsWith('clasic')) fields.model_choice = 'clasica';
+  }
+
   // Children count
   const kidMatch = message.match(/(\d+)\s*(?:copii|copil|kids|children)/i);
   if (kidMatch) {

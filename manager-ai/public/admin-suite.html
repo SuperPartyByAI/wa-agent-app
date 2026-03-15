@@ -80,17 +80,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 <div class="sidebar">
   <div class="sidebar-header"><h1>⚡ <span>Admin</span> Suite</h1></div>
   <div class="nav">
-    <div class="nav-item active" data-module="dashboard"><span class="icon">📊</span>Dashboard</div>
+    <div class="nav-item" data-module="operator"><span class="icon">💬</span>Operator Desk</div>
     <div class="nav-divider"></div>
-    <div class="nav-item" data-module="crm"><span class="icon">👥</span>CRM / Clients<span class="badge" id="navCrmCount">-</span></div>
-    <div class="nav-item" data-module="memory"><span class="icon">🧠</span>Memory Inspector</div>
-    <div class="nav-item" data-module="brain"><span class="icon">🤖</span>AI Brain</div>
-    <div class="nav-divider"></div>
-    <div class="nav-item" data-module="pricing"><span class="icon">💰</span>Pricing & Rules</div>
-    <div class="nav-item" data-module="employees"><span class="icon">👔</span>Employees</div>
-    <div class="nav-divider"></div>
-    <div class="nav-item" data-module="rollout"><span class="icon">🛡️</span>Rollout / Safety</div>
-    <div class="nav-item" data-module="audit"><span class="icon">📋</span>Audit / Incidents</div>
+    <div class="nav-item" data-module="creier"><span class="icon">🧠</span>Creier AI</div>
+    <div class="nav-item" data-module="roles"><span class="icon">🎭</span>Roluri & Logică</div>
   </div>
 </div>
 
@@ -99,45 +92,25 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
     <h2 id="pageTitle">Dashboard</h2>
     <div class="search"><input type="text" id="globalSearch" placeholder="Search clients, conversations..." onkeydown="if(event.key==='Enter')searchGlobal()"></div>
   </div>
-  <div class="content">
+  <div class="content" id="mainContentArea">
 
-    <!-- ═══ DASHBOARD ═══ -->
-    <div class="panel active" id="mod-dashboard"><div class="loader"><div class="spinner"></div></div></div>
-
-    <!-- ═══ CRM ═══ -->
-    <div class="panel" id="mod-crm"><div class="loader"><div class="spinner"></div></div></div>
-
-    <!-- ═══ MEMORY INSPECTOR ═══ -->
-    <div class="panel" id="mod-memory">
-      <div class="form-group"><label>Client ID</label><div style="display:flex;gap:8px"><input type="text" id="memClientId" placeholder="Enter client UUID..."><button class="btn btn-primary" onclick="loadMemory()">Inspect</button></div></div>
-      <div id="memoryContent"></div>
+    <!-- ═══ OPERATOR DESK (IFRAME) ═══ -->
+    <div class="panel" id="mod-operator" style="height: calc(100vh - 58px); padding: 0; margin: -20px -24px;">
+      <iframe src="/admin/operator-desk.html?embed=1" style="width: 100%; height: 100%; border: none; display: block;"></iframe>
     </div>
 
-    <!-- ═══ AI BRAIN ═══ -->
-    <div class="panel" id="mod-brain">
-      <div class="card" style="text-align:center;padding:32px">
-        <div style="font-size:48px;margin-bottom:12px">🧠</div>
-        <h3>AI Brain Console</h3>
-        <p style="color:var(--dim);margin:8px 0 16px">Full Brain Console with Inbox, Rules, Patterns, Coverage and Stats</p>
-        <a href="/brain/brain-console.html" class="btn btn-primary" target="_blank">Open Brain Console →</a>
-      </div>
-      <div id="brainQuickStats"></div>
+    <!-- ═══ LOGISTICS (BLANK) ═══ -->
+    <div class="panel" id="mod-logistics">
+      <div class="empty"><div class="icon">📅</div><p>Modulul de Calendar & Logistică va fi implementat aici.</p></div>
     </div>
 
-    <!-- ═══ PRICING ═══ -->
-    <div class="panel" id="mod-pricing"><div class="loader"><div class="spinner"></div></div></div>
+    <!-- ═══ CREIER AI (SIMPLIFICAT) ═══ -->
+    <div class="panel" id="mod-creier"><div class="loader"><div class="spinner"></div></div></div>
 
-    <!-- ═══ EMPLOYEES ═══ -->
-    <div class="panel" id="mod-employees"><div class="loader"><div class="spinner"></div></div></div>
-
-    <!-- ═══ ROLLOUT / SAFETY ═══ -->
-    <div class="panel" id="mod-rollout"><div class="loader"><div class="spinner"></div></div></div>
-
-    <!-- ═══ AUDIT ═══ -->
-    <div class="panel" id="mod-audit"><div class="loader"><div class="spinner"></div></div></div>
+    <!-- ═══ ROLES ═══ -->
+    <div class="panel" id="mod-roles"><div class="loader"><div class="spinner"></div></div></div>
 
   </div>
-</div>
 
 <div class="modal-overlay" id="modal"><div class="modal" id="modalContent"></div></div>
 
@@ -154,12 +127,38 @@ document.querySelectorAll('.nav-item').forEach(n=>{
     const mod=n.dataset.module;
     document.getElementById('mod-'+mod).classList.add('active');
     document.getElementById('pageTitle').textContent=n.textContent.trim();
+    
+    // Toggle topbar for full-screen modules like Operator Desk
+    const topbar = document.querySelector('.topbar');
+    const content = document.querySelector('.content');
+    if(mod === 'operator') {
+      topbar.style.display = 'none';
+      content.style.padding = '0';
+      document.getElementById('mod-operator').style.height = '100vh';
+      document.getElementById('mod-operator').style.margin = '0';
+    } else {
+      topbar.style.display = 'flex';
+      content.style.padding = '20px 24px';
+    }
+    
     loadModule(mod);
   });
 });
 
-function loadModule(m){const l={dashboard:loadDashboard,crm:loadCRM,memory:()=>{},brain:loadBrainQuick,pricing:loadPricing,employees:loadEmployees,rollout:loadRollout,audit:loadAudit};if(l[m])l[m]()}
-async function api(path,opts={}){const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts});return r.json()}
+function loadModule(m){const l={operator:()=>{},creier:loadCreier,roles:loadRoles};if(l[m])l[m]()}
+const tokenFromUrl = new URLSearchParams(window.location.search).get('token');
+if(tokenFromUrl) localStorage.setItem('token', tokenFromUrl);
+
+async function api(path,opts={}) {
+  const token = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const r = await fetch(path, { headers, ...opts });
+  let data;
+  try { data = await r.json(); } catch(e) { data = { error: await r.text() }; }
+  if (!r.ok) throw new Error(data.error || 'Status ' + r.status);
+  return data;
+}
 function timeAgo(d){const s=Math.floor((new Date()-new Date(d))/1e3);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago'}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 function openModal(h){document.getElementById('modalContent').innerHTML=h;document.getElementById('modal').classList.add('open')}
@@ -230,7 +229,17 @@ async function viewClient(id){
   const d=await api(API+'/crm/clients/'+id);
   const c=d.client;
   let msgsH=d.latest_messages?.slice(0,15).map(m=>`<div class="msg-bubble msg-${m.sender_type==='client'?'client':'ai'}">${m.content}</div>`).join('')||'<i>No messages</i>';
-  let plansH=d.event_plans?.map(p=>`<div class="detail-row"><span class="dl">${p.event_type||'event'} ${p.event_date||''}</span><span class="dv"><span class="tag tag-blue">${p.status}</span> ${(p.requested_services||[]).join(', ')}</span></div>`).join('')||'<i>No plans</i>';
+  let plansH=d.event_plans?.map(p=>`<div class="card" style="margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <b>${p.event_type||'Eveniment'} ${p.event_date||''}</b>
+      <div><span class="tag tag-blue">${p.status}</span> <span class="tag tag-${p.confidence==='neconfirmat'?'orange':'green'}">${p.confidence||'—'}</span></div>
+    </div>
+    <div style="font-size:12px;color:var(--dim)">Servicii: ${(p.requested_services||[]).join(', ') || 'Nespecificat'}</div>
+    <div style="margin-top:8px;display:flex;gap:4px">
+      <button class="btn btn-sm btn-outline" onclick="setEventStatus('${c.id}','${p.id}','handoff_operator', event)">Handoff Operator</button>
+      <button class="btn btn-sm btn-outline" style="color:var(--green);border-color:var(--green)" onclick="setEventStatus('${c.id}','${p.id}','confirmat', event)">Marchează Rezervat</button>
+    </div>
+  </div>`).join('')||'<i>Niciun eveniment</i>';
   let quotesH=d.quotes?.map(q=>`<div class="detail-row"><span class="dl">Quote #${q.id?.substring(0,8)}</span><span class="dv"><span class="tag tag-${q.status==='accepted'?'green':q.status==='rejected'?'red':'yellow'}">${q.status}</span> ${q.grand_total||0} RON</span></div>`).join('')||'<i>No quotes</i>';
 
   openModal(`
@@ -253,6 +262,22 @@ async function viewClient(id){
       <button class="btn btn-outline" onclick="openMemoryForClient('${id}');closeModal()">🧠 Full Memory</button>
       <button class="btn btn-outline" onclick="closeModal()">Close</button>
     </div>`);
+}
+
+async function setEventStatus(clientId, eventId, newStatus, eventTarget) {
+  try {
+    const payload = newStatus === 'handoff_operator' 
+      ? { status_comercial: newStatus } 
+      : { status_rezervare: newStatus };
+    const btn = eventTarget.target;
+    btn.textContent = '...';
+    btn.disabled = true;
+    await api(`${API}/crm/clients/${clientId}/events/${eventId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    viewClient(clientId);
+  } catch(e) { alert('Eroare: ' + e.message); }
 }
 
 function openMemoryForClient(id){
@@ -324,10 +349,10 @@ async function loadMemory(){
   }
 
   if(d.mutations?.length){
-    h+=`<h3 style="margin:20px 0 8px">🔄 Recent Mutations (${d.mutations.length})</h3>
-      <table><thead><tr><th>Time</th><th>Field</th><th>Change</th></tr></thead><tbody>`;
+    h+=`<h3 style="margin:20px 0 8px">🔄 Jurnal Modificări Gatekeeper (${d.mutations.length})</h3>
+      <table><thead><tr><th>Time</th><th>Field</th><th>Change</th><th>Sursă</th></tr></thead><tbody>`;
     for(const m of d.mutations.slice(0,10)){
-      h+=`<tr><td style="font-size:11px">${timeAgo(m.created_at)}</td><td>${m.field_name||'—'}</td><td style="font-size:12px">${m.old_value?'<s>'+String(m.old_value).substring(0,30)+'</s> → ':''}<b>${String(m.new_value||'').substring(0,50)}</b></td></tr>`;
+      h+=`<tr><td style="font-size:11px">${timeAgo(m.created_at)}</td><td>${m.changed_field||'—'}</td><td style="font-size:12px">${m.old_value?'<s>'+String(m.old_value).substring(0,30)+'</s> → ':''}<b>${String(m.new_value||'').substring(0,50)}</b></td><td><span class="tag tag-${m.confirmed_by_client ? 'green' : 'orange'}">${m.confirmed_by_client ? 'CONSIMTIT' : 'ASTEAPTA'}</span></td></tr>`;
     }
     h+='</tbody></table>';
   }
@@ -378,35 +403,430 @@ async function loadBrainQuick(){
 }
 
 // ═══════════════════════════════════════
-// PRICING
+// CREIER AI (ULTRA SIMPLU)
 // ═══════════════════════════════════════
-async function loadPricing(){
-  const d=await api(API+'/pricing/catalog');
-  const kb=await api(API+'/pricing/kb');
-  const el=document.getElementById('mod-pricing');
+let _creierCache = [];
 
-  let h=`<div class="tabs-inline"><div class="tab-inline active" onclick="showPricingTab('catalog',this)">Service Catalog (${d.total_services})</div><div class="tab-inline" onclick="showPricingTab('kb',this)">Knowledge Base (${kb.total})</div></div>`;
+async function loadCreier(){
+  const kb = await api(API+'/pricing/kb');
+  _creierCache = kb.entries || [];
+  const el = document.getElementById('mod-creier');
 
-  h+=`<div id="pricingCatalog"><table><thead><tr><th>Service</th><th>Display Name</th><th>Required Fields</th><th>Tags</th><th>Autonomy</th></tr></thead><tbody>`;
-  for(const s of d.catalog||[]){
-    h+=`<tr><td><b>${s.service_key}</b></td><td>${s.display_name}</td><td style="font-size:11px">${(s.required_fields||[]).join(', ')}</td>
-      <td>${(s.tags||[]).map(t=>'<span class="tag tag-blue">'+t+'</span> ').join('')}</td>
-      <td>${s.autonomy_allowed?'<span class="tag tag-green">YES</span>':'<span class="tag tag-red">NO</span>'}</td></tr>`}
-  h+='</tbody></table></div>';
+  let h = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+    <h2>Informații Învățate (${kb.total})</h2>
+    <button class="btn btn-primary" style="font-size:16px; padding:12px 24px; box-shadow: 0 4px 12px rgba(99,102,241,0.3)" onclick="openCreierModal()">+ Adaugă Informație Nouă</button>
+  </div>`;
 
-  h+=`<div id="pricingKb" style="display:none"><table><thead><tr><th>Key</th><th>Category</th><th>Status</th><th>Patterns</th><th>Updated</th></tr></thead><tbody>`;
-  for(const k of kb.entries||[]){
-    h+=`<tr><td><b>${k.knowledge_key}</b></td><td><span class="tag tag-blue">${k.category||'—'}</span></td>
-      <td><span class="tag tag-${k.status==='approved'?'green':'yellow'}">${k.status}</span></td>
-      <td>${k.question_patterns?.length||0}</td><td style="font-size:11px">${k.updated_at?timeAgo(k.updated_at):'—'}</td></tr>`}
-  h+='</tbody></table></div>';
+  h += `<div class="grid-3" style="gap:16px; display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">`;
+  for(const k of _creierCache){
+    h+=`<div class="card" style="cursor:pointer; transition:transform 0.2s; border:1px solid var(--border);" onclick="openCreierModalById('${k.id}')" onmouseover="this.style.borderColor='var(--pr)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="color:var(--dim); font-size:12px; margin-bottom:8px; font-weight:600">Dacă clientul întreabă despre:</div>
+      <div style="margin-bottom:12px; font-size:15px; color:var(--text); line-height:1.4">${k.question_patterns?.join(', ') || '<i>Niciun cuvânt cheie setat</i>'}</div>
+      
+      <div style="color:var(--dim); font-size:12px; margin-bottom:8px; font-weight:600">AI-ul îi va răspunde:</div>
+      <div style="font-size:14px; color:var(--text); opacity:0.9; white-space:pre-wrap;">${(k.business_rules||[]).join('\n').substring(0,250)}${(k.business_rules||[]).join('\n').length > 250 ? '...' : ''}</div>
+    </div>`;
+  }
+  h+='</div>';
   el.innerHTML=h;
 }
 
-function showPricingTab(tab,btn){
-  document.querySelectorAll('.tab-inline').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
-  document.getElementById('pricingCatalog').style.display=tab==='catalog'?'':'none';
-  document.getElementById('pricingKb').style.display=tab==='kb'?'':'none';
+function openCreierModalById(id) {
+  const k = _creierCache.find(x => x.id === id);
+  if(k) openCreierModal(k);
+}
+
+function openCreierModal(k = null) {
+  const titleText = k ? 'Editează Informația' : 'Învață AI-ul Ceva Nou';
+  const idValue = k ? k.id : '';
+  const patVal = k && k.question_patterns ? k.question_patterns.join(', ') : '';
+  const rulesVal = k && k.business_rules ? k.business_rules.join('\n') : '';
+
+  const h = `
+    <h2 style="margin-bottom:24px; font-size:24px">${titleText}</h2>
+    <input type="hidden" id="crEditId" value="${idValue}">
+    
+    <div style="margin-bottom:24px;">
+      <label style="font-size:16px; margin-bottom:8px; display:block"><b>1. Ce ar putea întreba clientul?</b></label>
+      <input type="text" id="crPatterns" class="input" style="font-size:16px; padding:14px" placeholder="Ex: cat costa ursitoarea, tarif ursitoare, pret pachet" value="${patVal}">
+      <p style="font-size:13px; color:var(--dim); margin-top:8px">Folosește cuvinte cheie despărțite prin virgulă. Când clientul folosește aceste cuvinte, AI-ul își va aminti răspunsul tău.</p>
+    </div>
+    
+    <div style="margin-bottom:24px;">
+      <label style="font-size:16px; margin-bottom:8px; display:block"><b>2. Ce trebuie să știe/răspundă asistentul AI?</b></label>
+      <textarea id="crRules" class="input" style="height:180px; font-size:16px; padding:14px; line-height:1.5" placeholder="Avem pachet cu 3 zane ursitoare la pretul de 400 RON.\nInclude masina de baloane si masina de fum.">${rulesVal}</textarea>
+    </div>
+    
+    <div style="display:flex; justify-content:space-between; margin-top:32px;">
+      ${k ? `<button class="btn btn-outline" style="color:var(--rd);border-color:var(--rd); border-radius:8px" onclick="deleteCreierRule('${idValue}')">🗑️ Șterge Accesul</button>` : '<div></div>'}
+      <div style="display:flex; gap:12px;">
+        <button class="btn btn-outline" style="border-radius:8px" onclick="closeModal()">Anulează</button>
+        <button class="btn btn-primary" style="font-size:16px; padding:0 24px; border-radius:8px" onclick="saveCreierRule()">Gata! Salvează</button>
+      </div>
+    </div>
+  `;
+  openModal(h);
+}
+
+async function saveCreierRule() {
+  const id = document.getElementById('crEditId').value;
+  const patStr = document.getElementById('crPatterns').value;
+  const rulStr = document.getElementById('crRules').value;
+
+  if(!patStr || !rulStr) return alert('Te rog completează ambele câmpuri!');
+  
+  const patterns = patStr.split(',').map(s=>s.trim()).filter(Boolean);
+  
+  let keyVal = undefined;
+  if (!id) {
+    const baseWord = patterns[0] ? patterns[0].replace(/[^a-zA-Z0-9]/g, '').slice(0, 15) : 'kb';
+    keyVal = baseWord + '_' + Math.floor(Math.random()*1000000);
+  }
+
+  const payload = {
+    category: 'general',
+    question_patterns: patterns,
+    answer_template: rulStr,
+    approval_status: 'approved'
+  };
+  if (keyVal) payload.knowledge_key = keyVal;
+
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? API+'/pricing/kb/'+id : API+'/pricing/kb';
+
+  try {
+    const btn = document.querySelector('.modal .btn-primary');
+    if(btn) { btn.textContent = 'Se salvează...'; btn.disabled = true; }
+    await api(url, { method, body: JSON.stringify(payload) });
+    closeModal();
+    loadCreier();
+  } catch(e) { alert('Eroare: ' + e.message); }
+}
+
+async function deleteCreierRule(id) {
+  if(!confirm('Ești sigur că vrei să ștergi? AI-ul va uita imediat această informație.')) return;
+  try {
+    await api(API+'/pricing/kb/'+id, { method: 'DELETE' });
+    closeModal();
+    loadCreier();
+  } catch(e) { alert('Eroare: ' + e.message); }
+}
+
+// ═══════════════════════════════════════
+// ROLURI & LOGICĂ
+// ═══════════════════════════════════════
+let _rolesCache = [];
+
+async function loadRoles(){
+  const kb = await api(API+'/pricing/kb');
+  _rolesCache = (kb.entries || []).filter(x => x.knowledge_key && x.knowledge_key.startsWith('role_'));
+  const el = document.getElementById('mod-roles');
+
+  let h = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+    <h2>Rolurile și Logica Asistentului (${_rolesCache.length})</h2>
+    <button class="btn btn-primary" style="font-size:16px; padding:12px 24px" onclick="openRoleModal()">+ Crează Rol Nou</button>
+  </div>`;
+
+  h += `<div class="grid-3" style="gap:16px; display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">`;
+  for(const k of _rolesCache){
+    h+=`<div class="card" style="cursor:pointer; transition:transform 0.2s; border:1px solid var(--border);" onclick="openRoleModalById('${k.id}')" onmouseover="this.style.borderColor='var(--pr)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <b style="font-size:16px; color:var(--text)">${k.knowledge_key.replace('role_','').toUpperCase()}</b>
+      </div>
+      <div style="color:var(--dim); font-size:12px; margin-bottom:4px; font-weight:600">Declanșatori (Ce vrea clientul?):</div>
+      <div style="margin-bottom:12px; font-size:14px; color:var(--text);">${k.question_patterns?.join(', ') || '<i>Niciunul</i>'}</div>
+      
+      <div style="color:var(--dim); font-size:12px; margin-bottom:4px; font-weight:600">Configurație Comercială:</div>
+      <div style="font-size:13px; color:var(--text); opacity:0.9; white-space:pre-wrap;">${k.policy_config ? `💰 <b>${k.policy_config.pricing_rules?.pricing_model === 'linear_meter' ? k.policy_config.pricing_rules?.price_per_linear_meter + ' RON/m' : (k.policy_config.pricing_rules?.pricing_model === 'fixed_price' ? k.policy_config.pricing_rules?.fixed_price + ' RON' : k.policy_config.pricing_rules?.base_price + ' RON / ' + (k.policy_config.pricing_rules?.included_duration_hours||1) + 'h')}</b><br>✍️ <i>${(k.policy_config.copy_blocks?.intro||'').substring(0, 100)}...</i>` : (k.answer_template||'').substring(0,250)}</div>
+    </div>`;
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function openRoleModalById(id) {
+  const k = _rolesCache.find(x => x.id === id);
+  if(k) openRoleModal(k);
+}
+
+function openRoleModal(k = null) {
+  const titleText = k ? 'Editează Fișa Postului' : 'Definește un Rol Nou';
+  const idValue = k ? k.id : '';
+  const keyVal = k ? k.knowledge_key : 'role_animatie';
+  const patVal = k && k.question_patterns ? k.question_patterns.join(', ') : '';
+  
+  const pc = k && k.policy_config ? k.policy_config : null;
+  const pr = pc ? pc.pricing_rules : {};
+  const tr = pr && pr.transport_rules ? pr.transport_rules : {};
+  const cs = pc ? pc.constraints : {};
+  const cb = pc ? pc.copy_blocks : {};
+  
+  const API = window.location.hostname === 'localhost' ? 'http://localhost:3001/api/admin' : 'http://89.167.115.150:3001/api/admin';
+  const isActive = pc ? pc.active !== false : true;
+  const priority = pc ? pc.priority || 100 : 100;
+  const svcTags = pc?.triggers?.service_tags ? pc.triggers.service_tags.join(', ') : '';
+  const labelVal = pc?.label || '';
+  
+  const pricingModel = pr?.pricing_model || 'hourly';
+  const minConf = pc && pc.triggers ? pc.triggers.min_confidence : 0.35;
+  const basePrice = pr?.base_price || 0;
+  const extraPrice = pr?.extra_hour_price || 0;
+  const incHours = pr?.included_duration_hours || 1;
+  const fixedPrice = pr?.fixed_price || 0;
+  const linearPrice = pr?.price_per_linear_meter || 0;
+  const allowModelChoice = pr?.allow_model_choice ? 'checked' : '';
+  const allowedModels = (pr?.allowed_models || []).join(', ');
+  
+  const trBuc = tr?.bucharest || 0;
+  const trIf = tr?.if || 0;
+  const outIf = tr?.outside_if || 'manual_quote';
+  
+  const allowDisc = cs?.allow_discounts ? 'checked' : '';
+  const blockConf = cs?.must_not_confirm_availability !== false ? 'checked' : '';
+  const blockOv = cs?.must_not_override_approved_prices !== false ? 'checked' : '';
+  const reqFields = (cs?.must_collect_fields || ['date','location','duration']).join(', ');
+
+  const introText = cb?.intro || '';
+  const upsellText = cb?.upsell || '';
+  const closingText = cb?.closing_question || '';
+  const followUpText = cb?.follow_up || '';
+  
+  const legacyWarning = (k && !pc && k.answer_template) 
+    ? `<div style="background:var(--surface2); padding:12px; border-radius:8px; margin-bottom:16px; border-left:3px solid var(--orange);"><b>⚠️ Legacy Text Detected:</b><br><i style="font-size:12px">${k.answer_template.replace(/</g, '&lt;')}</i><br><span style="font-size:11px; color:var(--dim)">Te rog mută aceste reguli în câmpurile structurate de mai jos pentru a actualiza rolul.</span></div>` 
+    : '';
+
+  const h = `
+    <h2 style="margin-bottom:24px; font-size:24px">${titleText}</h2>
+    <input type="hidden" id="rlEditId" value="${idValue}">
+    ${legacyWarning}
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:16px; margin-bottom:8px; display:flex; align-items:center; gap:12px;">
+        <b>1. Identitate & Declanșatori</b>
+        <label style="display:flex; align-items:center; gap:6px; font-size:14px; font-weight:normal; background:var(--surface2); padding:4px 12px; border-radius:12px;">
+          <input type="checkbox" id="rlActive" ${isActive ? 'checked' : ''}> Activ
+        </label>
+      </label>
+      <div class="grid-2" style="margin-bottom:12px">
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Nume Rol (Whitelist)</label>
+          <select id="rlKey" class="input" style="padding:10px" onchange="document.getElementById('rlSvcKey').value = this.value.replace('role_', '')">
+            <option value="role_animatie" ${keyVal === 'role_animatie' ? 'selected' : ''}>Animație</option>
+            <option value="role_ursitoare" ${keyVal === 'role_ursitoare' ? 'selected' : ''}>Ursitoare</option>
+            <option value="role_arcada_pe_suport" ${keyVal === 'role_arcada_pe_suport' ? 'selected' : ''}>Arcadă pe suport</option>
+            <option value="role_arcada_fara_suport" ${keyVal === 'role_arcada_fara_suport' ? 'selected' : ''}>Arcadă fără suport</option>
+            <option value="role_vata_de_zahar" ${keyVal === 'role_vata_de_zahar' ? 'selected' : ''}>Vată de zahăr</option>
+            <option value="role_popcorn" ${keyVal === 'role_popcorn' ? 'selected' : ''}>Popcorn</option>
+            <option value="role_vata_si_popcorn" ${keyVal === 'role_vata_si_popcorn' ? 'selected' : ''}>Vată și popcorn</option>
+            <option value="role_mos_craciun" ${keyVal === 'role_mos_craciun' ? 'selected' : ''}>Moș Crăciun</option>
+            <option value="role_parfumerie" ${keyVal === 'role_parfumerie' ? 'selected' : ''}>Parfumerie</option>
+            <option value="role_arcada_cu_cifre_volumetrice" ${keyVal === 'role_arcada_cu_cifre_volumetrice' ? 'selected' : ''}>Arcadă cu cifre volumetrice</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Service Key (Auto-legat)</label>
+          <input type="text" id="rlSvcKey" class="input" style="padding:10px; background:var(--surface2); color:var(--dim)" value="${keyVal.replace('role_','')}" disabled>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-bottom:12px">
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Nume Afișat (Label)</label>
+          <input type="text" id="rlLabel" class="input" style="padding:10px" value="${labelVal}">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Prioritate Execuție</label>
+          <input type="number" id="rlPriority" class="input" style="padding:10px" value="${priority}">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Cuvinte cheie (virgulă)</label>
+          <input type="text" id="rlPatterns" class="input" style="padding:10px" value="${patVal}">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--dim);margin-bottom:4px;display:block">Service Tags (virgulă)</label>
+          <input type="text" id="rlSvcTags" class="input" style="padding:10px" value="${svcTags}">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px; padding:16px; border:1px solid var(--border); border-radius:8px; background:var(--bg)">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+          <label style="font-size:16px; display:block; margin:0;"><b>2. Prețuri Oficiale (RON)</b></label>
+          <select id="rlPricingModel" class="input" style="width:auto; padding:6px 10px;" onchange="document.getElementById('uiHourlyFields').style.display = this.value === 'hourly' ? 'grid' : 'none'; document.getElementById('uiFixedFields').style.display = this.value === 'fixed_price' ? 'grid' : 'none'; document.getElementById('uiLinearFields').style.display = this.value === 'linear_meter' ? 'grid' : 'none';">
+            <option value="hourly" ${pricingModel === 'hourly' ? 'selected' : ''}>La Ocupare (Hourly)</option>
+            <option value="fixed_price" ${pricingModel === 'fixed_price' ? 'selected' : ''}>Preț Fix</option>
+            <option value="linear_meter" ${pricingModel === 'linear_meter' ? 'selected' : ''}>Metru Liniar</option>
+          </select>
+      </div>
+      
+      <div id="uiHourlyFields" class="grid-4" style="display:${pricingModel === 'hourly' ? 'grid' : 'none'}">
+        <div><label style="font-size:11px;color:var(--dim)">Tarif de bază</label><input type="number" id="rlBasePrice" class="input" value="${basePrice}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Ore incluse</label><input type="number" step="0.5" id="rlIncHours" class="input" value="${incHours}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Tarif/Oră extra</label><input type="number" id="rlExtraPrice" class="input" value="${extraPrice}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Încredere AI (0-1)</label><input type="number" step="0.05" id="rlConf" class="input" value="${minConf}"></div>
+      </div>
+      
+      <div id="uiFixedFields" class="grid-4" style="display:${pricingModel === 'fixed_price' ? 'grid' : 'none'}">
+        <div><label style="font-size:11px;color:var(--dim)">Preț fix</label><input type="number" id="rlFixedPrice" class="input" value="${fixedPrice}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Încredere AI (0-1)</label><input type="number" step="0.05" id="rlConfFixed" class="input" value="${minConf}"></div>
+      </div>
+      
+      <div id="uiLinearFields" class="grid-4" style="display:${pricingModel === 'linear_meter' ? 'grid' : 'none'}">
+        <div><label style="font-size:11px;color:var(--dim)">Preț/Metru</label><input type="number" id="rlLinearPrice" class="input" value="${linearPrice}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Modele (virgulă)</label><input type="text" id="rlAllowedModels" class="input" value="${allowedModels}"></div>
+        <div style="display:flex; align-items:flex-end; padding-bottom:8px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+            <input type="checkbox" id="rlAllowModelChoice" ${allowModelChoice}> Alegere model
+          </label>
+        </div>
+        <div><label style="font-size:11px;color:var(--dim)">Încredere AI (0-1)</label><input type="number" step="0.05" id="rlConfLinear" class="input" value="${minConf}"></div>
+      </div>
+      
+      <label style="font-size:12px; margin:16px 0 8px; display:block; color:var(--dim)">Reguli de Transport</label>
+      <div class="grid-3">
+        <div><label style="font-size:11px;color:var(--dim)">București</label><input type="number" id="rlTrBuc" class="input" value="${trBuc}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">Ilfov</label><input type="number" id="rlTrIf" class="input" value="${trIf}"></div>
+        <div><label style="font-size:11px;color:var(--dim)">În afara IF (RON / "manual_quote")</label>
+          <input type="text" id="rlTrOut" class="input" value="${outIf}">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px; padding:16px; border:1px solid var(--border); border-radius:8px; background:var(--bg)">
+      <label style="font-size:16px; margin-bottom:12px; display:block"><b>3. Constrângeri & Reguli Stricte</b></label>
+      <div class="grid-2">
+        <div>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px">
+            <input type="checkbox" id="rlAllowDisc" ${allowDisc}> Permite reduceri de preț
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px">
+            <input type="checkbox" id="rlBlockConf" ${blockConf}> Nu confirma disponibilitatea ferm (doar operator)
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+            <input type="checkbox" id="rlBlockOv" ${blockOv}> Nu devia de la prețul oficial listat
+          </label>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Câmpuri Obligatorii de Colectat (virgulă)</label>
+          <input type="text" id="rlReqFields" class="input" value="${reqFields}">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <label style="font-size:16px; margin-bottom:12px; display:block"><b>4. Tonul Vocii (Copywriting)</b></label>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Introducere / Pitch (Despre serviciu)</label>
+        <textarea id="rlIntro" class="input" rows="2">${introText}</textarea>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Sugestie Comercială (Upsell / Combinare)</label>
+        <textarea id="rlUpsell" class="input" rows="2">${upsellText}</textarea>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Întrebare de închidere (Call to action)</label>
+        <textarea id="rlClosing" class="input" rows="2">${closingText}</textarea>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Follow-up Text (Pentru clienții ezitanți)</label>
+        <textarea id="rlFollowUp" class="input" rows="2">${followUpText}</textarea>
+      </div>
+    </div>
+    
+    <div style="display:flex; justify-content:space-between; margin-top:32px;">
+      ${k ? `<button class="btn btn-outline" style="color:var(--red);border-color:var(--red); border-radius:8px" onclick="deleteRoleRule('${idValue}')">🗑️ Desființează Rolul</button>` : '<div></div>'}
+      <div style="display:flex; gap:12px;">
+        <button class="btn btn-outline" style="border-radius:8px" onclick="closeModal()">Anulează</button>
+        <button class="btn btn-primary" style="font-size:16px; padding:0 24px; border-radius:8px" onclick="saveRoleRule()">Salvează Logica</button>
+      </div>
+    </div>
+  `;
+  openModal(h);
+}
+
+async function saveRoleRule() {
+  if(!confirm('Atenție: Modificarea acestor reguli de business va afecta imediat modul în care răspunde AI-ul. Doriți să salvați?')) return;
+  
+  const id = document.getElementById('rlEditId').value;
+  const key = document.getElementById('rlKey').value;
+  const patStr = document.getElementById('rlPatterns').value;
+  
+  if(!key) return alert('Te rog selectează rolul!');
+  
+  const patterns = patStr.split(',').map(s=>s.trim()).filter(Boolean);
+  const pModel = document.getElementById('rlPricingModel').value;
+  const confidenceVal = parseFloat(document.getElementById(pModel === 'linear_meter' ? 'rlConfLinear' : (pModel === 'fixed_price' ? 'rlConfFixed' : 'rlConf')).value) || 0.35;
+  
+  const policy_config = {
+    role_key: key,
+    service_key: document.getElementById('rlSvcKey').value,
+    label: document.getElementById('rlLabel').value.trim() || 'Nespecificat',
+    active: document.getElementById('rlActive').checked,
+    priority: parseInt(document.getElementById('rlPriority').value) || 100,
+    triggers: {
+      keywords: patterns,
+      service_tags: document.getElementById('rlSvcTags').value.split(',').map(s=>s.trim()).filter(Boolean),
+      min_confidence: confidenceVal
+    },
+    pricing_rules: {
+      pricing_model: pModel,
+      base_price: parseInt(document.getElementById('rlBasePrice').value) || 0,
+      currency: 'RON',
+      included_duration_hours: parseFloat(document.getElementById('rlIncHours').value) || 1,
+      extra_hour_price: parseInt(document.getElementById('rlExtraPrice').value) || 0,
+      fixed_price: parseInt(document.getElementById('rlFixedPrice').value) || 0,
+      price_per_linear_meter: parseInt(document.getElementById('rlLinearPrice').value) || 0,
+      allow_model_choice: document.getElementById('rlAllowModelChoice').checked,
+      allowed_models: document.getElementById('rlAllowedModels').value.split(',').map(s=>s.trim()).filter(Boolean),
+      transport_rules: {
+        bucharest: parseInt(document.getElementById('rlTrBuc').value) || 0,
+        if: parseInt(document.getElementById('rlTrIf').value) || 0,
+        outside_if: document.getElementById('rlTrOut').value === 'manual_quote' ? 'manual_quote' : (parseInt(document.getElementById('rlTrOut').value) || 0)
+      }
+    },
+    constraints: {
+      allow_discounts: document.getElementById('rlAllowDisc').checked,
+      must_collect_fields: document.getElementById('rlReqFields').value.split(',').map(s=>s.trim()).filter(Boolean),
+      must_not_confirm_availability: document.getElementById('rlBlockConf').checked,
+      must_not_override_approved_prices: document.getElementById('rlBlockOv').checked
+    },
+    copy_blocks: {
+      intro: document.getElementById('rlIntro').value.trim(),
+      upsell: document.getElementById('rlUpsell').value.trim(),
+      closing_question: document.getElementById('rlClosing').value.trim(),
+      follow_up: document.getElementById('rlFollowUp').value.trim()
+    }
+  };
+
+  const payload = {
+    knowledge_key: key,
+    category: 'services',
+    question_patterns: patterns,
+    answer_template: "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+    policy_config: policy_config,
+    approval_status: 'approved'
+  };
+
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? API+'/pricing/kb/'+id : API+'/pricing/kb';
+
+  try {
+    const btn = document.querySelector('.modal .btn-primary');
+    if(btn) { btn.textContent = 'Se salvează...'; btn.disabled = true; }
+    await api(url, { method, body: JSON.stringify(payload) });
+    closeModal();
+    loadRoles();
+  } catch(e) { alert('Eroare: ' + e.message); }
+}
+
+async function deleteRoleRule(id) {
+  if(!confirm('Dacă ștergi, AI-ul nu va mai știi prețurile pentru acest rol! Continuăm?')) return;
+  try {
+    await api(API+'/pricing/kb/'+id, { method: 'DELETE' });
+    closeModal();
+    loadRoles();
+  } catch(e) { alert('Eroare: ' + e.message); }
 }
 
 // ═══════════════════════════════════════
@@ -509,7 +929,7 @@ async function loadAudit(){
 }
 
 // ── Init ──
-loadDashboard();
+loadCreier();
 </script>
 </body>
 </html>

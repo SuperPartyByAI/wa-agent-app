@@ -76,14 +76,14 @@ export function isWave1Eligible({
         blockers.push(`safety_class: ${safetyClass}`);
     }
 
-    // 2. Tool must be reply_only
+    // 2. Tool must be reply_only or update_event_plan
     const toolName = toolAction?.name || toolAction;
-    if (toolName && toolName !== 'reply_only') {
+    if (toolName && toolName !== 'reply_only' && toolName !== 'update_event_plan') {
         blockers.push(`tool_not_allowed: ${toolName}`);
     }
 
     // 3. Stage must be in Wave 1 allowed stages
-    const ALLOWED_STAGES = ['new_lead', 'greeting', 'discovery'];
+    const ALLOWED_STAGES = ['new_lead', 'greeting', 'discovery', 'service_selection', 'event_qualification', 'package_recommendation', 'quotation_draft', 'quotation_sent', 'objection_handling'];
     const stage = goalState?.current_state || decision?.conversation_stage;
     if (stage && !ALLOWED_STAGES.includes(stage)) {
         blockers.push(`stage_not_allowed: ${stage}`);
@@ -95,7 +95,8 @@ export function isWave1Eligible({
     }
 
     // 5. No booking/quote mutation
-    if (mutation?.mutation_type && mutation.mutation_type !== 'no_mutation') {
+    const SAFE_MUTATIONS = ['no_mutation', 'create_event', 'add_service'];
+    if (mutation?.mutation_type && !SAFE_MUTATIONS.includes(mutation.mutation_type)) {
         blockers.push(`mutation_active: ${mutation.mutation_type}`);
     }
 

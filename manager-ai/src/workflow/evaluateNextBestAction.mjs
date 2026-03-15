@@ -43,7 +43,7 @@ const FIELD_PRIORITY = [
  * @returns {{ action: string, question: string, explanation: string, priority: string, commercialReadiness: object }}
  */
 export function evaluateNextBestAction(ctx) {
-    const { goalState, eventPlan, quoteState, kbMatch, escalation, humanTakeover, services } = ctx;
+    const { goalState, eventPlan, quoteState, kbMatch, escalation, humanTakeover, services, playbookKey } = ctx;
     const state = goalState?.current_state || 'new_lead';
     const missing = eventPlan?.missing_fields || [];
 
@@ -71,8 +71,8 @@ export function evaluateNextBestAction(ctx) {
         };
     }
 
-    // 3. KB answer available with high confidence
-    if (kbMatch && kbMatch.score >= 0.75 && ['discovery', 'greeting', 'service_selection'].includes(state)) {
+    // 3. KB answer available with high confidence, unless overriden by a Playbook strategy
+    if (kbMatch && kbMatch.score >= 0.75 && ['discovery', 'greeting', 'service_selection'].includes(state) && !playbookKey) {
         return {
             action: 'reply_only',
             question: '',

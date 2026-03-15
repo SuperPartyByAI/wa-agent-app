@@ -1,0 +1,16 @@
+[38;5;142m[dotenvx@1.55.1] injecting env (13) from .env[39m
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+=== START TESTE LOGICA E2E MULTI-EVENT GATEKEEPER ===
+\n--- SCENARIUL 1: Solicitare de Modificare Ambiguă cu 2 Evenimente ---
+[ASSERT 1] Gatekeeper Action: block_ask_disambiguation
+[ASSERT 1] Gatekeeper Reason: missing_target_event_id_for_multiple_events
+[PASS] Gatekeeper a blocat mutația și cere validarea explicită a identității petrecerii (Disambiguare).
+\n--- SCENARIUL 2: Mutație Sigură Unică (1 Eveniment Activ) dar Neconfirmată ---
+[ASSERT 2] Gatekeeper Action: block_ask_confirmation
+[ASSERT 2] Target Event Deducție: evt-uuid-unic
+[ASSERT 2] Gatekeeper Reason: sensitive_mutation_requires_client_consent
+[PASS] Gatekeeper a corelat corect unicul ID, dar blochează și cere confirmare pentru date sensibile.
+\n--- SCENARIUL 3: Mutație Confirmată Explicit de Client ---
+[ASSERT 3] Gatekeeper Action: apply_mutation
+[ASSERT 3] Target Event: evt-uuid-1
+[PASS] Gatekeeper a aprobat scrierea în Audit Log și salvarea noului Draft (Commit).

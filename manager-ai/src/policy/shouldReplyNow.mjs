@@ -45,6 +45,7 @@ export async function shouldReplyNow({
     lastClientMessage,
     escalation,
     decision: llmDecision,
+    playbookKey,
     serviceConfidence
 }) {
     const result = {
@@ -122,6 +123,7 @@ export async function shouldReplyNow({
             return { ...result, decision: 'wait_for_more_messages', reason: 'blocked_debounce_window', turnState: 'client_burst', details: `${burstState.recentCount} messages in last ${burstState.windowSec}s` };
         }
 
+
         // ── 8. Wait for missing info (intent but incomplete data) ──
         if (lastClientMessage) {
             const hasIntent = /animator|popcorn|vata|ursitoare|petrecere|eveniment|nunta|botez|serbare|arcada|baloane|cifre|mos|gheata|parfumerie/i.test(lastClientMessage);
@@ -133,9 +135,15 @@ export async function shouldReplyNow({
                 const hasGuests = /\d+\s*(copii|persoane|invitati)/i.test(msg);
                 const missingCount = [hasDate, hasLocation, hasTime, hasGuests].filter(x => !x).length;
 
+                // Faza 4 Business Playbook Bypass
+                const isPlaybookOverride = playbookKey === 'objection_too_expensive' || 
+                                           playbookKey === 'vague_inquiry' || 
+                                           playbookKey === 'impatient_price' ||
+                                           playbookKey === 'objection_thinking';
+
                 // Only wait_for_missing_info if 3+ fields missing AND it's a short/simple request
                 // If message is detailed enough, reply_now with clarifying question is better
-                if (missingCount >= 3 && lastClientMessage.length < 80) {
+                if (missingCount >= 3 && lastClientMessage.length < 80 && !isPlaybookOverride) {
                     console.log(`[ReplyEngine] Wait for missing info: ${missingCount} fields missing, short message`);
                     return { ...result, decision: 'wait_for_missing_info', reason: 'incomplete_client_data', turnState: 'missing_info', details: `${missingCount} fields missing`, newInformationDetected: true };
                 }

@@ -48,8 +48,32 @@ function buildToolsFromLiveRegistry() {
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { eventPlan = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null } = {}) {
+export function buildSystemPrompt(existingMemory = null, { clientContext = null, eventPlan = null, partyDraft = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null, goalDirective = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
+
+    let clientContextBlock = '';
+    if (clientContext && !clientContext.is_new_client) {
+        clientContextBlock = `\n=== CLIENT & PORTOFOLIU EVENIMENTE (MULTI-EVENT) ===
+Profil Client: ${clientContext.client.name || 'Necunoscut'}${clientContext.client.type === 'firma' ? ' (Firma/Protocol)' : ''}
+${clientContext.client.billing_preset ? 'Date Facturare Recurente: ' + JSON.stringify(clientContext.client.billing_preset) : ''}
+Memorie Relatie: ${clientContext.memory}
+
+Evenimente Active (${clientContext.active_events_count}):
+${clientContext.events.map(ev => `- [EventID: ${ev.event_id}] Data: ${ev.date || '-'} | Locatie: ${ev.location || '-'} | Sarbatorit: ${ev.celebrant || '-'} | Servicii: ${ev.service_summary || '-'} | Status: ${ev.status} / ${ev.commercial_status}`).join('\n')}
+
+CRITIC IMPORTANT PENTRU MUTATII:
+1. Nu amesteca datele! Daca clientul are >1 evenimente active si doreste sa schimbe Data, Ora, Personajul sau Locatia, TREBUIE OBLIGATORIU sa ceri CLARIFICARE: "Va referiti la petrecerea din X sau petrecerea Y?". Nu presupune (disambiguare).
+2. Orice actiune propusa asupra Portofoliului trebuie ancorata cu EventID.
+3. Daca identifici ca cere o petrecere pur NOUA, nu suprascrie evenimentul vechi.
+=== SFARSIT PORTOFOLIU ===\n`;
+    }
+
+    let roleBlock = '';
+    if (activeRolesText) {
+        roleBlock = `\n=== FISE DE POST (ROLURI ACTIVE) ===\n${activeRolesText}\n=== SFARSIT FISE DE POST ===\n
+CRITIC IMPORTANT: Tu ESTI constrans comercial de regulile de mai sus! 
+Obligatoriu cand generezi \`assistant_reply\`, TREBUIE sa iti compui textul folosind EXACT frazele din 'APPROVED SALES COPY GUIDELINES' (Intro, Upsell, Closing question) ale serviciului detectat. Nu mai da raspunsuri generice tip "Ce servicii va intereseaza?", ci raspunde exact cu oferta/intro-ul pentru serviciul detectat.\n`;
+    }
 
     // Build memory context block if we have existing memory
     let memoryBlock = '';
@@ -84,7 +108,7 @@ IMPORTANT: Daca este client recurent, saluta-l cald si scurt. Nu-l trata ca pe u
         }
     }
 
-    // Build event plan context block
+    // Build event plan context block (Legacy Phase 1/2)
     let planBlock = '';
     if (eventPlan && eventPlan.id) {
         const parts = [];
@@ -114,8 +138,38 @@ IMPORTANT: Daca este client recurent, saluta-l cald si scurt. Nu-l trata ca pe u
         planBlock = `\n=== PLAN EVENIMENT CURENT ===
 ${parts.join('\n')}
 IMPORTANT: Nu intreba informatii deja completate. Cere DOAR campurile lipsa. Daca planul e gata de oferta, ofera sa faci propunere.
-Daca trebuie detalii comerciale (plata/factura/avans), intreaba natural, nu agresiv.
 === SFARSIT PLAN ===\n`;
+    }
+
+    // Build Party Draft context block (Phase 3 Event Dossier)
+    let draftBlock = '';
+    if (partyDraft && partyDraft.conversation_id && (Object.keys(partyDraft.date_generale || {}).length > 0 || partyDraft.comercial?.campuri_obligatorii_lipsa?.length > 0)) {
+        const pd = partyDraft;
+        const gFields = Object.keys(pd.date_generale || {}).map(k => `${k}: ${pd.date_generale[k]}`).join(', ');
+        const bFields = Object.keys(pd.facturare || {}).map(k => `${k}: ${pd.facturare[k]}`).join(', ');
+        const missing = (pd.comercial?.campuri_obligatorii_lipsa || []).join(', ');
+        const readyForQuote = pd.comercial?.gata_pentru_oferta ? 'DA' : 'NU';
+        
+        let sFields = '';
+        if (pd.detalii_servicii) {
+            sFields = Object.entries(pd.detalii_servicii).map(([svc, details]) => {
+                return `  - ${svc}: ${Object.keys(details).map(k => `${k}=${details[k]}`).join(', ')}`;
+            }).join('\n');
+        }
+
+        draftBlock = `\n=== DOSAR EVENIMENT ACTUALIZAT (PARTY DRAFT Phase 3) ===
+Date Generale: ${gFields || 'Niciuna'}
+Servicii și Detalii:
+${sFields || '  Niciun detaliu'}
+Facturare: ${bFields || 'Niciuna'}
+
+>>> CAMPURI LIPSA OBLIGATORII: ${missing || 'Niciunul'}
+>>> GATA PENTRU OFERTA: ${readyForQuote}
+
+CRITIC IMPORTANT: Nu intreba din nou ce stii deja! AXEAZA-TE pe a obtine informatiile din lista de "CAMPURI LIPSA". Daca "GATA PENTRU OFERTA" este DA, poti genera oferta sau oferi pretul.
+=== SFARSIT DOSAR ===\n`;
+        // Phase 3 overrides legacy plan
+        planBlock = draftBlock;
     }
 
     // Build quote context block
@@ -140,6 +194,15 @@ ${goalState.next_best_question ? 'Intrebare de pus: ' + goalState.next_best_ques
 IMPORTANT: Comporta-te conform etapei. Nu sari peste pasi. Daca esti in event_qualification, cere detalii, nu oferi pachete. Daca esti in package_recommendation, recomanda pachete cu preturi din KB. Daca esti in booking_pending, cere detalii comerciale (plata/factura/avans).
 === SFARSIT STARE ===\n`;
     }
+    let contextNbaBlock = '';
+    if (nextBestActionGoal) {
+        contextNbaBlock = `\n=== NEXT BEST ACTION (INSTRUCTIUNE STRICTA) ===\nActiune ceruta: ${nextBestActionGoal.action}\nInstructiune: ${nextBestActionGoal.instruction}\n\nCRITIC IMPORTANT: Daca exista o directiva [PLAYBOOK OVERRIDE - TONE:], ACEASTA ARE PRIORITATE ABSOLUTA. Adopta acel ton si urmeaza strategia playbook-ului. Trebuie sa raspunzi EXACT conform acestei instructiuni in campul assistant_reply. Fara abateri. Obiectivul tau curent este sa executi aceasta actiune!\n=== SFARSIT NEXT BEST ACTION ===\n`;
+    }
+
+    let strategyBlock = '';
+    if (goalDirective) {
+        strategyBlock = `\n=== OBIECTIV STRATEGIC CURENT ===\nObiectiv: ${goalDirective.goal}\nStrategie de comunicare: ${goalDirective.strategy}\n=== SFARSIT OBIECTIV STRATEGIC ===\n`;
+    }
 
     return `Esti asistentul AI al Superparty — companie de organizare evenimente si petreceri.
 Analizeaza conversatia WhatsApp de mai jos dintre echipa noastra (Superparty) si un Client.
@@ -150,7 +213,7 @@ IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.
 === CATALOGUL NOSTRU DE SERVICII ===
 ${catalogBlock}
 === SFARSIT CATALOG ===
-${memoryBlock}${relationBlock}${planBlock}${goalBlock}
+${roleBlock}${memoryBlock}${relationBlock}${planBlock}${goalBlock}${quoteBlock}${strategyBlock}${contextNbaBlock}
 SARCINA TA:
 1. Identifica ce SERVICII din catalogul nostru sunt cerute sau mentionate in conversatie.
 2. Pentru fiecare serviciu detectat, extrage campurile obligatorii completate sau pune null daca lipsesc.
@@ -160,8 +223,9 @@ SARCINA TA:
 6. Clasifica entitatea: este CLIENT final, COLABORATOR (organizeaza pentru altcineva), PARTENER/intermediar, sau NECUNOSCUT.
 7. Detecteaza obiceiuri si preferinte.
 
-Returneaza un obiect JSON STRICT conform acestui format cu 2 chei principale:
+Returneaza un obiect JSON STRICT conform acestui format cu 3 chei principale:
 {
+  "selected_services": ["ex: animatie", "popcorn"],  // Bazeaza-te pe CATALOGUL NOSTRU
   "assistant_reply": "Textul exact pe care operatorul il poate trimite pe WhatsApp. Cere SPECIFIC ce lipseste. Daca locatia/serviciile sunt uzuale, confirma-le direct. Profesional, cald. Salut cu Buna!, nu Buna ziua. Max 3-4 propozitii.",
   "tool_action": {
     "name": "Numele actiunii din registrul de unelte",
@@ -178,14 +242,15 @@ ${contextPack ? `[context_pack v${contextPack.action_registry_version} | SHA:${(
 
 REGULI GENERALE:
 - Alege CEA MAI BUNA UNEALTA (tool) care se potriveste intentiei curente.
+- CRITIC: Daca ultimul mesaj al clientului este DOAR un salut (ex. "Buna", "Buna seara", "Salut"), TREBUIE sa folosesti DOAR unealta "reply_only". Aceasta asigura furnizarea unui raspuns scurt si cald de deschidere.
 - Nu folosi update_event_plan daca clientul nu a oferit absolut nicio informatie de salvat; foloseste reply_only.
 - Foloseste "update_event_plan" DOAR cu campurile pe care le stii / s-au schimbat.
 - CRITIC: Cand folosesti update_event_plan, PUNE in arguments FIECARE CAMP extras din mesaj.
-  Exemplu: daca clientul zice "vreau pe 20 aprilie in Bucuresti", arguments TREBUIE sa contina:
-  { "event_date": "2026-04-20", "location": "București" }
+  Exemplu 1: daca clientul zice "vreau pe 20 aprilie in Bucuresti", arguments TREBUIE sa contina:
+  { "data_evenimentului": "2026-04-20", "localitate": "București" }
+  Exemplu 2: daca clientul cere "arcada organica de 3 metri", extrage obligatoriu { "metri_liniari": 3, "model_arcada": "organica" }.
   NU lasa arguments gol — daca ai ales update_event_plan, PUNE datele in arguments!
-- Formate acceptate: event_date=YYYY-MM-DD, event_time=HH:MM, children_count_estimate=numar, location=text, selected_package=text, invoice_requested=true/false, payment_method_preference=text, advance_status=text.
-
+- Formate recomandate: data_evenimentului=YYYY-MM-DD, numar_copii=numar, metoda_de_plata=text, doreste_factura=boolean. Respectă tipurile!
 REGULI DE CLARIFICARE (OBLIGATORII):
 - Daca mesajul clientului este AMBIGUU sau INCOMPLET, NU executa side effects. Foloseste "reply_only" si cere clarificare naturala.
 - Daca nu e clar daca clientul vrea eveniment NOU sau MODIFICARE la unul existent, INTREABA inainte de a executa.

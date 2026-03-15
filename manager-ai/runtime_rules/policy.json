@@ -1,6 +1,6 @@
 {
-  "version": "v1773575014396",
-  "loaded_at": "2026-03-15T11:43:34.396Z",
+  "version": "v1773576994464",
+  "loaded_at": "2026-03-15T12:16:34.464Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -193,33 +193,25 @@
   ],
   "policies": [
     {
-      "id": "1fe763f9-c338-4e79-b3d2-3cc29b23c9cb",
-      "knowledge_key": "pricing_general",
-      "category": "pricing",
+      "id": "0e5ed2e0-01e8-463a-8987-6668bf8116fa",
+      "knowledge_key": "popcorn_info",
+      "category": "services",
       "service_tags": [
-        "animator",
-        "popcorn",
-        "vata_zahar",
-        "ursitoare",
-        "arcada_baloane"
+        "popcorn"
       ],
       "question_patterns": [
-        "cat costa",
-        "ce pret",
-        "preturi",
-        "tarife",
-        "oferta de pret",
-        "pret"
+        "popcorn",
+        "floricele",
+        "masina popcorn",
+        "stand popcorn"
       ],
-      "answer_template": "Prețurile variază în funcție de serviciile dorite, durata evenimentului, locație și număr de invitați.\n\nCa să vă pot face o ofertă personalizată, am nevoie de:\n• Ce servicii vă interesează?\n• Data evenimentului\n• Locația\n• Numărul aproximativ de copii/invitați\n\nVă fac oferta rapid după ce am aceste detalii! 😊",
+      "answer_template": "Sigur, avem mașină de popcorn! 🍿\n\nPoate fi închiriată separat sau inclusă într-un pachet.\nPopcornul este proaspăt, nelimitat pe durata evenimentului.\n\nSpuneți-mi data evenimentului și locația ca să vă fac o ofertă.",
       "metadata": {
-        "note": "generic pricing, actual prices vary"
+        "service_type": "popcorn"
       },
       "required_context": [
-        "services",
         "event_date",
-        "location",
-        "guest_count"
+        "location"
       ],
       "applicability_rules": {},
       "approval_status": "approved",
@@ -230,9 +222,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 216,
+      "times_used": 9,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T11:43:12.917+00:00",
+      "updated_at": "2026-03-15T12:15:02.476+00:00",
       "policy_config": null
     },
     {
@@ -271,41 +263,6 @@
       "policy_config": null
     },
     {
-      "id": "0e5ed2e0-01e8-463a-8987-6668bf8116fa",
-      "knowledge_key": "popcorn_info",
-      "category": "services",
-      "service_tags": [
-        "popcorn"
-      ],
-      "question_patterns": [
-        "popcorn",
-        "floricele",
-        "masina popcorn",
-        "stand popcorn"
-      ],
-      "answer_template": "Sigur, avem mașină de popcorn! 🍿\n\nPoate fi închiriată separat sau inclusă într-un pachet.\nPopcornul este proaspăt, nelimitat pe durata evenimentului.\n\nSpuneți-mi data evenimentului și locația ca să vă fac o ofertă.",
-      "metadata": {
-        "service_type": "popcorn"
-      },
-      "required_context": [
-        "event_date",
-        "location"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 5,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-14T23:10:32.387+00:00",
-      "policy_config": null
-    },
-    {
       "id": "6af30b9d-cdae-47cb-9404-3fab3b77faf7",
       "knowledge_key": "ursitoare_info",
       "category": "services",
@@ -335,9 +292,52 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 1,
+      "times_used": 3,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-13T00:31:16.088+00:00",
+      "updated_at": "2026-03-15T12:10:49.011+00:00",
+      "policy_config": null
+    },
+    {
+      "id": "1fe763f9-c338-4e79-b3d2-3cc29b23c9cb",
+      "knowledge_key": "pricing_general",
+      "category": "pricing",
+      "service_tags": [
+        "animator",
+        "popcorn",
+        "vata_zahar",
+        "ursitoare",
+        "arcada_baloane"
+      ],
+      "question_patterns": [
+        "cat costa",
+        "ce pret",
+        "preturi",
+        "tarife",
+        "oferta de pret",
+        "pret"
+      ],
+      "answer_template": "Prețurile variază în funcție de serviciile dorite, durata evenimentului, locație și număr de invitați.\n\nCa să vă pot face o ofertă personalizată, am nevoie de:\n• Ce servicii vă interesează?\n• Data evenimentului\n• Locația\n• Numărul aproximativ de copii/invitați\n\nVă fac oferta rapid după ce am aceste detalii! 😊",
+      "metadata": {
+        "note": "generic pricing, actual prices vary"
+      },
+      "required_context": [
+        "services",
+        "event_date",
+        "location",
+        "guest_count"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 243,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-15T12:16:06.393+00:00",
       "policy_config": null
     },
     {
@@ -630,9 +630,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 254,
+      "times_used": 273,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T11:43:15.255+00:00",
+      "updated_at": "2026-03-15T12:11:28.461+00:00",
       "policy_config": null
     },
     {
@@ -1518,87 +1518,6 @@
       }
     },
     {
-      "id": "f68aa6cc-8cd6-4685-9de9-a19fe8a3c709",
-      "knowledge_key": "role_mos_craciun",
-      "category": "services",
-      "service_tags": [
-        "mos_craciun",
-        "craciun",
-        "santa"
-      ],
-      "question_patterns": [
-        "mos craciun",
-        "moș crăciun",
-        "craciun",
-        "moș",
-        "santa"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.447829+00:00",
-      "valid_until": null,
-      "times_used": 32,
-      "created_at": "2026-03-14T16:50:09.447829+00:00",
-      "updated_at": "2026-03-15T11:43:03.055+00:00",
-      "policy_config": {
-        "label": "Moș Crăciun",
-        "active": true,
-        "priority": 125,
-        "role_key": "role_mos_craciun",
-        "triggers": {
-          "keywords": [
-            "mos craciun",
-            "moș crăciun",
-            "craciun",
-            "moș",
-            "santa"
-          ],
-          "service_tags": [
-            "mos_craciun",
-            "craciun",
-            "santa"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Avem disponibil serviciul de Moș Crăciun pentru vizite, surprize și evenimente tematice.",
-          "upsell": "Poate fi combinat cu cadouri, decor și momente pentru copii.",
-          "closing_question": "Pentru ce dată, în ce locație și în ce interval doriți vizita lui Moș Crăciun?"
-        },
-        "service_key": "mos_craciun",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 500,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 200,
-          "included_duration_hours": 1
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
       "id": "499c6cad-2094-44cd-88cc-fd7c53aff926",
       "knowledge_key": "role_animatie",
       "category": "services",
@@ -1634,9 +1553,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:08.760045+00:00",
       "valid_until": null,
-      "times_used": 0,
+      "times_used": 2,
       "created_at": "2026-03-14T16:50:08.760045+00:00",
-      "updated_at": "2026-03-14T21:46:51.006+00:00",
+      "updated_at": "2026-03-15T12:15:02.477+00:00",
       "policy_config": {
         "label": "Animație",
         "active": true,
@@ -1927,9 +1846,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 550,
+      "times_used": 572,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T11:43:17.626+00:00",
+      "updated_at": "2026-03-15T12:16:21.797+00:00",
       "policy_config": null
     },
     {
@@ -2015,7 +1934,88 @@
         },
         "approval_status": "approved"
       }
+    },
+    {
+      "id": "f68aa6cc-8cd6-4685-9de9-a19fe8a3c709",
+      "knowledge_key": "role_mos_craciun",
+      "category": "services",
+      "service_tags": [
+        "mos_craciun",
+        "craciun",
+        "santa"
+      ],
+      "question_patterns": [
+        "mos craciun",
+        "moș crăciun",
+        "craciun",
+        "moș",
+        "santa"
+      ],
+      "answer_template": "",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.447829+00:00",
+      "valid_until": null,
+      "times_used": 40,
+      "created_at": "2026-03-14T16:50:09.447829+00:00",
+      "updated_at": "2026-03-15T12:16:15.883+00:00",
+      "policy_config": {
+        "label": "Moș Crăciun",
+        "active": true,
+        "priority": 125,
+        "role_key": "role_mos_craciun",
+        "triggers": {
+          "keywords": [
+            "mos craciun",
+            "moș crăciun",
+            "craciun",
+            "moș",
+            "santa"
+          ],
+          "service_tags": [
+            "mos_craciun",
+            "craciun",
+            "santa"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Avem disponibil serviciul de Moș Crăciun pentru vizite, surprize și evenimente tematice.",
+          "upsell": "Poate fi combinat cu cadouri, decor și momente pentru copii.",
+          "closing_question": "Pentru ce dată, în ce locație și în ce interval doriți vizita lui Moș Crăciun?"
+        },
+        "service_key": "mos_craciun",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 500,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 200,
+          "included_duration_hours": 1
+        },
+        "approval_status": "approved"
+      }
     }
   ],
-  "checksum": "150dd7b689818643f99ed806200e2588c4dc7a7b5cf59e487fb9c84c6e59895f"
+  "checksum": "211f67b9f07c5deac970a238c09761e03affb7334aed514691c7dd0f0bd35ccd"
 }

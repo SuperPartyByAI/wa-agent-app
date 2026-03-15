@@ -618,7 +618,10 @@ app.use('/brain', express.static(path.join(__dirname, 'public')));
 
 // ─── Admin Suite ───
 import adminSuiteRoutes from './src/api/adminSuiteRoutes.mjs';
+import adminDebugRoutes from './src/api/adminDebugRoutes.mjs';
+
 app.use('/api/admin', authMiddleware, adminSuiteRoutes);
+app.use('/api/v1/admin', authMiddleware, adminDebugRoutes);
 app.use('/admin', express.static(path.join(__dirname, 'public')));
 
 // ─── Operator Desk (primary link + API) ───

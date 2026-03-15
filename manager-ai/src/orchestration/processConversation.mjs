@@ -164,6 +164,36 @@ export async function processConversation(conversation_id, message_id = null, op
         }
         console.log(`[Pipeline] Found ${messages.length} messages.`);
 
+        // ── 1.1. Check Close States & Reopen Logic ──
+        const { data: earlyRuntime } = await supabase
+            .from('ai_lead_runtime_states')
+            .select('closed_status, lead_state')
+            .eq('conversation_id', conversation_id)
+            .maybeSingle();
+
+        if (earlyRuntime && earlyRuntime.closed_status && earlyRuntime.closed_status !== 'open') {
+            const REOPEN_WORDS = ['revin', 'm-am razgandit', 'm-am răzgândit', 'vreau', 'totusi', 'totuși', 'sunt interesat', 'mai este valabil'];
+            const lowerMsg = messages[0]?.content?.toLowerCase() || ''; // newest message is index 0
+            const wantsReopen = REOPEN_WORDS.some(w => lowerMsg.includes(w));
+
+            if (wantsReopen) {
+                console.log(`[Pipeline] Reopen triggered for ${conversation_id} from state ${earlyRuntime.closed_status}`);
+                await supabase.from('ai_lead_runtime_states')
+                    .update({ 
+                        closed_status: 'open', 
+                        handoff_to_operator: false,
+                        do_not_followup: false,
+                        lead_state: 'salut_initial'
+                    })
+                    .eq('conversation_id', conversation_id);
+                // Also log it
+                await supabase.from('ai_lead_audit_trail').insert({ conversation_id, event_type: 'state_change', old_state: earlyRuntime.closed_status, new_state: 'open', reason: 'reopen_triggered' });
+            } else {
+                console.log(`[Pipeline] Early exit: Conversation is closed (${earlyRuntime.closed_status}). Reopen not triggered.`);
+                return;
+            }
+        }
+
         // ── 2. Load entity memory ──
         const existingMemory = await loadClientMemory(clientId);
         console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, locations=${existingMemory.usual_locations.length}, services=${existingMemory.usual_services.length}`);
@@ -1275,6 +1305,41 @@ export async function processConversation(conversation_id, message_id = null, op
             });
 
             if (replyDecisionResult.decision === 'reply_now') {
+                // ── HARDENING FAZA 6: Anti-Hallucination Audit V2 ──
+                let auditIsSafe = true;
+                if (!kbComposerBypass) {
+                    const { auditReplyV2 } = await import('../agent/replyAuditorV2.mjs');
+                    console.log(`[Pipeline] Running strict LLM AuditV2 on reply...`);
+                    // Fallback reference context 
+                    let rvcActiveService = null; try{ if(typeof runtimeState !== 'undefined') rvcActiveService = runtimeState?.primary_service; }catch(e){}
+                    let rvcDraft = null; try{ if(typeof partyDraft !== 'undefined') rvcDraft = partyDraft; }catch(e){}
+                    let rvcNba = null; try{ if(typeof nextTarget !== 'undefined') rvcNba = nextTarget?.action; }catch(e){}
+    
+                    const auditRes = await auditReplyV2({
+                        replyText: suggestedReply,
+                        activeService: rvcActiveService,
+                        draft: rvcDraft,
+                        nextBestAction: rvcNba
+                    });
+                    
+                    if (!auditRes.is_safe) {
+                        console.warn(`[Pipeline] 🚨 AUDIT FAILED: ${auditRes.reason}`);
+                        suggestedReply = 'Pentru a structura o ofertă corectă și completă, vă rog să îmi oferiți un scurt moment să validez detaliile. Acum revin, sau va prelua direct un coleg organizator!';
+                        
+                        try {
+                            const { saveLeadRuntimeState } = await import('../agent/saveLeadRuntimeState.mjs');
+                            await saveLeadRuntimeState(conversation_id, {
+                                 handoff_to_operator: true,
+                                 handoff_reason: `AuditV2 Failed: ${auditRes.reason}`,
+                                 closed_status: 'operator_owned',
+                                 operator_owned_at: new Date().toISOString()
+                            });
+                        } catch (err) {
+                            console.error('Audit Handoff Save Fail:', err);
+                        }
+                    }
+                }
+
                 // Smart anti-duplicate: block only if no new client msg after recent outbound
                 const { data: recentOutbound } = await supabase
                     .from('messages')

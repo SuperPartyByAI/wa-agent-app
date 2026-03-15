@@ -13,22 +13,28 @@ async function sendViaWhatsApp(conversationId, text) {
     const { data: conv } = await supabase.from('conversations').select('session_id').eq('id', conversationId).single();
     if (!conv?.session_id) return false;
 
-    try {
-        const response = await fetch(`${WHTSUP_API_URL}/api/messages/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': WHTSUP_API_KEY },
-            body: JSON.stringify({
-                sessionId: conv.session_id,
-                conversationId: conversationId,
-                text: text,
-                message_type: 'text'
-            })
-        });
-        return response.ok;
-    } catch(e) {
-        console.error(`[FollowUpJob] Failed to send message for ${conversationId}:`, e.message);
-        return false;
+    let retries = 3;
+    while (retries > 0) {
+        try {
+            const response = await fetch(`${WHTSUP_API_URL}/api/messages/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-api-key': WHTSUP_API_KEY },
+                body: JSON.stringify({
+                    sessionId: conv.session_id,
+                    conversationId: conversationId,
+                    text: text,
+                    message_type: 'text'
+                })
+            });
+            if (response.ok) return true;
+            console.error(`[FollowUpJob] Send attempt failed (${3 - retries + 1}/3) Server returned ${response.status}`);
+        } catch(e) {
+            console.error(`[FollowUpJob] Failed to send message for ${conversationId} (${3 - retries + 1}/3):`, e.message);
+        }
+        retries--;
+        if (retries > 0) await new Promise(r => setTimeout(r, 2000));
     }
+    return false;
 }
 
 /**
@@ -110,6 +116,12 @@ export async function runFollowUpSweep() {
         // Evaluate logic layer
         const followUpAction = evaluateFollowUp(lead);
         
+        // Anti-double execution guard (Idempotency: Block sending if it was already sent in the last 60 minutes)
+        if (lead.last_followup_sent_at && Date.now() - new Date(lead.last_followup_sent_at).getTime() < 60 * 60 * 1000) {
+             console.log(`[FollowUpJob] Skip lead ${lead.conversation_id}: Follow-up already sent recently.`);
+             continue;
+        }
+
         if (!followUpAction) {
             console.log(`[FollowUpJob] Lead ${lead.conversation_id} skip: Logic evaluated as NULL.`);
             continue;

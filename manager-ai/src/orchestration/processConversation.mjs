@@ -499,6 +499,38 @@ export async function processConversation(conversation_id, message_id = null, op
         const t_llm_ms = Date.now() - t_llm_start;
         console.log(`[Pipeline] LLM analysis completed in ${t_llm_ms}ms`);
 
+        // --- SHADOW QUICK PATCH (V2 Architecture) ---
+        try {
+            const { evaluateMutationIntent } = await import('../agent/mutationGatekeeper.mjs');
+            const { renderPlaybook, mapAndValidate } = await import('../agent/shadowArchitecture.mjs');
+            
+            const shadowPlaybook = { strategy: nextTarget?.instruction || '', tone: 'shadow_tone' };
+            const shadowPrompt = renderPlaybook(shadowPlaybook, { fields: missingMetrics });
+            
+            console.log(`\n=== [SHADOW V2] systemPrompt ===\n${shadowPrompt}\n===============================\n`);
+            
+            // Robust parsing emulation
+            const rawLlmText = JSON.stringify(analysis || {});
+            const jsonMatch = rawLlmText.match(/\{[\s\S]*\}$/);
+            let parsedLlm = analysis || {};
+            if (!jsonMatch) {
+                console.warn("[SHADOW V2] Fallback: LLM Output didn't match strict JSON regex.");
+            } else {
+                parsedLlm = JSON.parse(jsonMatch[0]);
+            }
+            console.log(`\n=== [SHADOW V2] LLM JSON Output ===\n${JSON.stringify(parsedLlm, null, 2)}\n===============================\n`);
+            
+            const extractedFields = { _raw_text: userMessage, ...parsedLlm };
+            const mapped = mapAndValidate(extractedFields, userMessage);
+            
+            // evaluateMutationIntent expects llmIntent, clientContext
+            const gateRes = await evaluateMutationIntent(parsedLlm, { events: [] });
+            console.log(`[SHADOW V2] Gatekeeper Status: ${gateRes.action} (Reason: ${gateRes.reason})`);
+        } catch(err) {
+            console.error('[SHADOW V2] Error in patch:', err);
+        }
+        // --- END SHADOW ---
+
         if (!analysis) {
             console.warn(`[Pipeline] LLM unreachable or returned invalid JSON for conv ${conversation_id}. Triggering Graceful Fallback.`);
             const fallbackText = 'Sistemul meu întâmpină o întârziere momentană. Un coleg te va prelua în cel mai scurt timp pentru a te ajuta!';
@@ -625,9 +657,9 @@ export async function processConversation(conversation_id, message_id = null, op
         // Try ALL recent unprocessed client messages (not just last) for KB match
         // This handles debounced multi-message scenarios
         const { searchKnowledgeBase, getLearningContext } = await import('../knowledge/knowledgeBase.mjs');
-        const recentClientMsgs = [...messages].reverse()
+        const recentClientMsgs = messages
             .filter(m => m.sender_type === 'client')
-            .slice(0, 5) // max 5 recent client messages
+            .slice(0, 2) // max 2 most recent client messages
             .map(m => m.content || '');
 
         let kbMatch = null;
@@ -1202,9 +1234,10 @@ export async function processConversation(conversation_id, message_id = null, op
                 progression,
                 kbGrounding: kbGroundingContext,
                 learnedContext,
-                latestQuote
+                latestQuote,
+                nextBestActionGoal: nextTarget
             });
-            console.log(`[Pipeline] Composer run for ${kbGroundingContext ? 'KB Grounding' : 'Quote Presentation'}`);
+            console.log(`[Pipeline] Composer run for ${kbGroundingContext ? 'KB Grounding' : 'Quote Presentation'} with Playbook: ${nextTarget?.playbookKey || 'None'}`);
 
             suggestedReply = composerResult.reply;
             t_composer_ms = Date.now() - t_comp_start;
@@ -1377,8 +1410,11 @@ export async function processConversation(conversation_id, message_id = null, op
 
             if (replyDecisionResult.decision === 'reply_now') {
                 // ── HARDENING FAZA 6: Anti-Hallucination Audit V2 ──
+                // Bypass audit if we already bypassed the composer via KB rules,
+                // OR if the composer failed its own fact-check and fell back to the safe KB factual string
+                const fallbackComposerBypass = composerResult.composerUsed === 'kb_direct_answer';
                 let auditIsSafe = true;
-                if (!kbComposerBypass) {
+                if (!kbComposerBypass && !fallbackComposerBypass) {
                     const { auditReplyV2 } = await import('../agent/replyAuditorV2.mjs');
                     console.log(`[Pipeline] Running strict LLM AuditV2 on reply...`);
                     // Fallback reference context 
@@ -1390,12 +1426,12 @@ export async function processConversation(conversation_id, message_id = null, op
                         replyText: suggestedReply,
                         activeService: rvcActiveService,
                         draft: rvcDraft,
-                        nextBestAction: rvcNba
+                        nextBestAction: rvcNba,
+                        kbContext: kbGroundingContext || null
                     });
                     
                     if (!auditRes.is_safe) {
                         console.warn(`[Pipeline] 🚨 AUDIT FAILED: ${auditRes.reason}`);
-                        suggestedReply = 'Pentru a structura o ofertă corectă și completă, vă rog să îmi oferiți un scurt moment să validez detaliile. Acum revin, sau va prelua direct un coleg organizator!';
                         
                         try {
                             const { saveLeadRuntimeState } = await import('../agent/saveLeadRuntimeState.mjs');
@@ -1408,10 +1444,18 @@ export async function processConversation(conversation_id, message_id = null, op
                         } catch (err) {
                             console.error('Audit Handoff Save Fail:', err);
                         }
+                        
+                        // FIX: Block the reply instead of replacing the text and sending it anyway
+                        auditIsSafe = false;
+                        replyStatus = 'blocked';
+                        sentBy = 'audit_v2';
+                        replyDecisionResult = { decision: 'blocked_audit_failed', reason: `safety_violation: ${auditRes.reason}` };
                     }
-                }
+                } // End of Audit V2 block
 
-                // Smart anti-duplicate: block only if no new client msg after recent outbound
+                // Only evaluate sending if Audit V2 considers it safe
+                if (auditIsSafe) {
+                    // Smart anti-duplicate: block only if no new client msg after recent outbound
                 const { data: recentOutbound } = await supabase
                     .from('messages')
                     .select('id, created_at')
@@ -1449,6 +1493,7 @@ export async function processConversation(conversation_id, message_id = null, op
                     confidence: decision.confidence_score, style: composerResult.replyStyle
                 });
                 } // end anti-duplicate else
+                } // end auditIsSafe if
             } else {
                 replyStatus = 'blocked';
                 sentBy = 'reply_engine';

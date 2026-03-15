@@ -69,6 +69,16 @@ export const PlaybookStrategies = {
         condition: (context) => context.runtimeState?.lead_score >= 80 && context.runtimeState.lead_state === 'oferta_trimisa',
         strategy: "Dacă oferta a fost acceptată sau sunt foarte interesați (Hot Lead), propune scurt 1 serviciu adițional (ex. Dacă iau Animatori, propune Mașină de Bule sau Vată de Zahăr). Fă-o natural: 'Ca idee, la petrecerile de acest gen merge excelent și...'",
         tone: "friendly_suggestive"
+    },
+
+    // ── 7. BILLING / INVOICE INTENT ──
+    billing_intent: {
+        condition: (context) => {
+            const txt = (context.clientMessageText || '').toLowerCase();
+            return txt.includes('factur') || txt.includes('datele firmei') || txt.includes('firma ') || txt.includes(' plat') || txt.includes('cui') || txt.includes('cont');
+        },
+        strategy: "Dacă s-a cerut factura sau se discută despre plată, mulțumește scurt pentru confirmare. Cere datele de facturare complete (CUI, Nume Firmă, Adresă, Număr Registrul Comerțului) dacă lipsesc, și invită clientul să semneze contractul sau să achite avansul.",
+        tone: "professional_warm"
     }
 };
 
@@ -84,6 +94,7 @@ export function evaluatePlaybook(context) {
     const priorityChecks = [
         'objection_too_expensive',
         'objection_thinking',
+        'billing_intent',
         'impatient_price',
         'upsell_ready',
         'quotation',

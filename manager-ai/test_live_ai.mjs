@@ -11,7 +11,9 @@ const API = 'http://89.167.115.150:3001/webhook/whts-up';
 const TESTS = [
   { name: 'VAGUE_INQUIRY', p: '1', msg: 'Buna ziua, facem o petrecere pentru fata mea si vrem sa chemam pe cineva.' },
   { name: 'IMPATIENT_PRICE', p: '2', msg: 'Cat ma costa animatia si baloanele?' },
-  { name: 'OBJECTION_EXPENSIVE', p: '3', msg: 'e cam scump, gasesc si mai ieftin' } // We will fake the runtime state for this one inside the DB before calling the webhook
+  { name: 'OBJECTION_EXPENSIVE', p: '3', msg: 'e cam scump, gasesc si mai ieftin' },
+  { name: 'UPSELL_READY', p: '4', msg: 'Super, vrem pachetul de 2 ore.' },
+  { name: 'BILLING_INTENT', p: '5', msg: 'Doresc plata pe firma, la ce date trimit CUI-ul?' }
 ];
 
 async function createSupabaseData(testPayload) {
@@ -47,14 +49,14 @@ async function createSupabaseData(testPayload) {
     });
 
     // State Injection for specific tests
-    if (testPayload.name === 'OBJECTION_EXPENSIVE') {
+    if (testPayload.name === 'OBJECTION_EXPENSIVE' || testPayload.name === 'UPSELL_READY') {
         await supabase.from('ai_lead_runtime_states').upsert({
             conversation_id: convId,
-            lead_state: 'oferta_trimisa', // Force state so Objection handler kicks in
+            lead_state: 'oferta_trimisa', // Force state so Objection/Upsell kicks in
             primary_service: 'animatie',
             known_fields: ['data_evenimentului'],
             missing_fields: [],
-            lead_score: 50
+            lead_score: testPayload.name === 'UPSELL_READY' ? 90 : 50
         });
 
         // Also inject a Draft so `readyForQuote` passes true
@@ -64,6 +66,17 @@ async function createSupabaseData(testPayload) {
              date_generale: { tip_eveniment: 'aniversare' },
              detalii_servicii: { animatie: { numar_animatori: 1 } },
              comercial: { gata_pentru_oferta: true, campuri_obligatorii_lipsa: [] }
+        });
+    }
+
+    if (testPayload.name === 'BILLING_INTENT') {
+        await supabase.from('ai_lead_runtime_states').upsert({
+            conversation_id: convId,
+            lead_state: 'booking_pending', // Force state so Billing handler kicks in
+            primary_service: 'animatie',
+            known_fields: ['data_evenimentului', 'locatie_eveniment', 'numar_copii'],
+            missing_fields: [],
+            lead_score: 95
         });
     }
 }

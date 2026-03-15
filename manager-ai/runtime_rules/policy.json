@@ -1,6 +1,6 @@
 {
-  "version": "v1773536313440",
-  "loaded_at": "2026-03-15T00:58:33.440Z",
+  "version": "v1773536493462",
+  "loaded_at": "2026-03-15T01:01:33.463Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -229,9 +229,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 75,
+      "times_used": 76,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T00:57:49.386+00:00",
+      "updated_at": "2026-03-15T00:59:48.097+00:00",
       "policy_config": null
     },
     {
@@ -412,9 +412,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 81,
+      "times_used": 82,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-14T15:01:42.658+00:00",
+      "updated_at": "2026-03-15T01:00:47.46+00:00",
       "policy_config": null
     },
     {
@@ -630,9 +630,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 72,
+      "times_used": 74,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T00:47:40.173+00:00",
+      "updated_at": "2026-03-15T01:01:02.855+00:00",
       "policy_config": null
     },
     {
@@ -746,9 +746,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:09.186263+00:00",
       "valid_until": null,
-      "times_used": 115,
+      "times_used": 121,
       "created_at": "2026-03-14T16:50:09.186263+00:00",
-      "updated_at": "2026-03-15T00:57:23.028+00:00",
+      "updated_at": "2026-03-15T01:01:16.25+00:00",
       "policy_config": {
         "label": "Vată de zahăr",
         "active": true,
@@ -995,9 +995,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:09.105878+00:00",
       "valid_until": null,
-      "times_used": 141,
+      "times_used": 145,
       "created_at": "2026-03-14T16:50:09.105878+00:00",
-      "updated_at": "2026-03-15T00:58:31.913+00:00",
+      "updated_at": "2026-03-15T01:01:20.593+00:00",
       "policy_config": {
         "label": "Arcadă fără suport",
         "active": true,
@@ -1516,7 +1516,7 @@
       "valid_until": null,
       "times_used": 98,
       "created_at": "2026-03-14T00:38:23.590769+00:00",
-      "updated_at": "2026-03-15T00:58:19.444+00:00",
+      "updated_at": "2026-03-15T01:00:19.992+00:00",
       "policy_config": null
     },
     {
@@ -2011,11 +2011,11 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 385,
+      "times_used": 386,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T00:57:41.26+00:00",
+      "updated_at": "2026-03-15T01:00:31.22+00:00",
       "policy_config": null
     }
   ],
-  "checksum": "c5073a264b129dadbb973747eaa4078ac4037eda9c81a9ac77cc0ebf61b581fd"
+  "checksum": "8dc06772e62021300c1545c8bd4933f504fe5843c0b02fd0863f18e60515d69b"
 }

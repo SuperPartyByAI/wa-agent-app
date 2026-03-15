@@ -454,7 +454,8 @@ export async function processConversation(conversation_id, message_id = null, op
             missingMetrics,
             humanTakeover: false, // TODO: Wire human takeover logic dynamically
             isAcknowledgment: isAck,
-            isGreeting: lastClientMessageText && /^(bun[aă]|salut|hey|hello|hi|bun[aă]\s*(seara|ziua|dimineata|dimineața)|sal|hei|ce\s*faci|servus)\s*[!.,?]*$/i.test(lastClientMessageText.trim())
+            isGreeting: lastClientMessageText && /^(bun[aă]|salut|hey|hello|hi|bun[aă]\s*(seara|ziua|dimineata|dimineața)|sal|hei|ce\s*faci|servus)\s*[!.,?]*$/i.test(lastClientMessageText.trim()),
+            clientMessageText: lastClientMessageText
         };
         const nextTarget = computeNextBestAction(plannerContext);
         

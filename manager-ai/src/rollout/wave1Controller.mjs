@@ -83,7 +83,7 @@ export function isWave1Eligible({
     }
 
     // 3. Stage must be in Wave 1 allowed stages
-    const ALLOWED_STAGES = ['new_lead', 'greeting', 'discovery', 'event_qualification'];
+    const ALLOWED_STAGES = ['new_lead', 'greeting', 'discovery', 'service_selection', 'event_qualification', 'package_recommendation', 'quotation_draft', 'quotation_sent', 'objection_handling'];
     const stage = goalState?.current_state || decision?.conversation_stage;
     if (stage && !ALLOWED_STAGES.includes(stage)) {
         blockers.push(`stage_not_allowed: ${stage}`);

@@ -36,7 +36,7 @@ export const AI_SHADOW_MODE_ENABLED = process.env.AI_SHADOW_MODE_ENABLED === 'tr
 export const AI_SAFE_AUTOREPLY_ENABLED = process.env.AI_SAFE_AUTOREPLY_ENABLED === 'true'; // default OFF
 export const AI_FULL_AUTOREPLY_ENABLED = process.env.AI_FULL_AUTOREPLY_ENABLED === 'true'; // default OFF
 export const AI_SAFE_AUTOREPLY_MIN_CONFIDENCE = parseInt(process.env.AI_SAFE_AUTOREPLY_MIN_CONFIDENCE || '75', 10);
-export const AI_AUTOREPLY_ALLOWED_STAGES = (process.env.AI_AUTOREPLY_ALLOWED_STAGES || 'new_lead,greeting,discovery').split(',').map(s => s.trim());
+export const AI_AUTOREPLY_ALLOWED_STAGES = (process.env.AI_AUTOREPLY_ALLOWED_STAGES || 'new_lead,greeting,discovery,service_selection,event_qualification,package_recommendation,quotation_draft,quotation_sent,objection_handling').split(',').map(s => s.trim());
 export const AI_AUTOREPLY_ALLOWED_TOOLS = (process.env.AI_AUTOREPLY_ALLOWED_TOOLS || 'reply_only,update_event_plan').split(',').map(s => s.trim());
 
 // ─── Phase 3: Rollout Gate Thresholds ───

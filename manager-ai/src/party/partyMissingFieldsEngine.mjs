@@ -26,25 +26,44 @@ export function computeMissingPartyFields(partyDraft, activeRoleKeys = []) {
         return false;
     };
 
-    // 1. Check Level 1 (Quote Requirements)
+    // Check Level 1 (Quote Requirements)
     reqs.level1_quote.forEach(field => {
         if (!hasField(field)) missingForQuote.push(field);
     });
 
-    // 2. Check Level 2 (Booking Requirements)
-    // Booking implies everything from Quoting + Finalization details
+    // Check Level 2 (Booking Requirements)
     reqs.level2_booking.forEach(field => {
         if (!hasField(field)) missingForBooking.push(field);
     });
     
-    // Ensure combined array for final Booking Readiness check
     const combinedBooking = [...new Set([...missingForQuote, ...missingForBooking])];
+
+    // Compute Next Field To Ask based on Recommended Order
+    let nextFieldToAsk = null;
+    if (reqs.recommendedOrder) {
+        for (const field of reqs.recommendedOrder) {
+            // Priority: if it's missing for quote OR booking, ask it
+            if (missingForQuote.includes(field) || missingForBooking.includes(field)) {
+                nextFieldToAsk = field;
+                break;
+            }
+        }
+    }
+    
+    // Fallback if recommendedOrder didn't catch it
+    if (!nextFieldToAsk && missingForQuote.length > 0) nextFieldToAsk = missingForQuote[0];
+    if (!nextFieldToAsk && combinedBooking.length > 0) nextFieldToAsk = combinedBooking[0];
 
     return {
         missingForQuote,
         missingForBooking: combinedBooking,
         isReadyForQuote: missingForQuote.length === 0,
         isReadyForBooking: combinedBooking.length === 0,
-        allowedOptionals: reqs.optionals
+        allowedOptionals: reqs.optionals,
+        
+        // --- Legacy Interface Mapping for nextBestActionPlanner ---
+        readyForQuote: missingForQuote.length === 0,
+        missing: missingForQuote.length > 0 ? missingForQuote : missingForBooking,
+        nextFieldToAsk: nextFieldToAsk
     };
 }

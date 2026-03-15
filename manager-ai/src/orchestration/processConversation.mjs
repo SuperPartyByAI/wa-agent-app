@@ -440,7 +440,14 @@ export async function processConversation(conversation_id, message_id = null, op
             runtimeState.active_roles = activeRoles.map(r => r.role_id);
         }
 
-        const missingMetrics = computeMissingFields(runtimeState.primary_service, eventPlan, runtimeState.known_fields);
+        // Fix: Replace V1 legacy missingFieldsEngine with V2 partyMissingFieldsEngine
+        let rolesToEvaluate = activeRoleKeys;
+        if (rolesToEvaluate.length === 0 && runtimeState.primary_service) {
+            // Fallback mapper for primary_service string -> role array
+            rolesToEvaluate = [`role_${runtimeState.primary_service}`];
+        }
+        
+        const missingMetrics = computeMissingPartyFields(partyDraft, rolesToEvaluate);
 
         const plannerContext = {
             runtimeState,
@@ -1044,36 +1051,23 @@ export async function processConversation(conversation_id, message_id = null, op
             suggestedReply = hybridPackageReply;
             composerResult = { reply: hybridPackageReply, replyStyle: 'warm_sales', composerUsed: true, specificity: 'kb_packages', serviceDetectionStatus: 'confirmed' };
             console.log(`[Pipeline] Using hybrid package reply (${hybridPackageReply.length} chars), skipping general composer`);
-        } else if (eligibility.eligible || !decision.needs_human_review) {
+        } else if ((kbGroundingContext || latestQuote) && (eligibility.eligible || !decision.needs_human_review)) {
             const t_comp_start = Date.now();
 
-            // If KB grounded mode, use KB answer as base truth
-            if (kbGroundingContext) {
-                composerResult = await composeHumanReply({
-                    analysis,
-                    entityMemory,
-                    salesCycle,
-                    conversationStage: dbStage || decision.conversation_stage,
-                    conversationText: userMessage,
-                    serviceConfidence,
-                    progression,
-                    kbGrounding: kbGroundingContext,
-                    latestQuote
-                });
-                console.log(`[Pipeline] Composer used KB grounding: key=${kbGroundingContext.knowledgeKey}`);
-            } else {
-                composerResult = await composeHumanReply({
-                    analysis,
-                    entityMemory,
-                    salesCycle,
-                    conversationStage: dbStage || decision.conversation_stage,
-                    conversationText: userMessage,
-                    serviceConfidence,
-                    progression,
-                    learnedContext,
-                    latestQuote
-                });
-            }
+            // Run composer ONLY for KB injection or freshly generated Quotes.
+            composerResult = await composeHumanReply({
+                analysis,
+                entityMemory,
+                salesCycle,
+                conversationStage: dbStage || decision.conversation_stage,
+                conversationText: userMessage,
+                serviceConfidence,
+                progression,
+                kbGrounding: kbGroundingContext,
+                learnedContext,
+                latestQuote
+            });
+            console.log(`[Pipeline] Composer run for ${kbGroundingContext ? 'KB Grounding' : 'Quote Presentation'}`);
 
             suggestedReply = composerResult.reply;
             t_composer_ms = Date.now() - t_comp_start;
@@ -1120,6 +1114,9 @@ export async function processConversation(conversation_id, message_id = null, op
                     hasLearnedContext: learnedContext.length > 0
                 });
             }
+        } else {
+            console.log(`[Pipeline] Bypassing legacy composer -> Autonomous Phase 3 Reply preserved.`);
+            composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, specificity: 'autonomous_phase3', serviceDetectionStatus: 'unknown' };
         }
 
         // ── 8.10. Evaluate reply quality ──

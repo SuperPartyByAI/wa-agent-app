@@ -82,7 +82,31 @@ export const ACTION_REGISTRY = {
                 acces_curent_electric: { type: 'boolean', description: 'Daca exista acces la sursa de curent (true/false)' },
                 observatii_vata_de_zahar: { type: 'string', description: 'Observatii pentru vata de zahar' },
                 observatii_popcorn: { type: 'string', description: 'Observatii pentru masina de popcorn' },
-                observatii_pachet: { type: 'string', description: 'Observatii pentru pachetul combinat (vata+popcorn)' }
+                observatii_pachet: { type: 'string', description: 'Observatii pentru pachetul combinat (vata+popcorn)' },
+
+                // Ursitoare
+                sex_copil: { type: 'string', description: 'Sexul copilului pentru adaptarea textului' },
+                tip_moment: { type: 'string', description: 'Tipul de moment pentru ursitoare (standard, vip, etc.)' },
+                durata_moment: { type: 'number', description: 'Durata momentului pentru ursitoare' },
+                observatii_ursitoare: { type: 'string', description: 'Observatii specifice pentru ursitoare' },
+
+                // Mos Craciun
+                ora_vizitei: { type: 'string', description: 'Ora programata pentru vizita lui Mos Craciun' },
+                durata_vizita: { type: 'number', description: 'Durata vizitei lui Mos Craciun in ore/minute' },
+                cadouri_pregatite: { type: 'boolean', description: 'Daca parintii au pregatit deja cadourile' },
+                observatii_mos_craciun: { type: 'string', description: 'Observatii specifice pentru vizita lui Mos Craciun' },
+
+                // Parfumerie
+                numar_participanti: { type: 'number', description: 'Numarul de participanti la atelierul de parfumerie' },
+                varsta_participantilor: { type: 'string', description: 'Varsta estimativa a participantilor la atelier' },
+                durata_atelier: { type: 'number', description: 'Durata atelierului de parfumerie in ore' },
+                format_atelier: { type: 'string', description: 'Formatul atelierului' },
+                observatii_parfumerie: { type: 'string', description: 'Observatii specifice pentru atelierul de parfumerie' },
+
+                // Alte observatii Arcade
+                observatii_arcada_fara_suport: { type: 'string', description: 'Observatii arcada fara suport' },
+                observatii_arcada_cu_cifre: { type: 'string', description: 'Observatii arcada cu cifre' },
+                observatii_arcada_pe_suport: { type: 'string', description: 'Observatii arcada pe suport' }
             }
             // All properties are optional (it's a partial update)
         },

@@ -55,9 +55,10 @@ export const CommercialFields = [
 export const ServiceFieldRequirements = {
     role_animatie: {
         serviceKey: "animatie",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "personaj_dorit", "numar_copii"],
-        requiredForBooking: ["nume_sarbatorit", "data_nasterii_sarbatoritului", "varsta_sarbatoritului", "metoda_de_plata", "doreste_factura"],
-        optional: ["numar_animatori", "tematica_dorita", "interior_sau_exterior", "activitati_dorite", "observatii_animatie"],
+        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore", "numar_animatori"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "personaj_dorit", "numar_copii", "nume_sarbatorit", "varsta_sarbatoritului", "metoda_de_plata", "doreste_factura"],
+        optional: ["tematica_dorita", "interior_sau_exterior", "activitati_dorite", "observatii_animatie"],
+        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_animatori", "personaj_dorit", "numar_copii", "nume_sarbatorit", "varsta_sarbatoritului", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             personaj_dorit: "string",
             numar_animatori: "number",
@@ -69,11 +70,12 @@ export const ServiceFieldRequirements = {
     },
     role_ursitoare: {
         serviceKey: "ursitoare",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa"],
-        requiredForBooking: ["nume_copil", "sex_copil", "metoda_de_plata", "doreste_factura"],
+        requiredForQuote: ["data_evenimentului", "localitate"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "nume_sarbatorit", "sex_copil", "metoda_de_plata", "doreste_factura"],
         optional: ["numar_invitati", "tip_moment", "durata_moment", "observatii_ursitoare"],
+        recommendedOrder: ["data_evenimentului", "localitate", "nume_sarbatorit", "sex_copil", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
-            nume_copil: "string",
+            nume_sarbatorit: "string",
             sex_copil: "string",
             tip_moment: "string",
             durata_moment: "number",
@@ -82,9 +84,10 @@ export const ServiceFieldRequirements = {
     },
     role_vata_de_zahar: {
         serviceKey: "vata_de_zahar",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "durata_ore"],
-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
+        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         optional: ["numar_estimat_portii", "interior_sau_exterior", "acces_curent_electric", "observatii_vata_de_zahar"],
+        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             durata_ore: "number",
             numar_estimat_portii: "number",
@@ -94,9 +97,10 @@ export const ServiceFieldRequirements = {
     },
     role_popcorn: {
         serviceKey: "popcorn",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "durata_ore"],
-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
+        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         optional: ["numar_estimat_portii", "acces_curent_electric", "observatii_popcorn"],
+        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             durata_ore: "number",
             numar_estimat_portii: "number",
@@ -106,9 +110,10 @@ export const ServiceFieldRequirements = {
     },
     role_vata_si_popcorn: {
         serviceKey: "vata_si_popcorn",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "durata_ore"],
-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
+        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         optional: ["numar_estimat_portii", "acces_curent_electric", "observatii_pachet"],
+        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             durata_ore: "number",
             numar_estimat_portii: "number",
@@ -118,9 +123,10 @@ export const ServiceFieldRequirements = {
     },
     role_arcada_fara_suport: {
         serviceKey: "arcada_fara_suport",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "metri_liniari", "model_arcada"],
-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
+        requiredForQuote: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         optional: ["culori_dorite", "zona_amplasare", "interior_sau_exterior", "observatii_arcada_fara_suport"],
+        recommendedOrder: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "culori_dorite", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             metri_liniari: "number",
             model_arcada: "string",
@@ -131,9 +137,10 @@ export const ServiceFieldRequirements = {
     },
     role_arcada_cu_cifre_volumetrice: {
         serviceKey: "arcada_cu_cifre_volumetrice",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "metri_liniari", "model_arcada", "cifre_dorite"],
-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
+        requiredForQuote: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "cifre_dorite"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         optional: ["culoare_cifre", "culori_arcada", "zona_amplasare", "observatii_arcada_cu_cifre"],
+        recommendedOrder: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "cifre_dorite", "culori_arcada", "culoare_cifre", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             metri_liniari: "number",
             model_arcada: "string",
@@ -146,9 +153,10 @@ export const ServiceFieldRequirements = {
     },
     role_arcada_pe_suport: {
         serviceKey: "arcada_pe_suport",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa"],
-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
+        requiredForQuote: ["data_evenimentului", "localitate"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         optional: ["culori_dorite", "zona_amplasare", "interior_sau_exterior", "tip_suport", "observatii_arcada_pe_suport"],
+        recommendedOrder: ["data_evenimentului", "localitate", "culori_dorite", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             tip_suport: "string",
             culori_dorite: "string",
@@ -158,9 +166,10 @@ export const ServiceFieldRequirements = {
     },
     role_mos_craciun: {
         serviceKey: "mos_craciun",
-        requiredForQuote: ["data_evenimentului", "ora_vizitei", "adresa_completa", "numar_copii"],
-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
-        optional: ["nume_copii", "cadouri_pregatite", "tip_eveniment", "durata_vizita", "observatii_mos_craciun"],
+        requiredForQuote: ["data_evenimentului", "localitate", "durata_vizita"],
+        requiredForBooking: ["ora_vizitei", "adresa_completa", "numar_copii", "metoda_de_plata", "doreste_factura"],
+        optional: ["nume_sarbatorit", "cadouri_pregatite", "tip_eveniment", "observatii_mos_craciun"],
+        recommendedOrder: ["data_evenimentului", "localitate", "durata_vizita", "numar_copii", "ora_vizitei", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             ora_vizitei: "string",
             durata_vizita: "number",
@@ -171,9 +180,10 @@ export const ServiceFieldRequirements = {
     },
     role_parfumerie: {
         serviceKey: "parfumerie",
-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "numar_participanti"],
-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
+        requiredForQuote: ["data_evenimentului", "localitate", "numar_participanti"],
+        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         optional: ["varsta_participantilor", "durata_atelier", "tip_eveniment", "format_atelier", "observatii_parfumerie"],
+        recommendedOrder: ["data_evenimentului", "localitate", "numar_participanti", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
         detailsSchema: {
             numar_participanti: "number",
             durata_atelier: "number",
@@ -191,6 +201,7 @@ export function getRequirementsForRoles(activeRoleKeys) {
     const requiredLevel1 = new Set();
     const requiredLevel2 = new Set();
     const allowedOptionals = new Set();
+    const combinedOrder = new Set();
 
     activeRoleKeys.forEach(role => {
         const specs = ServiceFieldRequirements[role];
@@ -198,12 +209,25 @@ export function getRequirementsForRoles(activeRoleKeys) {
             specs.requiredForQuote.forEach(f => requiredLevel1.add(f));
             specs.requiredForBooking.forEach(f => requiredLevel2.add(f));
             if (specs.optional) specs.optional.forEach(f => allowedOptionals.add(f));
+            if (specs.recommendedOrder) {
+                specs.recommendedOrder.forEach(f => combinedOrder.add(f));
+            }
         }
+    });
+
+    // If a field is required but missing from recommendedOrder, push it to the end
+    Array.from(requiredLevel1).forEach(f => {
+        if (!combinedOrder.has(f)) combinedOrder.add(f);
+    });
+
+    Array.from(requiredLevel2).forEach(f => {
+        if (!combinedOrder.has(f)) combinedOrder.add(f);
     });
 
     return {
         level1_quote: Array.from(requiredLevel1),
         level2_booking: Array.from(requiredLevel2),
-        optionals: Array.from(allowedOptionals)
+        optionals: Array.from(allowedOptionals),
+        recommendedOrder: Array.from(combinedOrder)
     };
 }

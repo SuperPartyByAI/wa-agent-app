@@ -1030,7 +1030,8 @@ export async function processConversation(conversation_id, message_id = null, op
             services: {
                 selected: serviceData.selected_services,
                 detection_status: serviceConfidence?.service_detection_status
-            }
+            },
+            playbookKey: nextTarget?.playbookKey
         });
 
         // ── 8.8.3. Auto-Generate Quote Draft (if NBA says so) ──

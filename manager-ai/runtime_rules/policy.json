@@ -1,6 +1,6 @@
 {
-  "version": "v1773536793502",
-  "loaded_at": "2026-03-15T01:06:33.502Z",
+  "version": "v1773536913451",
+  "loaded_at": "2026-03-15T01:08:33.451Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -193,6 +193,49 @@
   ],
   "policies": [
     {
+      "id": "1fe763f9-c338-4e79-b3d2-3cc29b23c9cb",
+      "knowledge_key": "pricing_general",
+      "category": "pricing",
+      "service_tags": [
+        "animator",
+        "popcorn",
+        "vata_zahar",
+        "ursitoare",
+        "arcada_baloane"
+      ],
+      "question_patterns": [
+        "cat costa",
+        "ce pret",
+        "preturi",
+        "tarife",
+        "oferta de pret",
+        "pret"
+      ],
+      "answer_template": "Prețurile variază în funcție de serviciile dorite, durata evenimentului, locație și număr de invitați.\n\nCa să vă pot face o ofertă personalizată, am nevoie de:\n• Ce servicii vă interesează?\n• Data evenimentului\n• Locația\n• Numărul aproximativ de copii/invitați\n\nVă fac oferta rapid după ce am aceste detalii! 😊",
+      "metadata": {
+        "note": "generic pricing, actual prices vary"
+      },
+      "required_context": [
+        "services",
+        "event_date",
+        "location",
+        "guest_count"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 84,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-15T01:08:03.666+00:00",
+      "policy_config": null
+    },
+    {
       "id": "c8d1ebef-11e6-4195-bf8d-df4a688e19dc",
       "knowledge_key": "baloane_info",
       "category": "services",
@@ -375,49 +418,6 @@
       "policy_config": null
     },
     {
-      "id": "1fe763f9-c338-4e79-b3d2-3cc29b23c9cb",
-      "knowledge_key": "pricing_general",
-      "category": "pricing",
-      "service_tags": [
-        "animator",
-        "popcorn",
-        "vata_zahar",
-        "ursitoare",
-        "arcada_baloane"
-      ],
-      "question_patterns": [
-        "cat costa",
-        "ce pret",
-        "preturi",
-        "tarife",
-        "oferta de pret",
-        "pret"
-      ],
-      "answer_template": "Prețurile variază în funcție de serviciile dorite, durata evenimentului, locație și număr de invitați.\n\nCa să vă pot face o ofertă personalizată, am nevoie de:\n• Ce servicii vă interesează?\n• Data evenimentului\n• Locația\n• Numărul aproximativ de copii/invitați\n\nVă fac oferta rapid după ce am aceste detalii! 😊",
-      "metadata": {
-        "note": "generic pricing, actual prices vary"
-      },
-      "required_context": [
-        "services",
-        "event_date",
-        "location",
-        "guest_count"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 84,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T01:06:12.687+00:00",
-      "policy_config": null
-    },
-    {
       "id": "b68a1a94-221d-498c-a0ec-5532d9d2325a",
       "knowledge_key": "role_ursitoare",
       "category": "services",
@@ -593,6 +593,49 @@
       "policy_config": null
     },
     {
+      "id": "cf1228e4-3c40-4ecb-91a0-e604cf752f89",
+      "knowledge_key": "booking_info_required",
+      "category": "faq",
+      "service_tags": [
+        "animator",
+        "popcorn",
+        "vata_zahar",
+        "ursitoare",
+        "arcada_baloane"
+      ],
+      "question_patterns": [
+        "cum rezerv",
+        "cum pot rezerva",
+        "vreau sa rezerv",
+        "booking",
+        "rezervare"
+      ],
+      "answer_template": "Pentru o rezervare, am nevoie de următoarele detalii:\n\n📅 Data evenimentului\n📍 Locația\n👶 Numărul de copii / invitați\n🎂 Tipul evenimentului (aniversare, botez, nuntă, etc.)\n🎈 Ce servicii vă interesează\n\nDupă ce am aceste informații, vă trimitem o ofertă personalizată!",
+      "metadata": {
+        "note": "generic booking info"
+      },
+      "required_context": [
+        "event_date",
+        "location",
+        "guest_count",
+        "event_type",
+        "services"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 80,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-15T01:07:58.269+00:00",
+      "policy_config": null
+    },
+    {
       "id": "f68aa6cc-8cd6-4685-9de9-a19fe8a3c709",
       "knowledge_key": "role_mos_craciun",
       "category": "services",
@@ -674,49 +717,6 @@
       }
     },
     {
-      "id": "cf1228e4-3c40-4ecb-91a0-e604cf752f89",
-      "knowledge_key": "booking_info_required",
-      "category": "faq",
-      "service_tags": [
-        "animator",
-        "popcorn",
-        "vata_zahar",
-        "ursitoare",
-        "arcada_baloane"
-      ],
-      "question_patterns": [
-        "cum rezerv",
-        "cum pot rezerva",
-        "vreau sa rezerv",
-        "booking",
-        "rezervare"
-      ],
-      "answer_template": "Pentru o rezervare, am nevoie de următoarele detalii:\n\n📅 Data evenimentului\n📍 Locația\n👶 Numărul de copii / invitați\n🎂 Tipul evenimentului (aniversare, botez, nuntă, etc.)\n🎈 Ce servicii vă interesează\n\nDupă ce am aceste informații, vă trimitem o ofertă personalizată!",
-      "metadata": {
-        "note": "generic booking info"
-      },
-      "required_context": [
-        "event_date",
-        "location",
-        "guest_count",
-        "event_type",
-        "services"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 78,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T01:06:28.454+00:00",
-      "policy_config": null
-    },
-    {
       "id": "80d18ad5-a0ad-48d4-8227-b49a1843e61f",
       "knowledge_key": "role_vata_de_zahar",
       "category": "services",
@@ -746,9 +746,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:09.186263+00:00",
       "valid_until": null,
-      "times_used": 123,
+      "times_used": 126,
       "created_at": "2026-03-14T16:50:09.186263+00:00",
-      "updated_at": "2026-03-15T01:06:27.535+00:00",
+      "updated_at": "2026-03-15T01:07:16.887+00:00",
       "policy_config": {
         "label": "Vată de zahăr",
         "active": true,
@@ -995,9 +995,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:09.105878+00:00",
       "valid_until": null,
-      "times_used": 156,
+      "times_used": 157,
       "created_at": "2026-03-14T16:50:09.105878+00:00",
-      "updated_at": "2026-03-15T01:05:18.681+00:00",
+      "updated_at": "2026-03-15T01:08:25.734+00:00",
       "policy_config": {
         "label": "Arcadă fără suport",
         "active": true,
@@ -1514,9 +1514,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T00:38:23.590769+00:00",
       "valid_until": null,
-      "times_used": 101,
+      "times_used": 100,
       "created_at": "2026-03-14T00:38:23.590769+00:00",
-      "updated_at": "2026-03-15T01:06:19.222+00:00",
+      "updated_at": "2026-03-15T01:08:19.687+00:00",
       "policy_config": null
     },
     {
@@ -2011,11 +2011,11 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 388,
+      "times_used": 390,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T01:05:58.003+00:00",
+      "updated_at": "2026-03-15T01:07:27.089+00:00",
       "policy_config": null
     }
   ],
-  "checksum": "0b468a9667b5bc01fe49a789488f7d061d2be573cefb48edeb465a9c7e92c166"
+  "checksum": "8d2aad6f8c44c8492b593ac041a55d6e74edd4002b5c38810256ad82255a2a66"
 }

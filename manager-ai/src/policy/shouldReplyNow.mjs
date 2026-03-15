@@ -123,6 +123,30 @@ export async function shouldReplyNow({
         }
 
 
+        // ── 8. Wait for missing info (intent but incomplete data) ──
+        if (lastClientMessage) {
+            const hasIntent = /animator|popcorn|vata|ursitoare|petrecere|eveniment|nunta|botez|serbare|arcada|baloane|cifre|mos|gheata|parfumerie/i.test(lastClientMessage);
+            if (hasIntent) {
+                const msg = lastClientMessage.toLowerCase();
+                const hasDate = /\d{1,2}\s*(ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|nov|dec)/i.test(msg) || /\d{1,2}[./-]\d{1,2}/i.test(msg);
+                const hasLocation = /bucuresti|sector|strada|adresa|locatie|oras|comuna/i.test(msg);
+                const hasTime = /ora\s*\d|\d{1,2}:\d{2}/i.test(msg);
+                const hasGuests = /\d+\s*(copii|persoane|invitati)/i.test(msg);
+                const missingCount = [hasDate, hasLocation, hasTime, hasGuests].filter(x => !x).length;
+
+                // Faza 4 Business Playbook Bypass
+                const isPlaybookOverride = llmDecision?.action === 'HANDLE_OBJECTION' || 
+                                           llmDecision?.action === 'EXPLAIN_VAGUE_INQUIRY' || 
+                                           llmDecision?.action === 'ASK_MISSING_AND_SUGGEST_PRICE';
+
+                // Only wait_for_missing_info if 3+ fields missing AND it's a short/simple request
+                // If message is detailed enough, reply_now with clarifying question is better
+                if (missingCount >= 3 && lastClientMessage.length < 80 && !isPlaybookOverride) {
+                    console.log(`[ReplyEngine] Wait for missing info: ${missingCount} fields missing, short message`);
+                    return { ...result, decision: 'wait_for_missing_info', reason: 'incomplete_client_data', turnState: 'missing_info', details: `${missingCount} fields missing`, newInformationDetected: true };
+                }
+            }
+        }
 
         // ── 9. Fetch last AI reply for comparison ──
         const { data: lastSentRows } = await supabase

@@ -199,8 +199,8 @@ export async function processConversation(conversation_id, message_id = null, op
         
         let clientContext = null;
         if (clientId) {
-            const { data: clientRow } = await supabase.from('clients').select('phone').eq('id', clientId).single();
-            const phoneE164 = clientRow?.phone;
+            const { data: clientRow } = await supabase.from('clients').select('real_phone_e164').eq('id', clientId).single();
+            const phoneE164 = clientRow?.real_phone_e164;
             if (phoneE164) {
                 const { loadClientContext } = await import('../agent/clientMemoryLoader.mjs');
                 clientContext = await loadClientContext(phoneE164, conversation_id);

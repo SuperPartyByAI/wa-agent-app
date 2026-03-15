@@ -229,7 +229,17 @@ async function viewClient(id){
   const d=await api(API+'/crm/clients/'+id);
   const c=d.client;
   let msgsH=d.latest_messages?.slice(0,15).map(m=>`<div class="msg-bubble msg-${m.sender_type==='client'?'client':'ai'}">${m.content}</div>`).join('')||'<i>No messages</i>';
-  let plansH=d.event_plans?.map(p=>`<div class="detail-row"><span class="dl">${p.event_type||'event'} ${p.event_date||''}</span><span class="dv"><span class="tag tag-blue">${p.status}</span> ${(p.requested_services||[]).join(', ')}</span></div>`).join('')||'<i>No plans</i>';
+  let plansH=d.event_plans?.map(p=>`<div class="card" style="margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <b>${p.event_type||'Eveniment'} ${p.event_date||''}</b>
+      <div><span class="tag tag-blue">${p.status}</span> <span class="tag tag-${p.confidence==='neconfirmat'?'orange':'green'}">${p.confidence||'—'}</span></div>
+    </div>
+    <div style="font-size:12px;color:var(--dim)">Servicii: ${(p.requested_services||[]).join(', ') || 'Nespecificat'}</div>
+    <div style="margin-top:8px;display:flex;gap:4px">
+      <button class="btn btn-sm btn-outline" onclick="setEventStatus('${c.id}','${p.id}','handoff_operator', event)">Handoff Operator</button>
+      <button class="btn btn-sm btn-outline" style="color:var(--green);border-color:var(--green)" onclick="setEventStatus('${c.id}','${p.id}','confirmat', event)">Marchează Rezervat</button>
+    </div>
+  </div>`).join('')||'<i>Niciun eveniment</i>';
   let quotesH=d.quotes?.map(q=>`<div class="detail-row"><span class="dl">Quote #${q.id?.substring(0,8)}</span><span class="dv"><span class="tag tag-${q.status==='accepted'?'green':q.status==='rejected'?'red':'yellow'}">${q.status}</span> ${q.grand_total||0} RON</span></div>`).join('')||'<i>No quotes</i>';
 
   openModal(`
@@ -252,6 +262,22 @@ async function viewClient(id){
       <button class="btn btn-outline" onclick="openMemoryForClient('${id}');closeModal()">🧠 Full Memory</button>
       <button class="btn btn-outline" onclick="closeModal()">Close</button>
     </div>`);
+}
+
+async function setEventStatus(clientId, eventId, newStatus, eventTarget) {
+  try {
+    const payload = newStatus === 'handoff_operator' 
+      ? { status_comercial: newStatus } 
+      : { status_rezervare: newStatus };
+    const btn = eventTarget.target;
+    btn.textContent = '...';
+    btn.disabled = true;
+    await api(`${API}/crm/clients/${clientId}/events/${eventId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    viewClient(clientId);
+  } catch(e) { alert('Eroare: ' + e.message); }
 }
 
 function openMemoryForClient(id){
@@ -323,10 +349,10 @@ async function loadMemory(){
   }
 
   if(d.mutations?.length){
-    h+=`<h3 style="margin:20px 0 8px">🔄 Recent Mutations (${d.mutations.length})</h3>
-      <table><thead><tr><th>Time</th><th>Field</th><th>Change</th></tr></thead><tbody>`;
+    h+=`<h3 style="margin:20px 0 8px">🔄 Jurnal Modificări Gatekeeper (${d.mutations.length})</h3>
+      <table><thead><tr><th>Time</th><th>Field</th><th>Change</th><th>Sursă</th></tr></thead><tbody>`;
     for(const m of d.mutations.slice(0,10)){
-      h+=`<tr><td style="font-size:11px">${timeAgo(m.created_at)}</td><td>${m.field_name||'—'}</td><td style="font-size:12px">${m.old_value?'<s>'+String(m.old_value).substring(0,30)+'</s> → ':''}<b>${String(m.new_value||'').substring(0,50)}</b></td></tr>`;
+      h+=`<tr><td style="font-size:11px">${timeAgo(m.created_at)}</td><td>${m.changed_field||'—'}</td><td style="font-size:12px">${m.old_value?'<s>'+String(m.old_value).substring(0,30)+'</s> → ':''}<b>${String(m.new_value||'').substring(0,50)}</b></td><td><span class="tag tag-${m.confirmed_by_client ? 'green' : 'orange'}">${m.confirmed_by_client ? 'CONSIMTIT' : 'ASTEAPTA'}</span></td></tr>`;
     }
     h+='</tbody></table>';
   }
@@ -563,6 +589,7 @@ function openRoleModal(k = null) {
   const introText = cb?.intro || '';
   const upsellText = cb?.upsell || '';
   const closingText = cb?.closing_question || '';
+  const followUpText = cb?.follow_up || '';
   
   const legacyWarning = (k && !pc && k.answer_template) 
     ? `<div style="background:var(--surface2); padding:12px; border-radius:8px; margin-bottom:16px; border-left:3px solid var(--orange);"><b>⚠️ Legacy Text Detected:</b><br><i style="font-size:12px">${k.answer_template.replace(/</g, '&lt;')}</i><br><span style="font-size:11px; color:var(--dim)">Te rog mută aceste reguli în câmpurile structurate de mai jos pentru a actualiza rolul.</span></div>` 
@@ -697,9 +724,13 @@ function openRoleModal(k = null) {
         <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Sugestie Comercială (Upsell / Combinare)</label>
         <textarea id="rlUpsell" class="input" rows="2">${upsellText}</textarea>
       </div>
-      <div>
+      <div style="margin-bottom:12px">
         <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Întrebare de închidere (Call to action)</label>
         <textarea id="rlClosing" class="input" rows="2">${closingText}</textarea>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--dim);margin-bottom:4px;display:block">Follow-up Text (Pentru clienții ezitanți)</label>
+        <textarea id="rlFollowUp" class="input" rows="2">${followUpText}</textarea>
       </div>
     </div>
     
@@ -715,6 +746,8 @@ function openRoleModal(k = null) {
 }
 
 async function saveRoleRule() {
+  if(!confirm('Atenție: Modificarea acestor reguli de business va afecta imediat modul în care răspunde AI-ul. Doriți să salvați?')) return;
+  
   const id = document.getElementById('rlEditId').value;
   const key = document.getElementById('rlKey').value;
   const patStr = document.getElementById('rlPatterns').value;
@@ -761,7 +794,8 @@ async function saveRoleRule() {
     copy_blocks: {
       intro: document.getElementById('rlIntro').value.trim(),
       upsell: document.getElementById('rlUpsell').value.trim(),
-      closing_question: document.getElementById('rlClosing').value.trim()
+      closing_question: document.getElementById('rlClosing').value.trim(),
+      follow_up: document.getElementById('rlFollowUp').value.trim()
     }
   };
 

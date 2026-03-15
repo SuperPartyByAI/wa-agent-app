@@ -39,17 +39,26 @@ router.get('/crm/clients', async (req, res) => {
         const search = req.query.search;
         const source = req.query.source;
 
-        let query = supabase.from('clients')
+        let query = supabase.from('ai_client_profiles')
             .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
-        if (search) query = query.or(`full_name.ilike.%${search}%,real_phone_e164.ilike.%${search}%,email.ilike.%${search}%`);
-        if (source) query = query.eq('source', source);
+        if (search) query = query.or(`nume_client.ilike.%${search}%,telefon_e164.ilike.%${search}%`);
+        if (source) query = query.eq('tip_client', source);
 
         const { data, error, count } = await query;
         if (error) throw error;
-        res.json({ clients: data, total: count, limit, offset });
+        
+        const mappedClients = (data || []).map(c => ({
+            ...c,
+            id: c.client_id,
+            full_name: c.nume_client,
+            real_phone_e164: c.telefon_e164,
+            source: c.tip_client
+        }));
+        
+        res.json({ clients: mappedClients, total: count, limit, offset });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -58,10 +67,10 @@ router.get('/crm/clients/:id', async (req, res) => {
         const id = req.params.id;
 
         const [clientR, memoryR, convsR, plansR, quotesR] = await Promise.all([
-            supabase.from('clients').select('*').eq('id', id).single(),
-            supabase.from('ai_client_memory').select('*').eq('client_id', id).maybeSingle(),
+            supabase.from('ai_client_profiles').select('*').eq('client_id', id).single(),
+            supabase.from('ai_client_memory_summary').select('*').eq('client_id', id).maybeSingle(),
             supabase.from('conversations').select('id, session_id, status, created_at, updated_at').eq('client_id', id).order('created_at', { ascending: false }).limit(20),
-            supabase.from('ai_event_plans').select('id, status, event_type, occasion, event_date, location, requested_services, confirmed_services, confidence, readiness_for_quote, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(20),
+            supabase.from('ai_client_events').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(20),
             supabase.from('ai_quotes').select('id, status, grand_total, line_items, valid_until, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(10)
         ]);
 
@@ -114,11 +123,41 @@ router.get('/crm/clients/:id', async (req, res) => {
             };
         });
 
+        if (clientR.error && clientR.error.code !== 'PGRST116') throw clientR.error;
+        
+        const clientData = clientR.data || {};
+        const mappedClient = {
+            ...clientData,
+            id: clientData.client_id || id,
+            full_name: clientData.nume_client || 'Client Generic',
+            real_phone_e164: clientData.telefon_e164 || '',
+            source: clientData.tip_client || ''
+        };
+        
+        const memData = memoryR.data;
+        const mappedMemory = memData ? {
+            ...memData,
+            memory_json: { summary: memData.summary_text, active_events: memData.active_event_ids },
+            preferences_json: {},
+            restrictions_json: {}
+        } : null;
+        
+        const mappedPlans = (plansR.data || []).map(p => ({
+            ...p,
+            id: p.event_id,
+            status: p.status_eveniment,
+            event_type: p.tip_eveniment,
+            occasion: p.nume_sarbatorit,
+            event_date: p.data_evenimentului,
+            location: p.localitate,
+            requested_services: p.servicii_principale || []
+        }));
+
         res.json({
-            client: clientR.data,
-            memory: memoryR.data,
+            client: mappedClient,
+            memory: mappedMemory,
             conversations: convsR.data || [],
-            event_plans: plansR.data || [],
+            event_plans: mappedPlans,
             quotes: quotesR.data || [],
             latest_messages: messagesWithDecisions,
             ai_decisions: decisions || []
@@ -138,6 +177,22 @@ router.put('/crm/clients/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.put('/crm/clients/:id/events/:event_id', async (req, res) => {
+    try {
+        const { id, event_id } = req.params;
+        const updates = { ...req.body, updated_at: new Date().toISOString() };
+        
+        const { data: before } = await supabase.from('ai_client_events').select('*').eq('event_id', event_id).eq('client_id', id).single();
+        if (!before) return res.status(404).json({ error: 'Event not found' });
+        
+        const { data, error } = await supabase.from('ai_client_events').update(updates).eq('event_id', event_id).eq('client_id', id).select().single();
+        if (error) throw error;
+        
+        await logAudit('crm', 'update', 'event', event_id, { before, after: data }, req.body._reason || 'manual_operator_update');
+        res.json({ status: 'updated', event: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ═══════════════════════════════════════════════════
 // B. MEMORY INSPECTOR
 // ═══════════════════════════════════════════════════
@@ -147,11 +202,11 @@ router.get('/memory/:client_id', async (req, res) => {
         const cid = req.params.client_id;
 
         const [memR, plansR, goalsR, goalHistR, evtHistR] = await Promise.all([
-            supabase.from('ai_client_memory').select('*').eq('client_id', cid).maybeSingle(),
-            supabase.from('ai_event_plans').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(5),
+            supabase.from('ai_client_memory_summary').select('*').eq('client_id', cid).maybeSingle(),
+            supabase.from('ai_client_events').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(20),
             supabase.from('ai_goal_states').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(5),
             supabase.from('ai_goal_state_history').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(20),
-            supabase.from('ai_event_plan_history').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(20)
+            supabase.from('ai_event_change_log').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(40)
         ]);
 
         // Quotes for this client
@@ -159,17 +214,29 @@ router.get('/memory/:client_id', async (req, res) => {
             .select('id, status, grand_total, line_items, assumptions, missing_info_notes, created_at')
             .eq('client_id', cid).order('created_at', { ascending: false }).limit(5);
 
-        // Mutations
-        const planIds = plansR.data?.map(p => p.id) || [];
-        let mutations = [];
-        if (planIds.length > 0) {
-            const { data: muts } = await supabase.from('ai_event_mutations')
-                .select('*')
-                .in('event_plan_id', planIds.slice(0, 3))
-                .order('created_at', { ascending: false })
-                .limit(20);
-            mutations = muts || [];
-        }
+        // Mutations (Now using Event Change Log)
+        let mutations = evtHistR.data || [];
+
+        // Legacy format mapping
+        const memData = memR.data;
+        const mappedMemory = memData ? {
+            ...memData,
+            memory_json: { summary: memData.summary_text, active_events: memData.active_event_ids },
+            preferences_json: {},
+            restrictions_json: {},
+            updated_at: memData.updated_at
+        } : null;
+
+        const mappedPlans = (plansR.data || []).map(p => ({
+            ...p,
+            id: p.event_id,
+            status: p.status_eveniment,
+            event_type: p.tip_eveniment,
+            occasion: p.nume_sarbatorit,
+            event_date: p.data_evenimentului,
+            location: p.localitate,
+            requested_services: p.servicii_principale || []
+        }));
 
         // Audit trail for memory edits
         const { data: auditTrail } = await supabase.from('admin_audit_log')
@@ -180,11 +247,11 @@ router.get('/memory/:client_id', async (req, res) => {
             .limit(20);
 
         res.json({
-            memory: memR.data,
-            event_plans: plansR.data || [],
+            memory: mappedMemory,
+            event_plans: mappedPlans,
             goal_states: goalsR.data || [],
             goal_history: goalHistR.data || [],
-            event_plan_history: evtHistR.data || [],
+            event_plan_history: [],
             quotes: quotes || [],
             mutations,
             audit_trail: auditTrail || []

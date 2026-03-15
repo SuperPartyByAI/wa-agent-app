@@ -1,6 +1,6 @@
 {
-  "version": "v1773536493462",
-  "loaded_at": "2026-03-15T01:01:33.463Z",
+  "version": "v1773536673527",
+  "loaded_at": "2026-03-15T01:04:33.527Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -193,6 +193,49 @@
   ],
   "policies": [
     {
+      "id": "1fe763f9-c338-4e79-b3d2-3cc29b23c9cb",
+      "knowledge_key": "pricing_general",
+      "category": "pricing",
+      "service_tags": [
+        "animator",
+        "popcorn",
+        "vata_zahar",
+        "ursitoare",
+        "arcada_baloane"
+      ],
+      "question_patterns": [
+        "cat costa",
+        "ce pret",
+        "preturi",
+        "tarife",
+        "oferta de pret",
+        "pret"
+      ],
+      "answer_template": "Prețurile variază în funcție de serviciile dorite, durata evenimentului, locație și număr de invitați.\n\nCa să vă pot face o ofertă personalizată, am nevoie de:\n• Ce servicii vă interesează?\n• Data evenimentului\n• Locația\n• Numărul aproximativ de copii/invitați\n\nVă fac oferta rapid după ce am aceste detalii! 😊",
+      "metadata": {
+        "note": "generic pricing, actual prices vary"
+      },
+      "required_context": [
+        "services",
+        "event_date",
+        "location",
+        "guest_count"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 83,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-15T01:04:03.868+00:00",
+      "policy_config": null
+    },
+    {
       "id": "c8d1ebef-11e6-4195-bf8d-df4a688e19dc",
       "knowledge_key": "baloane_info",
       "category": "services",
@@ -375,49 +418,6 @@
       "policy_config": null
     },
     {
-      "id": "1fe763f9-c338-4e79-b3d2-3cc29b23c9cb",
-      "knowledge_key": "pricing_general",
-      "category": "pricing",
-      "service_tags": [
-        "animator",
-        "popcorn",
-        "vata_zahar",
-        "ursitoare",
-        "arcada_baloane"
-      ],
-      "question_patterns": [
-        "cat costa",
-        "ce pret",
-        "preturi",
-        "tarife",
-        "oferta de pret",
-        "pret"
-      ],
-      "answer_template": "Prețurile variază în funcție de serviciile dorite, durata evenimentului, locație și număr de invitați.\n\nCa să vă pot face o ofertă personalizată, am nevoie de:\n• Ce servicii vă interesează?\n• Data evenimentului\n• Locația\n• Numărul aproximativ de copii/invitați\n\nVă fac oferta rapid după ce am aceste detalii! 😊",
-      "metadata": {
-        "note": "generic pricing, actual prices vary"
-      },
-      "required_context": [
-        "services",
-        "event_date",
-        "location",
-        "guest_count"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 82,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T01:00:47.46+00:00",
-      "policy_config": null
-    },
-    {
       "id": "b68a1a94-221d-498c-a0ec-5532d9d2325a",
       "knowledge_key": "role_ursitoare",
       "category": "services",
@@ -593,49 +593,6 @@
       "policy_config": null
     },
     {
-      "id": "cf1228e4-3c40-4ecb-91a0-e604cf752f89",
-      "knowledge_key": "booking_info_required",
-      "category": "faq",
-      "service_tags": [
-        "animator",
-        "popcorn",
-        "vata_zahar",
-        "ursitoare",
-        "arcada_baloane"
-      ],
-      "question_patterns": [
-        "cum rezerv",
-        "cum pot rezerva",
-        "vreau sa rezerv",
-        "booking",
-        "rezervare"
-      ],
-      "answer_template": "Pentru o rezervare, am nevoie de următoarele detalii:\n\n📅 Data evenimentului\n📍 Locația\n👶 Numărul de copii / invitați\n🎂 Tipul evenimentului (aniversare, botez, nuntă, etc.)\n🎈 Ce servicii vă interesează\n\nDupă ce am aceste informații, vă trimitem o ofertă personalizată!",
-      "metadata": {
-        "note": "generic booking info"
-      },
-      "required_context": [
-        "event_date",
-        "location",
-        "guest_count",
-        "event_type",
-        "services"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 74,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T01:01:02.855+00:00",
-      "policy_config": null
-    },
-    {
       "id": "f68aa6cc-8cd6-4685-9de9-a19fe8a3c709",
       "knowledge_key": "role_mos_craciun",
       "category": "services",
@@ -717,89 +674,47 @@
       }
     },
     {
-      "id": "80d18ad5-a0ad-48d4-8227-b49a1843e61f",
-      "knowledge_key": "role_vata_de_zahar",
-      "category": "services",
+      "id": "cf1228e4-3c40-4ecb-91a0-e604cf752f89",
+      "knowledge_key": "booking_info_required",
+      "category": "faq",
       "service_tags": [
-        "vata",
-        "vată",
-        "vata_de_zahar",
-        "cotton_candy"
+        "animator",
+        "popcorn",
+        "vata_zahar",
+        "ursitoare",
+        "arcada_baloane"
       ],
       "question_patterns": [
-        "vata",
-        "vata de zahar",
-        "vată de zahăr",
-        "cotton candy",
-        "vata pe bat",
-        "vată pe băț"
+        "cum rezerv",
+        "cum pot rezerva",
+        "vreau sa rezerv",
+        "booking",
+        "rezervare"
       ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
-      "metadata": {},
-      "required_context": [],
+      "answer_template": "Pentru o rezervare, am nevoie de următoarele detalii:\n\n📅 Data evenimentului\n📍 Locația\n👶 Numărul de copii / invitați\n🎂 Tipul evenimentului (aniversare, botez, nuntă, etc.)\n🎈 Ce servicii vă interesează\n\nDupă ce am aceste informații, vă trimitem o ofertă personalizată!",
+      "metadata": {
+        "note": "generic booking info"
+      },
+      "required_context": [
+        "event_date",
+        "location",
+        "guest_count",
+        "event_type",
+        "services"
+      ],
       "applicability_rules": {},
       "approval_status": "approved",
       "active": true,
       "version": 1,
       "source": "manual",
       "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.186263+00:00",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 121,
-      "created_at": "2026-03-14T16:50:09.186263+00:00",
-      "updated_at": "2026-03-15T01:01:16.25+00:00",
-      "policy_config": {
-        "label": "Vată de zahăr",
-        "active": true,
-        "priority": 333,
-        "role_key": "role_vata_de_zahar",
-        "triggers": {
-          "keywords": [
-            "vata",
-            "vata de zahar",
-            "vată de zahăr",
-            "cotton candy",
-            "vata pe bat",
-            "vată pe băț"
-          ],
-          "service_tags": [
-            "vata",
-            "vată",
-            "vata_de_zahar",
-            "cotton_candy"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Avem disponibil serviciul de vată de zahăr preparată pe loc, foarte apreciat la petrecerile pentru copii.",
-          "upsell": "Se combină excelent cu popcorn sau cu un pachet de animație.",
-          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți mașina de vată de zahăr?"
-        },
-        "service_key": "vata_de_zahar",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 490,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 170,
-          "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
+      "times_used": 76,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-15T01:03:02.522+00:00",
+      "policy_config": null
     },
     {
       "id": "e8541896-a358-4164-a6d1-64d75fd7f356",
@@ -875,6 +790,91 @@
             "outside_if": "manual_quote"
           },
           "extra_hour_price": 150,
+          "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
+      "id": "80d18ad5-a0ad-48d4-8227-b49a1843e61f",
+      "knowledge_key": "role_vata_de_zahar",
+      "category": "services",
+      "service_tags": [
+        "vata",
+        "vată",
+        "vata_de_zahar",
+        "cotton_candy"
+      ],
+      "question_patterns": [
+        "vata",
+        "vata de zahar",
+        "vată de zahăr",
+        "cotton candy",
+        "vata pe bat",
+        "vată pe băț"
+      ],
+      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.186263+00:00",
+      "valid_until": null,
+      "times_used": 122,
+      "created_at": "2026-03-14T16:50:09.186263+00:00",
+      "updated_at": "2026-03-15T01:04:22.426+00:00",
+      "policy_config": {
+        "label": "Vată de zahăr",
+        "active": true,
+        "priority": 333,
+        "role_key": "role_vata_de_zahar",
+        "triggers": {
+          "keywords": [
+            "vata",
+            "vata de zahar",
+            "vată de zahăr",
+            "cotton candy",
+            "vata pe bat",
+            "vată pe băț"
+          ],
+          "service_tags": [
+            "vata",
+            "vată",
+            "vata_de_zahar",
+            "cotton_candy"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Avem disponibil serviciul de vată de zahăr preparată pe loc, foarte apreciat la petrecerile pentru copii.",
+          "upsell": "Se combină excelent cu popcorn sau cu un pachet de animație.",
+          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți mașina de vată de zahăr?"
+        },
+        "service_key": "vata_de_zahar",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 490,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 170,
           "included_duration_hours": 2
         },
         "approval_status": "approved"
@@ -995,9 +995,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:09.105878+00:00",
       "valid_until": null,
-      "times_used": 145,
+      "times_used": 153,
       "created_at": "2026-03-14T16:50:09.105878+00:00",
-      "updated_at": "2026-03-15T01:01:20.593+00:00",
+      "updated_at": "2026-03-15T01:03:25.624+00:00",
       "policy_config": {
         "label": "Arcadă fără suport",
         "active": true,
@@ -1514,9 +1514,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T00:38:23.590769+00:00",
       "valid_until": null,
-      "times_used": 98,
+      "times_used": 99,
       "created_at": "2026-03-14T00:38:23.590769+00:00",
-      "updated_at": "2026-03-15T01:00:19.992+00:00",
+      "updated_at": "2026-03-15T01:04:19.985+00:00",
       "policy_config": null
     },
     {
@@ -2011,11 +2011,11 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 386,
+      "times_used": 387,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T01:00:31.22+00:00",
+      "updated_at": "2026-03-15T01:02:20.763+00:00",
       "policy_config": null
     }
   ],
-  "checksum": "8dc06772e62021300c1545c8bd4933f504fe5843c0b02fd0863f18e60515d69b"
+  "checksum": "37604a31743d08ad9bd5a57b5edaf428ae7d10f2a3c5ed33ab0cf54476dd4acf"
 }

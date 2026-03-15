@@ -37,6 +37,7 @@ export function computeNextBestAction(context) {
     // Evaluate Business Playbook rules to find tactical approach
     const playbookStrategy = evaluatePlaybook(context);
     let playbookInjection = '';
+    const playbookKey = playbookStrategy ? playbookStrategy.playbook_key : null;
     if (playbookStrategy) {
         playbookInjection = `\n[PLAYBOOK OVERRIDE - TONE: ${playbookStrategy.tone}] -> ${playbookStrategy.strategy}`;
     }
@@ -46,7 +47,8 @@ export function computeNextBestAction(context) {
         return {
             action: NBA_ACTIONS.STAY_SILENT,
             instruction: 'Human operator is engaged. Do not reply.',
-            nextState: 'escaladare_operator'
+            nextState: 'escaladare_operator',
+            playbookKey
         };
     }
 
@@ -54,7 +56,8 @@ export function computeNextBestAction(context) {
         return {
             action: NBA_ACTIONS.STAY_SILENT,
             instruction: 'Client acknowledged. Waiting for further input.',
-            nextState: runtimeState.lead_state // retain state
+            nextState: runtimeState.lead_state, // retain state
+            playbookKey
         };
     }
 
@@ -63,7 +66,8 @@ export function computeNextBestAction(context) {
         return {
             action: NBA_ACTIONS.REPLY_GREETING,
             instruction: 'Greet the user warmly and ask how Superparty can help them today. Do not assume any services yet.' + playbookInjection,
-            nextState: 'salut_initial'
+            nextState: 'salut_initial',
+            playbookKey
         };
     }
 
@@ -72,7 +76,8 @@ export function computeNextBestAction(context) {
         return {
             action: NBA_ACTIONS.IDENTIFY_SERVICE,
             instruction: 'Acknowledge the user but clarify exactly which services they are interested in (e.g. animators, cotton candy, balloons).' + playbookInjection,
-            nextState: 'identificare_serviciu'
+            nextState: 'identificare_serviciu',
+            playbookKey
         };
     }
 
@@ -82,7 +87,8 @@ export function computeNextBestAction(context) {
         return {
             action: NBA_ACTIONS.ASK_MISSING_FIELDS,
             instruction: `The client wants ${runtimeState.primary_service}. You must ask ONLY for "${nextField}". Do NOT ask for any other missing fields right now. Take it strictly step-by-step.` + playbookInjection,
-            nextState: 'colectare_date'
+            nextState: 'colectare_date',
+            playbookKey
         };
     }
 
@@ -92,7 +98,8 @@ export function computeNextBestAction(context) {
             return {
                 action: NBA_ACTIONS.PREPARE_QUOTE,
                 instruction: `All required data is collected for ${runtimeState.primary_service}. Generate a clear, structured pricing offer based strictly on the Commercial Policies.` + playbookInjection,
-                nextState: 'gata_de_oferta'
+                nextState: 'gata_de_oferta',
+                playbookKey
             };
         } else {
             // Already sent the quote, client is doing something else
@@ -101,7 +108,8 @@ export function computeNextBestAction(context) {
             return {
                 action: actionPath,
                 instruction: 'The quote was already sent. Address any questions or objections the client has. If they agree to book, proceed with confirmation.' + playbookInjection,
-                nextState: 'asteapta_raspuns_client'
+                nextState: 'asteapta_raspuns_client',
+                playbookKey
             };
         }
     }
@@ -110,6 +118,7 @@ export function computeNextBestAction(context) {
     return {
         action: NBA_ACTIONS.IDENTIFY_SERVICE,
         instruction: 'Answer the client politely and keep the conversation moving towards identifying their event needs.',
-        nextState: runtimeState.lead_state
+        nextState: runtimeState.lead_state,
+        playbookKey
     };
 }

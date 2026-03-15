@@ -1259,6 +1259,7 @@ export async function processConversation(conversation_id, message_id = null, op
                 lastClientMessage: lastClientMessageText,
                 escalation: effectiveEscalation,
                 decision: effectiveDecision,
+                playbookKey: nextTarget.playbookKey,
                 serviceConfidence
             });
 

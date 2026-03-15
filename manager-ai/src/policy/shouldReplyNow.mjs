@@ -45,6 +45,7 @@ export async function shouldReplyNow({
     lastClientMessage,
     escalation,
     decision: llmDecision,
+    playbookKey,
     serviceConfidence
 }) {
     const result = {
@@ -135,9 +136,10 @@ export async function shouldReplyNow({
                 const missingCount = [hasDate, hasLocation, hasTime, hasGuests].filter(x => !x).length;
 
                 // Faza 4 Business Playbook Bypass
-                const isPlaybookOverride = llmDecision?.action === 'HANDLE_OBJECTION' || 
-                                           llmDecision?.action === 'EXPLAIN_VAGUE_INQUIRY' || 
-                                           llmDecision?.action === 'ASK_MISSING_AND_SUGGEST_PRICE';
+                const isPlaybookOverride = playbookKey === 'objection_too_expensive' || 
+                                           playbookKey === 'vague_inquiry' || 
+                                           playbookKey === 'impatient_price' ||
+                                           playbookKey === 'objection_thinking';
 
                 // Only wait_for_missing_info if 3+ fields missing AND it's a short/simple request
                 // If message is detailed enough, reply_now with clarifying question is better

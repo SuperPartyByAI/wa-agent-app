@@ -488,6 +488,10 @@ export async function processConversation(conversation_id, message_id = null, op
         console.log(`[Agent] State=${runtimeState.lead_state}, Score=${scoring.score}(${scoring.temperature}), Primary=${runtimeState.primary_service}, NBA=${nextTarget.action}, NextState=${nextTarget.nextState}`);
 
         const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, partyDraft, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
+        
+        if (process.env.LOG_LEVEL === 'debug') {
+             console.debug('\n--- systemPrompt START ---\n', systemPrompt, '\n--- systemPrompt END ---\n');
+        }
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();

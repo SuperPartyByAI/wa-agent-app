@@ -1,6 +1,6 @@
 {
-  "version": "v1773593014870",
-  "loaded_at": "2026-03-15T16:43:34.870Z",
+  "version": "v1773595535002",
+  "loaded_at": "2026-03-15T17:25:35.002Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -630,9 +630,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 310,
+      "times_used": 320,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T16:43:19.467+00:00",
+      "updated_at": "2026-03-15T17:03:22.411+00:00",
       "policy_config": null
     },
     {
@@ -2011,25 +2011,11 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 668,
+      "times_used": 678,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T16:43:19.469+00:00",
+      "updated_at": "2026-03-15T17:03:22.413+00:00",
       "policy_config": null
     }
   ],
-  "checksum": "d1c8bbc3fc3bb521513471ed89ac61cf8d91545014d63d835838872fefbe8cac",
-  "autopilot": {
-    "canary": {
-      "enabled": true,
-      "percent": 5,
-      "tag": "phase8-wave1",
-      "description": "Wave1 Canary 5% Phase8"
-    },
-    "safety": {
-      "safe_autoreply_enabled": true,
-      "full_autoreply_enabled": false,
-      "shadow_mode_default": false
-    }
-  },
-  "notes": "Phase8 Wave1: 5% canary, safe autoreply enabled. SHADOW_MODE must be false to allow canary."
+  "checksum": "d7ce6b049c563483cdea8feb606f674ad9f7df49e98e8acb602a7264c3df6e21"
 }

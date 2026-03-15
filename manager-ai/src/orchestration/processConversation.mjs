@@ -501,15 +501,21 @@ export async function processConversation(conversation_id, message_id = null, op
 
         if (!analysis) {
             console.warn(`[Pipeline] LLM unreachable or returned invalid JSON for conv ${conversation_id}. Triggering Graceful Fallback.`);
+            const fallbackText = 'Sistemul meu întâmpină o întârziere momentană. Un coleg te va prelua în cel mai scurt timp pentru a te ajuta!';
+            
+            // Send actual outbound message to WhatsApp Queue!
+            console.log(`[Pipeline] Sending Outbound Fallback Message to ${conversation_id}`);
+            const sent = await sendViaWhatsApp(conversation_id, fallbackText);
+
             // Graceful Degradation: Notify the client and block auto-reply, escalate to human.
             await supabase.from('ai_reply_decisions').insert({
                 conversation_id,
-                suggested_reply: 'Sistemul meu întâmpină o întârziere momentană. Un coleg te va prelua în cel mai scurt timp pentru a te ajuta!',
+                suggested_reply: fallbackText,
                 can_auto_reply: true,
                 needs_human_review: true,
                 confidence_score: 0,
-                conversation_stage: dbStage || 'discovery',
-                reply_status: 'approved',
+                conversation_stage: 'discovery', // safe default fallback
+                reply_status: sent ? 'sent' : 'blocked',
                 sent_by: 'reply_engine',
                 next_step: 'escalate',
                 progression_status: 'llm_fallback_timeout',
@@ -517,9 +523,15 @@ export async function processConversation(conversation_id, message_id = null, op
             });
             await supabase.from('ai_conversation_state').upsert({
                 conversation_id,
-                current_stage: dbStage || 'discovery',
+                current_stage: 'discovery',
                 updated_at: new Date().toISOString()
             });
+            
+            // Clear any pending follow-up since we just replied
+            if(sent) {
+                 await clearFollowUp(conversation_id, 'ai_replied_now_fallback');
+            }
+            
             releaseConversationLock(conversation_id);
             return;
         }

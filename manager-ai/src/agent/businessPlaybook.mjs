@@ -9,7 +9,12 @@
 export const PlaybookStrategies = {
     // ── 1. VAGUE / GENERIC INQUIRIES ──
     vague_inquiry: {
-        condition: (context) => context.isGreeting || !context.runtimeState?.primary_service,
+        condition: (context) => {
+            if (context.isGreeting || !context.runtimeState?.primary_service) return true;
+            const msg = (context.clientMessageText || '').toLowerCase();
+            const hasSpecifics = msg.includes('animator') || msg.includes('ursitoar') || msg.includes('vata') || msg.includes('popcorn') || msg.includes('mascota') || msg.includes('magic') || msg.includes('arcada') || msg.includes('baloan');
+            return context.runtimeState?.lead_state === 'lead_nou' && !hasSpecifics;
+        },
         strategy: "Salută prietenos și cere detalii despre ce tip de eveniment organizează (ex. aniversare, botez, corporate) pentru a-i putea recomanda cele mai potrivite servicii. Fii concis, cald și invită la dialog.",
         tone: "calm_discovery"
     },

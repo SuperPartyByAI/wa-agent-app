@@ -311,6 +311,7 @@ export async function extractActiveRoles(clientMessage, eventPlan = {}) {
         }
 
         if (isMatch) {
+            structuredRole.role_id = role.knowledge_key;
             matchedRoles.push(structuredRole);
         }
     }

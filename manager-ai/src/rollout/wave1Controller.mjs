@@ -95,7 +95,8 @@ export function isWave1Eligible({
     }
 
     // 5. No booking/quote mutation
-    if (mutation?.mutation_type && mutation.mutation_type !== 'no_mutation') {
+    const SAFE_MUTATIONS = ['no_mutation', 'create_event', 'add_service'];
+    if (mutation?.mutation_type && !SAFE_MUTATIONS.includes(mutation.mutation_type)) {
         blockers.push(`mutation_active: ${mutation.mutation_type}`);
     }
 

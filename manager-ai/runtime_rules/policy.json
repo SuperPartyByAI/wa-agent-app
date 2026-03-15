@@ -1,6 +1,6 @@
 {
-  "version": "v1773603810951",
-  "loaded_at": "2026-03-15T19:43:30.951Z",
+  "version": "v1773603931408",
+  "loaded_at": "2026-03-15T19:45:31.408Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -9,7 +9,7 @@
       "query_type": "costume_query",
       "trigger_stage": "discovery",
       "trigger_conditions": {},
-      "behavior": "use_kb",
+      "behavior": "USE_KB",
       "priority": 80,
       "status": "active",
       "examples": [
@@ -22,7 +22,9 @@
       "created_by": "operator",
       "approved_by": null,
       "created_at": "2026-03-14T09:22:28.414823+00:00",
-      "updated_at": "2026-03-14T09:22:28.414823+00:00"
+      "updated_at": "2026-03-14T09:22:28.414823+00:00",
+      "trigger": "COSTUME_QUERY",
+      "stage": "DISCOVERY"
     },
     {
       "id": "4cb5c6c8-38ce-4ba3-9e73-a0a7d9b1a86a",
@@ -31,7 +33,7 @@
       "query_type": "price_question",
       "trigger_stage": "discovery",
       "trigger_conditions": {},
-      "behavior": "clarify_first",
+      "behavior": "CLARIFY_FIRST",
       "priority": 70,
       "status": "active",
       "examples": [
@@ -44,7 +46,9 @@
       "created_by": "operator",
       "approved_by": null,
       "created_at": "2026-03-14T09:22:28.414823+00:00",
-      "updated_at": "2026-03-14T09:22:28.414823+00:00"
+      "updated_at": "2026-03-14T09:22:28.414823+00:00",
+      "trigger": "PRICE_QUESTION",
+      "stage": "DISCOVERY"
     },
     {
       "id": "e115781c-03ea-410c-b2d4-0b77d2d0c089",
@@ -53,14 +57,16 @@
       "query_type": "reschedule",
       "trigger_stage": "coordination",
       "trigger_conditions": {},
-      "behavior": "clarify_first",
+      "behavior": "CLARIFY_FIRST",
       "priority": 60,
       "status": "active",
       "examples": [],
       "created_by": "operator",
       "approved_by": null,
       "created_at": "2026-03-14T09:22:28.414823+00:00",
-      "updated_at": "2026-03-14T09:22:28.414823+00:00"
+      "updated_at": "2026-03-14T09:22:28.414823+00:00",
+      "trigger": "RESCHEDULE",
+      "stage": "COORDINATION"
     },
     {
       "id": "c522fa73-82a9-4a9a-a50d-c375cc24460f",
@@ -69,14 +75,26 @@
       "query_type": "any",
       "trigger_stage": "any",
       "trigger_conditions": {},
-      "behavior": "use_memory",
+      "behavior": "AUTO_REPLY",
       "priority": 50,
       "status": "active",
       "examples": [],
       "created_by": "operator",
       "approved_by": null,
       "created_at": "2026-03-14T09:22:28.414823+00:00",
-      "updated_at": "2026-03-14T09:22:28.414823+00:00"
+      "updated_at": "2026-03-14T09:22:28.414823+00:00",
+      "trigger": "ANY",
+      "stage": "ANY"
+    },
+    {
+      "id": "25115f87-a35b-495c-b9d4-0d0581edfe91",
+      "name": "Complaint Handling",
+      "description": "Stop auto-reply if complaints",
+      "trigger": "COMPLAINT",
+      "stage": "ANY",
+      "behavior": "HANDOFF",
+      "priority": 100,
+      "status": "active"
     }
   ],
   "coverage": [
@@ -89,7 +107,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "allow_autoreply"
     },
     {
       "id": "6bd095bb-a4f6-408c-96c4-37e8c17a0837",
@@ -100,7 +119,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "allow_autoreply"
     },
     {
       "id": "dd2cef82-90b4-4145-8db2-f0e5e9051be0",
@@ -111,7 +131,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "shadow_only"
     },
     {
       "id": "80770944-cd27-420a-b51b-d2ce594f7676",
@@ -122,7 +143,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "shadow_only"
     },
     {
       "id": "9ccf30b4-3572-463c-9661-4fecab17c7ec",
@@ -133,7 +155,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "shadow_only"
     },
     {
       "id": "35d9ec7e-e6d8-4cdf-a8e0-b87c84495da4",
@@ -144,7 +167,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "operator_review"
     },
     {
       "id": "caf4f058-e659-4630-94c8-03ce33943b5d",
@@ -155,7 +179,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "operator_review"
     },
     {
       "id": "110443dc-6e40-4462-b3c9-e72eace5c02d",
@@ -166,7 +191,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "operator_review"
     },
     {
       "id": "fe778832-69d5-4afa-a5f7-cf045c89e2ce",
@@ -177,7 +203,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "blocked"
     },
     {
       "id": "5772f98a-d427-43c5-9fda-df69d074ba71",
@@ -188,7 +215,8 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00",
+      "allowed_mode": "blocked"
     }
   ],
   "policies": [
@@ -2017,5 +2045,5 @@
       "policy_config": null
     }
   ],
-  "checksum": "d7ce6b049c563483cdea8feb606f674ad9f7df49e98e8acb602a7264c3df6e21"
+  "checksum": "6efdea3d7a4b9699f0d1a4c97c514c928c22feba04a0363869bffed20d7b669b"
 }

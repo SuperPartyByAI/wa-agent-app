@@ -625,7 +625,7 @@ export async function processConversation(conversation_id, message_id = null, op
         const isGreeting = lastClientMessageText && GREETING_ONLY.test(lastClientMessageText.trim());
         
         // Faza 4 Business Playbook Bypass: Never hijack with a KB direct answer if the Playbook has a specific strategy
-        const isPlaybookAction = ['HANDLE_OBJECTION', 'EXPLAIN_VAGUE_INQUIRY', 'ASK_MISSING_AND_SUGGEST_PRICE'].includes(decision?.action || toolAction?.name);
+        const isPlaybookAction = !!nextTarget?.playbookKey;
 
         if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility) && !isGreeting && !isPlaybookAction) {
             // Package presenter — detect intent + format reply (summary/detail/compare/pricing/duration)

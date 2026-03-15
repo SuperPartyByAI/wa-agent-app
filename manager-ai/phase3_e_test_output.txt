@@ -1,0 +1,337 @@
+[38;5;142m[dotenvx@1.55.1] injecting env (18) from .env[39m
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+[Service Catalog] Loaded 12 services (v1.0): animator, ursitoare, vata_zahar, popcorn, arcada_baloane, arcada_suport, arcada_exterior, suport_arcada_baloane, cifre_volumetrice, mos_craciun, parfumerie, gheata_carbonica
+
+======================================================
+[▶️ START] TEST 1 - ANIMATIE
+[💬 MSG] "Vreau Spiderman pe 12 aprilie la ora 17, în București, pentru 15 copii. Sărbătoritul este Matei, face 6 ani. Plătim cash."
+======================================================
+
+[Pipeline] Starting for 4eca3e0c-bd84-46aa-902d-b3edbe8770fe...
+[Pipeline] Attempting to acquire lock for 4eca3e0c-bd84-46aa-902d-b3edbe8770fe...
+[Pipeline] Lock acquired for 4eca3e0c-bd84-46aa-902d-b3edbe8770fe.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: e459ba03)
+[Pipeline] Fetching messages for 4eca3e0c-bd84-46aa-902d-b3edbe8770fe...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client b3db9eed-5bfe-425c-89aa-49bb868ad12c: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan ebd2515b-42ac-4864-a258-aad0d027a1c2 for conv 4eca3e0c-bd84-46aa-902d-b3edbe8770fe
+[Pipeline] Goal: new_lead, EventPlan: ebd2515b-42ac-4864-a258-aad0d027a1c2 (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: complex_message)
+[SRE] Loaded 13 service definitions
+[KBMatcher] Loaded 20 active approved entries
+[Agent] State=lead_nou, Score=80(hot), Primary=animatie, NBA=prepare_quote, NextState=gata_de_oferta
+[Pipeline] Calling LLM with 156 chars...
+[LLM] Gemini JSON OK in 1643ms
+[Pipeline] LLM analysis completed in 1643ms
+[Pipeline] Services: [], Entity: unknown (0%), Eligibility: ALLOWED, Cycle: eligible/no_previous_cycle, Decision: confidence=85, stage=discovery
+[KBMatcher] MATCH: key=costume_disponibile, score=0.72, mode=kb_grounded_composer, reason=[pattern=1.00 service=0.50 category=0.00]
+[Pipeline] KB: key=costume_disponibile, score=0.72, mode=kb_grounded_composer, matchedMsg="Vreau Spiderman pe 12 aprilie la ora 17, în Bucure"
+[Memory] Updated entity memory for client b3db9eed-5bfe-425c-89aa-49bb868ad12c: type=unknown (0%), locations=0, services=0
+[Mutation] Applied create_event: No existing draft, new event data detected (confidence=90, draft=fc70d297-c476-4602-8715-00c0d4533d8c, mutation=7a26ae90-ee58-48d0-ae9f-ac35350be11f)
+[Pipeline] Mutation: create_event (confidence=90, applied=true)
+[Pipeline] Attempting to execute tool action: update_event_plan
+[Executor] Received Action: update_event_plan
+[Executor] update_event_plan args: {"tip_eveniment":"petrecere copii","data_evenimentului":"2026-04-12","ora_evenimentului":"17:00","locatie_eveniment":"București","numar_copii":15,"nume_sarbatorit":"Matei","varsta_sarbatoritului":6,"personaj_dorit":"Spiderman","metoda_de_plata":"cash"} (9 fields: tip_eveniment, data_evenimentului, ora_evenimentului, locatie_eveniment, numar_copii, nume_sarbatorit, varsta_sarbatoritului, personaj_dorit, metoda_de_plata)
+[EventPlan] Updated ebd2515b-42ac-4864-a258-aad0d027a1c2: missing_fields (by=system)
+[Pipeline] EventPlan evaluated post-action: 0% complete, quote_ready=false, missing=[requested_services,event_date,location,children_count_estimate,event_time,child_age,selected_package,payment_method_preference,invoice_requested,advance_status,advance_amount,billing_details_status]
+[Phase3 PartyBuilder] Synced Party Draft. Missing booking fields: 0. Ready for quote: true
+[Agent] Persisted runtime state to DB: gata_de_oferta / prepare_quote
+[Pipeline] Service Detection: status=unknown, confirmation=false, confirmed=[], ambiguous=[]
+[Pipeline] KB grounding injected: key=costume_disponibile, mode=kb_grounded_composer, sensitive=false
+[Pipeline] Progression: next_step=discover_services, status=collecting_info, missing=4, autonomous=true
+[Pipeline] Autonomy: level=supervised, allowed=true, action=create_event
+[Pipeline] Goal: new_lead | NBA: greet_and_discover | Conversație la început — salutăm și descoperim nevoile.
+[LLM] Gemini Text OK in 922ms
+[Composer] Humanized reply (warm_sales, discovery, svc_detection=unknown): Salut! Sigur, îl avem pe Spiderman disponibil! 🎉 Face parte din categoria Super...
+[Pipeline] Composer run for KB Grounding
+[Pipeline] Composer completed in 926ms
+[Pipeline] Safety: class=safe_autoreply_allowed, mode=safe_autoreply_mode, reasons=all_checks_passed
+[Pipeline] Wave1: cohort=true (cohort_included: bucket=63 < 100%), eligible=false (tool_not_allowed: update_event_plan; mutation_active: create_event)
+[Pipeline] Wave1 hold: safety_hold — tool_not_allowed: update_event_plan; mutation_active: create_event
+[Pipeline] Done 4eca3e0c-bd84-46aa-902d-b3edbe8770fe. Services: 0, Entity: unknown, Reply: pending_review, Eligibility: allowed, Quality: good(80), SvcDetection: unknown, Timing: analysis=1643ms composer=926ms total=6174ms
+
+✅ [PARTY DRAFT SAVED (DB LIVE)]
+{
+  id: [32m'065fd6d5-9284-47db-879e-a3d96a0b1319'[39m,
+  conversation_id: [32m'4eca3e0c-bd84-46aa-902d-b3edbe8770fe'[39m,
+  client_id: [32m'b3db9eed-5bfe-425c-89aa-49bb868ad12c'[39m,
+  status_dosar: [32m'draft'[39m,
+  stare_lead: [32m'lead_nou'[39m,
+  serviciu_principal: [1mnull[22m,
+  servicii_active: [],
+  pachet_selectat: [1mnull[22m,
+  date_generale: {
+    numar_copii: [33m15[39m,
+    tip_eveniment: [32m'petrecere copii'[39m,
+    nume_sarbatorit: [32m'Matei'[39m,
+    locatie_eveniment: [32m'București'[39m,
+    ora_evenimentului: [32m'17:00'[39m,
+    data_evenimentului: [32m'2026-04-12'[39m,
+    varsta_sarbatoritului: [32m'6'[39m
+  },
+  detalii_servicii: {},
+  facturare: { metoda_de_plata: [32m'cash'[39m },
+  comercial: {
+    scor_lead: [33m0[39m,
+    roluri_active: [],
+    obiectiv_curent: [1mnull[22m,
+    temperatura_lead: [32m'cold'[39m,
+    gata_pentru_oferta: [33mtrue[39m,
+    urmatoarea_actiune: [1mnull[22m,
+    campuri_obligatorii_lipsa: []
+  },
+  operational: {
+    operator_alocat: [1mnull[22m,
+    motiv_escaladare: [1mnull[22m,
+    preluare_umana_activa: [33mfalse[39m,
+    follow_up_programat_pentru: [1mnull[22m,
+    necesita_interventie_umana: [33mfalse[39m
+  },
+  istoric_note: [],
+  created_at: [32m'2026-03-15T00:47:23.667299+00:00'[39m,
+  updated_at: [32m'2026-03-15T00:47:23.667299+00:00'[39m
+}
+
+🤖 [AI RESPONSE]
+{
+  suggested_reply: [32m'Salut! Sigur, îl avem pe Spiderman disponibil! 🎉 Face parte din categoria Supereroi. Costumul este inclus în pachetul de animare.\n'[39m +
+    [32m'\n'[39m +
+    [32m'Pentru a confirma disponibilitatea exactă și a discuta detaliile, ne puteți spune și locația exactă din București, vă rog? 😊'[39m,
+  tool_action_suggested: [32m'{"name":"update_event_plan","arguments":{"tip_eveniment":"petrecere copii","data_evenimentului":"2026-04-12","ora_evenimentului":"17:00","locatie_eveniment":"București","numar_copii":15,"nume_sarbatorit":"Matei","varsta_sarbatoritului":6,"personaj_dorit":"Spiderman","metoda_de_plata":"cash"}}'[39m
+}
+
+======================================================
+[▶️ START] TEST 2 - ARCADA FARA SUPORT
+[💬 MSG] "Vreau arcadă organică de 4 metri, roz cu alb, pentru 10 mai, în Popești."
+======================================================
+
+[Pipeline] Starting for e5bf990f-6334-47de-a450-4c0024f02916...
+[Pipeline] Attempting to acquire lock for e5bf990f-6334-47de-a450-4c0024f02916...
+[Pipeline] Lock acquired for e5bf990f-6334-47de-a450-4c0024f02916.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: e459ba03)
+[Pipeline] Fetching messages for e5bf990f-6334-47de-a450-4c0024f02916...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client 78c5aac0-ffe1-4e7e-a870-337eae37b85a: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 48a05e74-0aff-4008-8806-8f3ee62b62ac for conv e5bf990f-6334-47de-a450-4c0024f02916
+[Pipeline] Goal: new_lead, EventPlan: 48a05e74-0aff-4008-8806-8f3ee62b62ac (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: complex_message)
+[Agent] State=lead_nou, Score=80(hot), Primary=arcada_cu_cifre_volumetrice, NBA=prepare_quote, NextState=gata_de_oferta
+[Pipeline] Calling LLM with 107 chars...
+[LLM] Gemini JSON OK in 1333ms
+[Pipeline] LLM analysis completed in 1333ms
+[Pipeline] Services: [], Entity: unknown (0%), Eligibility: ALLOWED, Cycle: eligible/no_previous_cycle, Decision: confidence=85, stage=discovery
+[KBMatcher] No match (best=0.42)
+[Pipeline] KB: no match found
+[Memory] Updated entity memory for client 78c5aac0-ffe1-4e7e-a870-337eae37b85a: type=unknown (0%), locations=0, services=0
+[Mutation] Applied create_event: No existing draft, new event data detected (confidence=90, draft=3ec13730-5fd5-4e5d-ac94-6be1fe7e09ed, mutation=127131f4-c77b-4c69-a1f0-add5430b4d4b)
+[Pipeline] Mutation: create_event (confidence=90, applied=true)
+[Pipeline] Attempting to execute tool action: update_event_plan
+[Executor] Received Action: update_event_plan
+[Executor] update_event_plan args: {"data_evenimentului":"2026-05-10","locatie_eveniment":"Popești","localitate":"Popești","metri_liniari":4,"model_arcada":"organica","culori_dorite":"roz cu alb","tip_eveniment":"arcada_fara_suport"} (7 fields: data_evenimentului, locatie_eveniment, localitate, metri_liniari, model_arcada, culori_dorite, tip_eveniment)
+[EventPlan] Updated 48a05e74-0aff-4008-8806-8f3ee62b62ac: missing_fields (by=system)
+[Pipeline] EventPlan evaluated post-action: 0% complete, quote_ready=false, missing=[requested_services,event_date,location,children_count_estimate,event_time,child_age,selected_package,payment_method_preference,invoice_requested,advance_status,advance_amount,billing_details_status]
+[Phase3 PartyBuilder] Synced Party Draft. Missing booking fields: 0. Ready for quote: true
+[Agent] Persisted runtime state to DB: gata_de_oferta / prepare_quote
+[Pipeline] Service Detection: status=unknown, confirmation=false, confirmed=[], ambiguous=[]
+[Pipeline] Progression: next_step=discover_services, status=collecting_info, missing=4, autonomous=true
+[Pipeline] Autonomy: level=supervised, allowed=true, action=create_event
+[Pipeline] Goal: new_lead | NBA: greet_and_discover | Conversație la început — salutăm și descoperim nevoile.
+[Pipeline] Bypassing legacy composer -> Autonomous Phase 3 Reply preserved.
+[Pipeline] Safety: class=safe_autoreply_allowed, mode=safe_autoreply_mode, reasons=all_checks_passed
+[Pipeline] Wave1: cohort=true (cohort_included: bucket=36 < 100%), eligible=false (tool_not_allowed: update_event_plan; mutation_active: create_event)
+[Pipeline] Wave1 hold: safety_hold — tool_not_allowed: update_event_plan; mutation_active: create_event
+[Pipeline] Done e5bf990f-6334-47de-a450-4c0024f02916. Services: 0, Entity: unknown, Reply: pending_review, Eligibility: allowed, Quality: okay(60), SvcDetection: unknown, Timing: analysis=1333ms composer=0ms total=5277ms
+
+✅ [PARTY DRAFT SAVED (DB LIVE)]
+{
+  id: [32m'4d3b00f6-31b4-4045-976d-cd8ad035b814'[39m,
+  conversation_id: [32m'e5bf990f-6334-47de-a450-4c0024f02916'[39m,
+  client_id: [32m'78c5aac0-ffe1-4e7e-a870-337eae37b85a'[39m,
+  status_dosar: [32m'draft'[39m,
+  stare_lead: [32m'lead_nou'[39m,
+  serviciu_principal: [1mnull[22m,
+  servicii_active: [],
+  pachet_selectat: [1mnull[22m,
+  date_generale: {
+    localitate: [32m'Popești'[39m,
+    tip_eveniment: [32m'arcada_fara_suport'[39m,
+    locatie_eveniment: [32m'Popești'[39m,
+    data_evenimentului: [32m'2026-05-10'[39m
+  },
+  detalii_servicii: {},
+  facturare: {},
+  comercial: {
+    scor_lead: [33m0[39m,
+    roluri_active: [],
+    obiectiv_curent: [1mnull[22m,
+    temperatura_lead: [32m'cold'[39m,
+    gata_pentru_oferta: [33mtrue[39m,
+    urmatoarea_actiune: [1mnull[22m,
+    campuri_obligatorii_lipsa: []
+  },
+  operational: {
+    operator_alocat: [1mnull[22m,
+    motiv_escaladare: [1mnull[22m,
+    preluare_umana_activa: [33mfalse[39m,
+    follow_up_programat_pentru: [1mnull[22m,
+    necesita_interventie_umana: [33mfalse[39m
+  },
+  istoric_note: [],
+  created_at: [32m'2026-03-15T00:47:29.915456+00:00'[39m,
+  updated_at: [32m'2026-03-15T00:47:29.915456+00:00'[39m
+}
+
+🤖 [AI RESPONSE]
+{
+  suggested_reply: [32m'Buna! Putem realiza arcade organice fără suport, potrivite pentru candy bar, backdrop sau photo corner. Se poate completa foarte frumos cu panouri, cifre sau decor personalizat. Pentru ce dată și în ce locație pregătim decorul?'[39m,
+  tool_action_suggested: [32m'{"name":"update_event_plan","arguments":{"data_evenimentului":"2026-05-10","locatie_eveniment":"Popești","localitate":"Popești","metri_liniari":4,"model_arcada":"organica","culori_dorite":"roz cu alb","tip_eveniment":"arcada_fara_suport"}}'[39m
+}
+
+======================================================
+[▶️ START] TEST 3 - FACTURARE
+[💬 MSG] "Da, vrem factură pe firmă. Nume firma SC Hatz SRL, CUI RO123456, email ion@hatz.ro, persoana Ion, adresa Bucuresti vizavi de mall."
+======================================================
+
+[Pipeline] Starting for b43519dc-2c0f-44bb-9f58-32b95e945777...
+[Pipeline] Attempting to acquire lock for b43519dc-2c0f-44bb-9f58-32b95e945777...
+[Pipeline] Lock acquired for b43519dc-2c0f-44bb-9f58-32b95e945777.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: e459ba03)
+[Pipeline] Fetching messages for b43519dc-2c0f-44bb-9f58-32b95e945777...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client c7de9262-1b63-4c8b-8402-a2f003cf9bea: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 4fe36c18-f864-4cd1-906d-0fa05c7e6e9f for conv b43519dc-2c0f-44bb-9f58-32b95e945777
+[Pipeline] Goal: new_lead, EventPlan: 4fe36c18-f864-4cd1-906d-0fa05c7e6e9f (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: complex_message)
+[Agent] State=lead_nou, Score=80(hot), Primary=null, NBA=identify_service, NextState=identificare_serviciu
+[Pipeline] Calling LLM with 165 chars...
+[LLM] Gemini JSON OK in 1552ms
+[Pipeline] LLM analysis completed in 1552ms
+[Pipeline] Services: [], Entity: unknown (0%), Eligibility: ALLOWED, Cycle: eligible/no_previous_cycle, Decision: confidence=85, stage=discovery
+[KBMatcher] No match (best=0.13)
+[Pipeline] KB: no match found
+[Memory] Updated entity memory for client c7de9262-1b63-4c8b-8402-a2f003cf9bea: type=unknown (0%), locations=0, services=0
+[Pipeline] Mutation: no_mutation (confidence=100, applied=false)
+[Pipeline] Attempting to execute tool action: reply_only
+[Executor] Received Action: reply_only
+[Agent] Persisted runtime state to DB: identificare_serviciu / identify_service
+[Pipeline] Service Detection: status=unknown, confirmation=false, confirmed=[], ambiguous=[]
+[Pipeline] Progression: next_step=discover_services, status=collecting_info, missing=5, autonomous=true
+[Pipeline] Autonomy: level=full, allowed=true, action=discover_services
+[Pipeline] Goal: new_lead | NBA: greet_and_discover | Conversație la început — salutăm și descoperim nevoile.
+[Pipeline] Bypassing legacy composer -> Autonomous Phase 3 Reply preserved.
+[Pipeline] Safety: class=safe_autoreply_allowed, mode=safe_autoreply_mode, reasons=all_checks_passed
+[Pipeline] Wave1: cohort=true (cohort_included: bucket=68 < 100%), eligible=true (all_clear)
+[Pipeline] Auto-reply ALLOWED (confidence=85, style=warm_sales, reason=allowed_first_reply). Sending...
+[Pipeline] Done b43519dc-2c0f-44bb-9f58-32b95e945777. Services: 0, Entity: unknown, Reply: pending, Eligibility: allowed, Quality: good(80), SvcDetection: unknown, Timing: analysis=1552ms composer=0ms total=5164ms
+
+✅ [PARTY DRAFT SAVED (DB LIVE)]
+[32m'No draft found'[39m
+
+🤖 [AI RESPONSE]
+{
+  suggested_reply: [32m'Buna! Pentru a putea continua, te rog sa-mi spui ce servicii de la Superparty te intereseaza pentru evenimentul tau. De exemplu, te gandesti la animatori, un stand de vata de zahar sau poate o arcada de baloane?'[39m,
+  tool_action_suggested: [32m'{"name":"reply_only","arguments":{"reason":"Clientul a furnizat detalii pentru facturare, dar nu a specificat inca serviciile dorite. Este necesara clarificarea serviciilor pentru a putea continua planificarea."}}'[39m
+}
+
+======================================================
+[▶️ START] TEST 4 - VATA DE ZAHAR
+[💬 MSG] "Vreau vată de zahăr pe 20 aprilie, în Ilfov, pentru 3 ore."
+======================================================
+
+[Pipeline] Starting for b2d7e469-5ff3-4999-b8a6-447c1c4a368c...
+[Pipeline] Attempting to acquire lock for b2d7e469-5ff3-4999-b8a6-447c1c4a368c...
+[Pipeline] Lock acquired for b2d7e469-5ff3-4999-b8a6-447c1c4a368c.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: e459ba03)
+[Pipeline] Fetching messages for b2d7e469-5ff3-4999-b8a6-447c1c4a368c...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client 8ffa6a32-fdac-4b4c-8783-883008807683: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 880bf1c1-7365-4c04-8602-f1351eb7095b for conv b2d7e469-5ff3-4999-b8a6-447c1c4a368c
+[Pipeline] Goal: new_lead, EventPlan: 880bf1c1-7365-4c04-8602-f1351eb7095b (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: complex_message)
+[Agent] State=lead_nou, Score=80(hot), Primary=vata_de_zahar, NBA=prepare_quote, NextState=gata_de_oferta
+[Pipeline] Calling LLM with 93 chars...
+[LLM] Gemini JSON OK in 1258ms
+[Pipeline] LLM analysis completed in 1259ms
+[Pipeline] Services: [vata_zahar], Entity: unknown (0%), Eligibility: ALLOWED, Cycle: eligible/no_previous_cycle, Decision: confidence=85, stage=discovery
+[KBMatcher] MATCH: key=booking_info_required, score=0.55, mode=kb_grounded_composer, reason=[pattern=0.50 service=1.00 category=0.00]
+[Pipeline] KB: key=booking_info_required, score=0.55, mode=kb_grounded_composer, matchedMsg="Vreau vată de zahăr pe 20 aprilie, în Ilfov, pentr"
+[Memory] Updated entity memory for client 8ffa6a32-fdac-4b4c-8783-883008807683: type=unknown (0%), locations=0, services=0
+[Mutation] Applied create_event: No existing draft, new event data detected (confidence=90, draft=299b55f2-584e-49fb-8678-b2845cab29cf, mutation=9ea74333-cb82-460f-849a-e299012ee1a6)
+[Pipeline] Mutation: create_event (confidence=90, applied=true)
+[Pipeline] Attempting to execute tool action: update_event_plan
+[Executor] Received Action: update_event_plan
+[Executor] update_event_plan args: {"data_evenimentului":"2026-04-20","judet":"Ilfov","durata_ore":3,"tip_eveniment":"petrecere copii"} (4 fields: data_evenimentului, judet, durata_ore, tip_eveniment)
+[EventPlan] Updated 880bf1c1-7365-4c04-8602-f1351eb7095b: missing_fields (by=system)
+[Pipeline] EventPlan evaluated post-action: 0% complete, quote_ready=false, missing=[requested_services,event_date,location,children_count_estimate,event_time,child_age,selected_package,payment_method_preference,invoice_requested,advance_status,advance_amount,billing_details_status]
+[Phase3 PartyBuilder] Synced Party Draft. Missing booking fields: 5. Ready for quote: false
+[Agent] Persisted runtime state to DB: gata_de_oferta / prepare_quote
+[Pipeline] Service Detection: status=clear, confirmation=true, confirmed=[vata_zahar], ambiguous=[]
+[Pipeline] KB grounding injected: key=booking_info_required, mode=kb_grounded_composer, sensitive=false
+[Pipeline] Progression: next_step=ask_event_date, status=collecting_info, missing=4, autonomous=true
+[Pipeline] Autonomy: level=supervised, allowed=true, action=create_event
+[GoalState] new_lead → service_selection (trigger=message, reason=services_detected_immediately)
+[Pipeline] Goal: new_lead→service_selection | NBA: confirm_services | Servicii detectate, confirmăm cu clientul.
+[LLM] Gemini Text OK in 641ms
+[Composer] Humanized reply (warm_sales, semi_specific, svc_detection=clear): Salut! Sigur, ne ocupăm cu drag de vata de zahăr 😊 Ca să putem pregăti totul pe...
+[Pipeline] Composer run for KB Grounding
+[Pipeline] Composer completed in 642ms
+[Pipeline] Safety: class=needs_operator_review, mode=safe_autoreply_mode, reasons=stage_not_allowed: service_selection
+[Pipeline] Wave1: cohort=true (cohort_included: bucket=29 < 100%), eligible=false (safety_class: needs_operator_review; tool_not_allowed: update_event_plan; stage_not_allowed: service_selection; mutation_active: create_event)
+[Pipeline] Wave1 hold: safety_hold — safety_class: needs_operator_review; tool_not_allowed: update_event_plan; stage_not_allowed: service_selection; mutation_active: create_event
+[Pipeline] Done b2d7e469-5ff3-4999-b8a6-447c1c4a368c. Services: 1, Entity: unknown, Reply: pending_review, Eligibility: allowed, Quality: good(80), SvcDetection: clear, Timing: analysis=1259ms composer=642ms total=5411ms
+
+✅ [PARTY DRAFT SAVED (DB LIVE)]
+{
+  id: [32m'd28ae823-afe1-4581-88ea-3acc0a9761f3'[39m,
+  conversation_id: [32m'b2d7e469-5ff3-4999-b8a6-447c1c4a368c'[39m,
+  client_id: [32m'8ffa6a32-fdac-4b4c-8783-883008807683'[39m,
+  status_dosar: [32m'draft'[39m,
+  stare_lead: [32m'lead_nou'[39m,
+  serviciu_principal: [1mnull[22m,
+  servicii_active: [],
+  pachet_selectat: [1mnull[22m,
+  date_generale: {
+    judet: [32m'Ilfov'[39m,
+    tip_eveniment: [32m'petrecere copii'[39m,
+    data_evenimentului: [32m'2026-04-20'[39m
+  },
+  detalii_servicii: { vata_de_zahar: { durata_ore: [33m3[39m } },
+  facturare: {},
+  comercial: {
+    scor_lead: [33m0[39m,
+    roluri_active: [],
+    obiectiv_curent: [1mnull[22m,
+    temperatura_lead: [32m'cold'[39m,
+    gata_pentru_oferta: [33mfalse[39m,
+    urmatoarea_actiune: [1mnull[22m,
+    campuri_obligatorii_lipsa: [
+      [32m'localitate'[39m,
+      [32m'ora_evenimentului'[39m,
+      [32m'adresa_completa'[39m,
+      [32m'metoda_de_plata'[39m,
+      [32m'doreste_factura'[39m
+    ]
+  },
+  operational: {
+    operator_alocat: [1mnull[22m,
+    motiv_escaladare: [1mnull[22m,
+    preluare_umana_activa: [33mfalse[39m,
+    follow_up_programat_pentru: [1mnull[22m,
+    necesita_interventie_umana: [33mfalse[39m
+  },
+  istoric_note: [],
+  created_at: [32m'2026-03-15T00:47:41.051796+00:00'[39m,
+  updated_at: [32m'2026-03-15T00:47:41.051796+00:00'[39m
+}
+
+🤖 [AI RESPONSE]
+{
+  suggested_reply: [32m'Salut! Sigur, ne ocupăm cu drag de vata de zahăr 😊 Ca să putem pregăti totul perfect, ai putea să-mi spui și numărul aproximativ de copii și ce tip de eveniment este?'[39m,
+  tool_action_suggested: [32m'{"name":"update_event_plan","arguments":{"data_evenimentului":"2026-04-20","judet":"Ilfov","durata_ore":3,"tip_eveniment":"petrecere copii"}}'[39m
+}
+
+🎉 End of Phase 3 Test Suite

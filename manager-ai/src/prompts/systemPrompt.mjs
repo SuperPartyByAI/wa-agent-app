@@ -179,7 +179,7 @@ IMPORTANT: Comporta-te conform etapei. Nu sari peste pasi. Daca esti in event_qu
     }
     let contextNbaBlock = '';
     if (nextBestActionGoal) {
-        contextNbaBlock = `\n=== NEXT BEST ACTION (INSTRUCTIUNE STRICTA) ===\nActiune ceruta: ${nextBestActionGoal.action}\nInstructiune: ${nextBestActionGoal.instruction}\nCRITIC IMPORTANT: Trebuie sa raspunzi EXACT conform acestei instructiuni in campul assistant_reply. Fara abateri. Obiectivul tau curent este sa executi aceasta actiune!\n=== SFARSIT NEXT BEST ACTION ===\n`;
+        contextNbaBlock = `\n=== NEXT BEST ACTION (INSTRUCTIUNE STRICTA) ===\nActiune ceruta: ${nextBestActionGoal.action}\nInstructiune: ${nextBestActionGoal.instruction}\n\nCRITIC IMPORTANT: Daca exista o directiva [PLAYBOOK OVERRIDE - TONE:], ACEASTA ARE PRIORITATE ABSOLUTA. Adopta acel ton si urmeaza strategia playbook-ului. Trebuie sa raspunzi EXACT conform acestei instructiuni in campul assistant_reply. Fara abateri. Obiectivul tau curent este sa executi aceasta actiune!\n=== SFARSIT NEXT BEST ACTION ===\n`;
     }
 
     let strategyBlock = '';
@@ -206,8 +206,9 @@ SARCINA TA:
 6. Clasifica entitatea: este CLIENT final, COLABORATOR (organizeaza pentru altcineva), PARTENER/intermediar, sau NECUNOSCUT.
 7. Detecteaza obiceiuri si preferinte.
 
-Returneaza un obiect JSON STRICT conform acestui format cu 2 chei principale:
+Returneaza un obiect JSON STRICT conform acestui format cu 3 chei principale:
 {
+  "selected_services": ["ex: animatie", "popcorn"],  // Bazeaza-te pe CATALOGUL NOSTRU
   "assistant_reply": "Textul exact pe care operatorul il poate trimite pe WhatsApp. Cere SPECIFIC ce lipseste. Daca locatia/serviciile sunt uzuale, confirma-le direct. Profesional, cald. Salut cu Buna!, nu Buna ziua. Max 3-4 propozitii.",
   "tool_action": {
     "name": "Numele actiunii din registrul de unelte",

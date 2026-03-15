@@ -835,8 +835,29 @@ export async function processConversation(conversation_id, message_id = null, op
         // ── Phase 3: Synchronize Party Draft Post Action ──
         if (toolAction.name === 'update_event_plan' && partyDraft) {
             try {
-                partyDraft = updatePartyDraftFromMessage(partyDraft, toolAction.arguments, activeRoleKeys);
-                const p3Eval = computeMissingPartyFields(partyDraft, activeRoleKeys);
+                let finalRolesToEvaluate = rolesToEvaluate;
+                if (serviceData && serviceData.selected_services && serviceData.selected_services.length > 0) {
+                    const CATALOG_TO_ROLE = {
+                        'animator': 'role_animatie',
+                        'ursitoare': 'role_ursitoare',
+                        'vata_zahar': 'role_vata_de_zahar',
+                        'popcorn': 'role_popcorn',
+                        'arcada_baloane': 'role_arcada_fara_suport',
+                        'arcada_suport': 'role_arcada_pe_suport',
+                        'arcada_exterior': 'role_arcada_pe_suport', // rough map
+                        'suport_arcada_baloane': 'role_arcada_pe_suport',
+                        'cifre_volumetrice': 'role_arcada_cu_cifre_volumetrice',
+                        'mos_craciun': 'role_mos_craciun',
+                        'parfumerie': 'role_parfumerie',
+                        'gheata_carbonica': 'role_gheata_carbonica'
+                    };
+                    const detectedRoles = serviceData.selected_services
+                        .map(s => CATALOG_TO_ROLE[s] || `role_${s}`);
+                    finalRolesToEvaluate = [...new Set([...rolesToEvaluate, ...detectedRoles])];
+                }
+
+                partyDraft = updatePartyDraftFromMessage(partyDraft, toolAction.arguments, finalRolesToEvaluate);
+                const p3Eval = computeMissingPartyFields(partyDraft, finalRolesToEvaluate);
                 
                 partyDraft.comercial.campuri_obligatorii_lipsa = p3Eval.missingForBooking;
                 partyDraft.comercial.gata_pentru_oferta = p3Eval.isReadyForQuote;

@@ -1,0 +1,316 @@
+commit e6e9e24427711380b389b1045fc8cf35159c8829
+Author: Ursache Andrei <ursache.andrei1995@gmail.com>
+Date:   Sun Mar 15 02:32:47 2026 +0200
+
+    feat(ai-agent): finish Phase 3.2 Complete Business Capture
+
+diff --git a/manager-ai/src/orchestration/processConversation.mjs b/manager-ai/src/orchestration/processConversation.mjs
+index 34c0563..e823d48 100644
+--- a/manager-ai/src/orchestration/processConversation.mjs
++++ b/manager-ai/src/orchestration/processConversation.mjs
+@@ -440,7 +440,14 @@ export async function processConversation(conversation_id, message_id = null, op
+             runtimeState.active_roles = activeRoles.map(r => r.role_id);
+         }
+ 
+-        const missingMetrics = computeMissingFields(runtimeState.primary_service, eventPlan, runtimeState.known_fields);
++        // Fix: Replace V1 legacy missingFieldsEngine with V2 partyMissingFieldsEngine
++        let rolesToEvaluate = activeRoleKeys;
++        if (rolesToEvaluate.length === 0 && runtimeState.primary_service) {
++            // Fallback mapper for primary_service string -> role array
++            rolesToEvaluate = [`role_${runtimeState.primary_service}`];
++        }
++        
++        const missingMetrics = computeMissingPartyFields(partyDraft, rolesToEvaluate);
+ 
+         const plannerContext = {
+             runtimeState,
+@@ -1044,36 +1051,23 @@ export async function processConversation(conversation_id, message_id = null, op
+             suggestedReply = hybridPackageReply;
+             composerResult = { reply: hybridPackageReply, replyStyle: 'warm_sales', composerUsed: true, specificity: 'kb_packages', serviceDetectionStatus: 'confirmed' };
+             console.log(`[Pipeline] Using hybrid package reply (${hybridPackageReply.length} chars), skipping general composer`);
+-        } else if (eligibility.eligible || !decision.needs_human_review) {
++        } else if ((kbGroundingContext || latestQuote) && (eligibility.eligible || !decision.needs_human_review)) {
+             const t_comp_start = Date.now();
+ 
+-            // If KB grounded mode, use KB answer as base truth
+-            if (kbGroundingContext) {
+-                composerResult = await composeHumanReply({
+-                    analysis,
+-                    entityMemory,
+-                    salesCycle,
+-                    conversationStage: dbStage || decision.conversation_stage,
+-                    conversationText: userMessage,
+-                    serviceConfidence,
+-                    progression,
+-                    kbGrounding: kbGroundingContext,
+-                    latestQuote
+-                });
+-                console.log(`[Pipeline] Composer used KB grounding: key=${kbGroundingContext.knowledgeKey}`);
+-            } else {
+-                composerResult = await composeHumanReply({
+-                    analysis,
+-                    entityMemory,
+-                    salesCycle,
+-                    conversationStage: dbStage || decision.conversation_stage,
+-                    conversationText: userMessage,
+-                    serviceConfidence,
+-                    progression,
+-                    learnedContext,
+-                    latestQuote
+-                });
+-            }
++            // Run composer ONLY for KB injection or freshly generated Quotes.
++            composerResult = await composeHumanReply({
++                analysis,
++                entityMemory,
++                salesCycle,
++                conversationStage: dbStage || decision.conversation_stage,
++                conversationText: userMessage,
++                serviceConfidence,
++                progression,
++                kbGrounding: kbGroundingContext,
++                learnedContext,
++                latestQuote
++            });
++            console.log(`[Pipeline] Composer run for ${kbGroundingContext ? 'KB Grounding' : 'Quote Presentation'}`);
+ 
+             suggestedReply = composerResult.reply;
+             t_composer_ms = Date.now() - t_comp_start;
+@@ -1120,6 +1114,9 @@ export async function processConversation(conversation_id, message_id = null, op
+                     hasLearnedContext: learnedContext.length > 0
+                 });
+             }
++        } else {
++            console.log(`[Pipeline] Bypassing legacy composer -> Autonomous Phase 3 Reply preserved.`);
++            composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, specificity: 'autonomous_phase3', serviceDetectionStatus: 'unknown' };
+         }
+ 
+         // ── 8.10. Evaluate reply quality ──
+diff --git a/manager-ai/src/party/partyFieldRegistry.mjs b/manager-ai/src/party/partyFieldRegistry.mjs
+index 82c1f9b..321b25d 100644
+--- a/manager-ai/src/party/partyFieldRegistry.mjs
++++ b/manager-ai/src/party/partyFieldRegistry.mjs
+@@ -55,9 +55,10 @@ export const CommercialFields = [
+ export const ServiceFieldRequirements = {
+     role_animatie: {
+         serviceKey: "animatie",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "personaj_dorit", "numar_copii"],
+-        requiredForBooking: ["nume_sarbatorit", "data_nasterii_sarbatoritului", "varsta_sarbatoritului", "metoda_de_plata", "doreste_factura"],
+-        optional: ["numar_animatori", "tematica_dorita", "interior_sau_exterior", "activitati_dorite", "observatii_animatie"],
++        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore", "numar_animatori"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "personaj_dorit", "numar_copii", "nume_sarbatorit", "varsta_sarbatoritului", "metoda_de_plata", "doreste_factura"],
++        optional: ["tematica_dorita", "interior_sau_exterior", "activitati_dorite", "observatii_animatie"],
++        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_animatori", "personaj_dorit", "numar_copii", "nume_sarbatorit", "varsta_sarbatoritului", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             personaj_dorit: "string",
+             numar_animatori: "number",
+@@ -69,11 +70,12 @@ export const ServiceFieldRequirements = {
+     },
+     role_ursitoare: {
+         serviceKey: "ursitoare",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa"],
+-        requiredForBooking: ["nume_copil", "sex_copil", "metoda_de_plata", "doreste_factura"],
++        requiredForQuote: ["data_evenimentului", "localitate"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "nume_sarbatorit", "sex_copil", "metoda_de_plata", "doreste_factura"],
+         optional: ["numar_invitati", "tip_moment", "durata_moment", "observatii_ursitoare"],
++        recommendedOrder: ["data_evenimentului", "localitate", "nume_sarbatorit", "sex_copil", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+-            nume_copil: "string",
++            nume_sarbatorit: "string",
+             sex_copil: "string",
+             tip_moment: "string",
+             durata_moment: "number",
+@@ -82,9 +84,10 @@ export const ServiceFieldRequirements = {
+     },
+     role_vata_de_zahar: {
+         serviceKey: "vata_de_zahar",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "durata_ore"],
+-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
++        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         optional: ["numar_estimat_portii", "interior_sau_exterior", "acces_curent_electric", "observatii_vata_de_zahar"],
++        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             durata_ore: "number",
+             numar_estimat_portii: "number",
+@@ -94,9 +97,10 @@ export const ServiceFieldRequirements = {
+     },
+     role_popcorn: {
+         serviceKey: "popcorn",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "durata_ore"],
+-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
++        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         optional: ["numar_estimat_portii", "acces_curent_electric", "observatii_popcorn"],
++        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             durata_ore: "number",
+             numar_estimat_portii: "number",
+@@ -106,9 +110,10 @@ export const ServiceFieldRequirements = {
+     },
+     role_vata_si_popcorn: {
+         serviceKey: "vata_si_popcorn",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "durata_ore"],
+-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
++        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         optional: ["numar_estimat_portii", "acces_curent_electric", "observatii_pachet"],
++        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             durata_ore: "number",
+             numar_estimat_portii: "number",
+@@ -118,9 +123,10 @@ export const ServiceFieldRequirements = {
+     },
+     role_arcada_fara_suport: {
+         serviceKey: "arcada_fara_suport",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "metri_liniari", "model_arcada"],
+-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
++        requiredForQuote: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         optional: ["culori_dorite", "zona_amplasare", "interior_sau_exterior", "observatii_arcada_fara_suport"],
++        recommendedOrder: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "culori_dorite", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             metri_liniari: "number",
+             model_arcada: "string",
+@@ -131,9 +137,10 @@ export const ServiceFieldRequirements = {
+     },
+     role_arcada_cu_cifre_volumetrice: {
+         serviceKey: "arcada_cu_cifre_volumetrice",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "metri_liniari", "model_arcada", "cifre_dorite"],
+-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
++        requiredForQuote: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "cifre_dorite"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         optional: ["culoare_cifre", "culori_arcada", "zona_amplasare", "observatii_arcada_cu_cifre"],
++        recommendedOrder: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "cifre_dorite", "culori_arcada", "culoare_cifre", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             metri_liniari: "number",
+             model_arcada: "string",
+@@ -146,9 +153,10 @@ export const ServiceFieldRequirements = {
+     },
+     role_arcada_pe_suport: {
+         serviceKey: "arcada_pe_suport",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa"],
+-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
++        requiredForQuote: ["data_evenimentului", "localitate"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         optional: ["culori_dorite", "zona_amplasare", "interior_sau_exterior", "tip_suport", "observatii_arcada_pe_suport"],
++        recommendedOrder: ["data_evenimentului", "localitate", "culori_dorite", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             tip_suport: "string",
+             culori_dorite: "string",
+@@ -158,9 +166,10 @@ export const ServiceFieldRequirements = {
+     },
+     role_mos_craciun: {
+         serviceKey: "mos_craciun",
+-        requiredForQuote: ["data_evenimentului", "ora_vizitei", "adresa_completa", "numar_copii"],
+-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
+-        optional: ["nume_copii", "cadouri_pregatite", "tip_eveniment", "durata_vizita", "observatii_mos_craciun"],
++        requiredForQuote: ["data_evenimentului", "localitate", "durata_vizita"],
++        requiredForBooking: ["ora_vizitei", "adresa_completa", "numar_copii", "metoda_de_plata", "doreste_factura"],
++        optional: ["nume_sarbatorit", "cadouri_pregatite", "tip_eveniment", "observatii_mos_craciun"],
++        recommendedOrder: ["data_evenimentului", "localitate", "durata_vizita", "numar_copii", "ora_vizitei", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             ora_vizitei: "string",
+             durata_vizita: "number",
+@@ -171,9 +180,10 @@ export const ServiceFieldRequirements = {
+     },
+     role_parfumerie: {
+         serviceKey: "parfumerie",
+-        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "numar_participanti"],
+-        requiredForBooking: ["metoda_de_plata", "doreste_factura"],
++        requiredForQuote: ["data_evenimentului", "localitate", "numar_participanti"],
++        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         optional: ["varsta_participantilor", "durata_atelier", "tip_eveniment", "format_atelier", "observatii_parfumerie"],
++        recommendedOrder: ["data_evenimentului", "localitate", "numar_participanti", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
+         detailsSchema: {
+             numar_participanti: "number",
+             durata_atelier: "number",
+@@ -191,6 +201,7 @@ export function getRequirementsForRoles(activeRoleKeys) {
+     const requiredLevel1 = new Set();
+     const requiredLevel2 = new Set();
+     const allowedOptionals = new Set();
++    const combinedOrder = new Set();
+ 
+     activeRoleKeys.forEach(role => {
+         const specs = ServiceFieldRequirements[role];
+@@ -198,12 +209,25 @@ export function getRequirementsForRoles(activeRoleKeys) {
+             specs.requiredForQuote.forEach(f => requiredLevel1.add(f));
+             specs.requiredForBooking.forEach(f => requiredLevel2.add(f));
+             if (specs.optional) specs.optional.forEach(f => allowedOptionals.add(f));
++            if (specs.recommendedOrder) {
++                specs.recommendedOrder.forEach(f => combinedOrder.add(f));
++            }
+         }
+     });
+ 
++    // If a field is required but missing from recommendedOrder, push it to the end
++    Array.from(requiredLevel1).forEach(f => {
++        if (!combinedOrder.has(f)) combinedOrder.add(f);
++    });
++
++    Array.from(requiredLevel2).forEach(f => {
++        if (!combinedOrder.has(f)) combinedOrder.add(f);
++    });
++
+     return {
+         level1_quote: Array.from(requiredLevel1),
+         level2_booking: Array.from(requiredLevel2),
+-        optionals: Array.from(allowedOptionals)
++        optionals: Array.from(allowedOptionals),
++        recommendedOrder: Array.from(combinedOrder)
+     };
+ }
+diff --git a/manager-ai/src/party/partyMissingFieldsEngine.mjs b/manager-ai/src/party/partyMissingFieldsEngine.mjs
+index 2721259..78ca12c 100644
+--- a/manager-ai/src/party/partyMissingFieldsEngine.mjs
++++ b/manager-ai/src/party/partyMissingFieldsEngine.mjs
+@@ -26,25 +26,44 @@ export function computeMissingPartyFields(partyDraft, activeRoleKeys = []) {
+         return false;
+     };
+ 
+-    // 1. Check Level 1 (Quote Requirements)
++    // Check Level 1 (Quote Requirements)
+     reqs.level1_quote.forEach(field => {
+         if (!hasField(field)) missingForQuote.push(field);
+     });
+ 
+-    // 2. Check Level 2 (Booking Requirements)
+-    // Booking implies everything from Quoting + Finalization details
++    // Check Level 2 (Booking Requirements)
+     reqs.level2_booking.forEach(field => {
+         if (!hasField(field)) missingForBooking.push(field);
+     });
+     
+-    // Ensure combined array for final Booking Readiness check
+     const combinedBooking = [...new Set([...missingForQuote, ...missingForBooking])];
+ 
++    // Compute Next Field To Ask based on Recommended Order
++    let nextFieldToAsk = null;
++    if (reqs.recommendedOrder) {
++        for (const field of reqs.recommendedOrder) {
++            // Priority: if it's missing for quote OR booking, ask it
++            if (missingForQuote.includes(field) || missingForBooking.includes(field)) {
++                nextFieldToAsk = field;
++                break;
++            }
++        }
++    }
++    
++    // Fallback if recommendedOrder didn't catch it
++    if (!nextFieldToAsk && missingForQuote.length > 0) nextFieldToAsk = missingForQuote[0];
++    if (!nextFieldToAsk && combinedBooking.length > 0) nextFieldToAsk = combinedBooking[0];
++
+     return {
+         missingForQuote,
+         missingForBooking: combinedBooking,
+         isReadyForQuote: missingForQuote.length === 0,
+         isReadyForBooking: combinedBooking.length === 0,
+-        allowedOptionals: reqs.optionals
++        allowedOptionals: reqs.optionals,
++        
++        // --- Legacy Interface Mapping for nextBestActionPlanner ---
++        readyForQuote: missingForQuote.length === 0,
++        missing: missingForQuote.length > 0 ? missingForQuote : missingForBooking,
++        nextFieldToAsk: nextFieldToAsk
+     };
+ }

@@ -5,6 +5,7 @@
  * Evaluates the current Lead State and Missing Fields to explicitly instruct
  * the LLM on exactly which tool action to use and what content to focus on.
  */
+import { evaluatePlaybook } from './businessPlaybook.mjs';
 
 export const NBA_ACTIONS = {
     REPLY_GREETING: 'reply_greeting',
@@ -31,7 +32,14 @@ export const NBA_ACTIONS = {
  * @returns {object} { action: string, instruction: string, nextState: string }
  */
 export function computeNextBestAction(context) {
-    const { runtimeState, missingMetrics, humanTakeover, isAcknowledgment, isGreeting } = context;
+    const { runtimeState, missingMetrics, humanTakeover, isAcknowledgment, isGreeting, clientMessageText } = context;
+
+    // Evaluate Business Playbook rules to find tactical approach
+    const playbookStrategy = evaluatePlaybook(context);
+    let playbookInjection = '';
+    if (playbookStrategy) {
+        playbookInjection = `\n[PLAYBOOK OVERRIDE - TONE: ${playbookStrategy.tone}] -> ${playbookStrategy.strategy}`;
+    }
 
     // 1. Absolute blocks
     if (humanTakeover || runtimeState.human_takeover) {
@@ -54,7 +62,7 @@ export function computeNextBestAction(context) {
     if (isGreeting && !runtimeState.primary_service) {
         return {
             action: NBA_ACTIONS.REPLY_GREETING,
-            instruction: 'Greet the user warmly and ask how Superparty can help them today. Do not assume any services yet.',
+            instruction: 'Greet the user warmly and ask how Superparty can help them today. Do not assume any services yet.' + playbookInjection,
             nextState: 'salut_initial'
         };
     }
@@ -63,7 +71,7 @@ export function computeNextBestAction(context) {
     if (!runtimeState.primary_service) {
         return {
             action: NBA_ACTIONS.IDENTIFY_SERVICE,
-            instruction: 'Acknowledge the user but clarify exactly which services they are interested in (e.g. animators, cotton candy, balloons). Do not quote prices yet.',
+            instruction: 'Acknowledge the user but clarify exactly which services they are interested in (e.g. animators, cotton candy, balloons).' + playbookInjection,
             nextState: 'identificare_serviciu'
         };
     }
@@ -73,7 +81,7 @@ export function computeNextBestAction(context) {
         const nextField = missingMetrics.nextFieldToAsk || 'details';
         return {
             action: NBA_ACTIONS.ASK_MISSING_FIELDS,
-            instruction: `The client wants ${runtimeState.primary_service}, but we are missing critical fields: ${missingMetrics.missing.join(', ')}. Ask nicely for ${nextField}. Do NOT provide a final quote yet.`,
+            instruction: `The client wants ${runtimeState.primary_service}. You must ask ONLY for "${nextField}". Do NOT ask for any other missing fields right now. Take it strictly step-by-step.` + playbookInjection,
             nextState: 'colectare_date'
         };
     }
@@ -83,14 +91,16 @@ export function computeNextBestAction(context) {
         if (runtimeState.lead_state !== 'oferta_trimisa') {
             return {
                 action: NBA_ACTIONS.PREPARE_QUOTE,
-                instruction: `All required data is collected for ${runtimeState.primary_service}. Generate a clear, structured pricing offer based strictly on the Commercial Policies. Do not invent discounts. Ask if they want to proceed with the booking.`,
+                instruction: `All required data is collected for ${runtimeState.primary_service}. Generate a clear, structured pricing offer based strictly on the Commercial Policies.` + playbookInjection,
                 nextState: 'gata_de_oferta'
             };
         } else {
-            // Already sent the quote, client is doing something else (asking a question, negotiating)
+            // Already sent the quote, client is doing something else
+            const actionPath = playbookStrategy && playbookStrategy.playbook_key === 'upsell_ready' ? NBA_ACTIONS.PREPARE_QUOTE : NBA_ACTIONS.HANDLE_OBJECTION;
+            
             return {
-                action: NBA_ACTIONS.HANDLE_OBJECTION,
-                instruction: 'The quote was already sent. Address any questions or objections the client has. If they agree to book, proceed with confirmation.',
+                action: actionPath,
+                instruction: 'The quote was already sent. Address any questions or objections the client has. If they agree to book, proceed with confirmation.' + playbookInjection,
                 nextState: 'asteapta_raspuns_client'
             };
         }

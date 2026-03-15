@@ -1,6 +1,6 @@
 {
-  "version": "v1773534753426",
-  "loaded_at": "2026-03-15T00:32:33.426Z",
+  "version": "v1773536313440",
+  "loaded_at": "2026-03-15T00:58:33.440Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -229,9 +229,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 59,
+      "times_used": 75,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T00:31:30.775+00:00",
+      "updated_at": "2026-03-15T00:57:49.386+00:00",
       "policy_config": null
     },
     {
@@ -630,94 +630,10 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 70,
+      "times_used": 72,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-14T15:03:42.998+00:00",
+      "updated_at": "2026-03-15T00:47:40.173+00:00",
       "policy_config": null
-    },
-    {
-      "id": "66a85482-3c62-4b83-814e-f4b77eb57722",
-      "knowledge_key": "role_arcada_pe_suport",
-      "category": "services",
-      "service_tags": [
-        "arcada_pe_suport",
-        "arcada",
-        "baloane"
-      ],
-      "question_patterns": [
-        "arcada pe suport",
-        "arcada stalpi",
-        "arcada cu suport",
-        "baloane pe suport"
-      ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.021188+00:00",
-      "valid_until": null,
-      "times_used": 60,
-      "created_at": "2026-03-14T16:50:09.021188+00:00",
-      "updated_at": "2026-03-15T00:32:29.599+00:00",
-      "policy_config": {
-        "label": "Arcadă pe suport",
-        "active": true,
-        "priority": 90,
-        "role_key": "role_arcada_pe_suport",
-        "triggers": {
-          "keywords": [
-            "arcada pe suport",
-            "arcada stalpi",
-            "arcada cu suport",
-            "baloane pe suport"
-          ],
-          "service_tags": [
-            "arcada_pe_suport",
-            "arcada",
-            "baloane"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Realizăm arcadă pe suport pentru evenimente, cu montaj curat și aspect elegant.",
-          "upsell": "Poate fi combinată cu cifre volumetrice sau decor complet cu baloane.",
-          "closing_question": "Pentru ce dată și în ce locație doriți arcada pe suport?"
-        },
-        "service_key": "arcada_pe_suport",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 350,
-          "fixed_price": 350,
-          "pricing_model": "fixed_price",
-          "allowed_models": [],
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 0,
-          "allow_model_choice": false,
-          "price_per_linear_meter": 0,
-          "included_duration_hours": 1
-        },
-        "approval_status": "approved"
-      }
     },
     {
       "id": "f68aa6cc-8cd6-4685-9de9-a19fe8a3c709",
@@ -830,9 +746,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:09.186263+00:00",
       "valid_until": null,
-      "times_used": 81,
+      "times_used": 115,
       "created_at": "2026-03-14T16:50:09.186263+00:00",
-      "updated_at": "2026-03-15T00:32:28.205+00:00",
+      "updated_at": "2026-03-15T00:57:23.028+00:00",
       "policy_config": {
         "label": "Vată de zahăr",
         "active": true,
@@ -1079,9 +995,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:09.105878+00:00",
       "valid_until": null,
-      "times_used": 97,
+      "times_used": 141,
       "created_at": "2026-03-14T16:50:09.105878+00:00",
-      "updated_at": "2026-03-15T00:32:32.454+00:00",
+      "updated_at": "2026-03-15T00:58:31.913+00:00",
       "policy_config": {
         "label": "Arcadă fără suport",
         "active": true,
@@ -1136,6 +1052,83 @@
           "allow_model_choice": true,
           "price_per_linear_meter": 200,
           "included_duration_hours": 1
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
+      "id": "05b716a0-4a3b-4f04-8bf4-8af2f20bfaff",
+      "knowledge_key": "role_popcorn",
+      "category": "services",
+      "service_tags": [
+        "popcorn",
+        "aparat_popcorn"
+      ],
+      "question_patterns": [
+        "popcorn",
+        "aparat popcorn",
+        "masina popcorn",
+        "mașină popcorn"
+      ],
+      "answer_template": "",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.273661+00:00",
+      "valid_until": null,
+      "times_used": 0,
+      "created_at": "2026-03-14T16:50:09.273661+00:00",
+      "updated_at": "2026-03-14T20:55:27.816+00:00",
+      "policy_config": {
+        "label": "Popcorn",
+        "active": true,
+        "priority": 140,
+        "role_key": "role_popcorn",
+        "triggers": {
+          "keywords": [
+            "popcorn",
+            "aparat popcorn",
+            "masina popcorn",
+            "mașină popcorn"
+          ],
+          "service_tags": [
+            "popcorn",
+            "aparat_popcorn"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Oferim serviciu de popcorn preparat pe loc, potrivit pentru petreceri și evenimente cu copii.",
+          "upsell": "Merge foarte bine împreună cu vată de zahăr sau animație.",
+          "closing_question": "Ne spui data, locația și durata pentru care doriți serviciul de popcorn?"
+        },
+        "service_key": "popcorn",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 490,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 170,
+          "included_duration_hours": 2
         },
         "approval_status": "approved"
       }
@@ -1521,87 +1514,10 @@
       "verified_by": null,
       "valid_from": "2026-03-14T00:38:23.590769+00:00",
       "valid_until": null,
-      "times_used": 90,
+      "times_used": 98,
       "created_at": "2026-03-14T00:38:23.590769+00:00",
-      "updated_at": "2026-03-15T00:32:10.771+00:00",
+      "updated_at": "2026-03-15T00:58:19.444+00:00",
       "policy_config": null
-    },
-    {
-      "id": "05b716a0-4a3b-4f04-8bf4-8af2f20bfaff",
-      "knowledge_key": "role_popcorn",
-      "category": "services",
-      "service_tags": [
-        "popcorn",
-        "aparat_popcorn"
-      ],
-      "question_patterns": [
-        "popcorn",
-        "aparat popcorn",
-        "masina popcorn",
-        "mașină popcorn"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.273661+00:00",
-      "valid_until": null,
-      "times_used": 0,
-      "created_at": "2026-03-14T16:50:09.273661+00:00",
-      "updated_at": "2026-03-14T20:55:27.816+00:00",
-      "policy_config": {
-        "label": "Popcorn",
-        "active": true,
-        "priority": 140,
-        "role_key": "role_popcorn",
-        "triggers": {
-          "keywords": [
-            "popcorn",
-            "aparat popcorn",
-            "masina popcorn",
-            "mașină popcorn"
-          ],
-          "service_tags": [
-            "popcorn",
-            "aparat_popcorn"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Oferim serviciu de popcorn preparat pe loc, potrivit pentru petreceri și evenimente cu copii.",
-          "upsell": "Merge foarte bine împreună cu vată de zahăr sau animație.",
-          "closing_question": "Ne spui data, locația și durata pentru care doriți serviciul de popcorn?"
-        },
-        "service_key": "popcorn",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 490,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 170,
-          "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
     },
     {
       "id": "05c78480-09e8-4478-a6cf-5de305dfa4f4",
@@ -1775,6 +1691,90 @@
           },
           "extra_hour_price": 180,
           "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
+      "id": "66a85482-3c62-4b83-814e-f4b77eb57722",
+      "knowledge_key": "role_arcada_pe_suport",
+      "category": "services",
+      "service_tags": [
+        "arcada_pe_suport",
+        "arcada",
+        "baloane"
+      ],
+      "question_patterns": [
+        "arcada pe suport",
+        "arcada stalpi",
+        "arcada cu suport",
+        "baloane pe suport"
+      ],
+      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.021188+00:00",
+      "valid_until": null,
+      "times_used": 71,
+      "created_at": "2026-03-14T16:50:09.021188+00:00",
+      "updated_at": "2026-03-15T00:56:47.075+00:00",
+      "policy_config": {
+        "label": "Arcadă pe suport",
+        "active": true,
+        "priority": 90,
+        "role_key": "role_arcada_pe_suport",
+        "triggers": {
+          "keywords": [
+            "arcada pe suport",
+            "arcada stalpi",
+            "arcada cu suport",
+            "baloane pe suport"
+          ],
+          "service_tags": [
+            "arcada_pe_suport",
+            "arcada",
+            "baloane"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Realizăm arcadă pe suport pentru evenimente, cu montaj curat și aspect elegant.",
+          "upsell": "Poate fi combinată cu cifre volumetrice sau decor complet cu baloane.",
+          "closing_question": "Pentru ce dată și în ce locație doriți arcada pe suport?"
+        },
+        "service_key": "arcada_pe_suport",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 350,
+          "fixed_price": 350,
+          "pricing_model": "fixed_price",
+          "allowed_models": [],
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 0,
+          "allow_model_choice": false,
+          "price_per_linear_meter": 0,
+          "included_duration_hours": 1
         },
         "approval_status": "approved"
       }
@@ -2011,11 +2011,11 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 375,
+      "times_used": 385,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T00:04:23.525+00:00",
+      "updated_at": "2026-03-15T00:57:41.26+00:00",
       "policy_config": null
     }
   ],
-  "checksum": "d6bd54b5c0c366de7470ab74b7b78d0c90eb796f4c665e065660a358d646cae8"
+  "checksum": "c5073a264b129dadbb973747eaa4078ac4037eda9c81a9ac77cc0ebf61b581fd"
 }

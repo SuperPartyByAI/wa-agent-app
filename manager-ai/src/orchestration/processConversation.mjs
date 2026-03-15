@@ -495,26 +495,31 @@ export async function processConversation(conversation_id, message_id = null, op
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();
-
-        // --- SHADOW NOTEBOOKLM RUN ---
-        const { runShadowPipeline } = await import('../integrations/notebookLmShadowEvaluator.mjs');
-        const shadowContext = {
-            profile: { id: clientId },
-            events: eventPlan ? [eventPlan] : [],
-            memorySummary: existingMemory?.internal_notes_summary || '',
-            transcript: transcript
-        };
-        
-        // Fire and forget, no await to block the main pipeline
-        runShadowPipeline(shadowContext).catch(e => console.error('[Shadow] Uncaught error:', e));
-        // -----------------------------
-
         let analysis = await callLocalLLM(systemPrompt, userMessage);
         const t_llm_ms = Date.now() - t_llm_start;
         console.log(`[Pipeline] LLM analysis completed in ${t_llm_ms}ms`);
 
         if (!analysis) {
-            console.warn(`[Pipeline] LLM unreachable or returned invalid JSON for conv ${conversation_id}. Aborting.`);
+            console.warn(`[Pipeline] LLM unreachable or returned invalid JSON for conv ${conversation_id}. Triggering Graceful Fallback.`);
+            // Graceful Degradation: Notify the client and block auto-reply, escalate to human.
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: 'Sistemul meu întâmpină o întârziere momentană. Un coleg te va prelua în cel mai scurt timp pentru a te ajuta!',
+                can_auto_reply: true,
+                needs_human_review: true,
+                confidence_score: 0,
+                conversation_stage: dbStage || 'discovery',
+                reply_status: 'approved',
+                sent_by: 'reply_engine',
+                next_step: 'escalate',
+                progression_status: 'llm_fallback_timeout',
+                escalation_reason: 'llm_unreachable_timeout'
+            });
+            await supabase.from('ai_conversation_state').upsert({
+                conversation_id,
+                current_stage: dbStage || 'discovery',
+                updated_at: new Date().toISOString()
+            });
             releaseConversationLock(conversation_id);
             return;
         }

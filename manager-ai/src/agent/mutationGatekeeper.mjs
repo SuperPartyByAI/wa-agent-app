@@ -16,12 +16,16 @@ const SENSITIVE_FIELDS = ['data_evenimentului', 'ora_evenimentului', 'locatie_ev
  * @param {Object} clientContext - Portofoliul de evenimente generat de clientMemoryLoader
  */
 export async function evaluateMutationIntent(llmIntent, clientContext) {
+    if (!llmIntent) {
+        return { action: 'proceed', reason: 'no_intent_payload' };
+    }
+    
     // 1. Daca LLM nu cere nicio mutatie sau disambiguare, e ok.
     if (!llmIntent.mutation && !llmIntent.requires_disambiguation) {
         return { action: 'proceed', reason: 'no_mutation' };
     }
 
-    const activeEvents = clientContext.events || [];
+    const activeEvents = clientContext?.events || [];
     const activeCount = activeEvents.length;
 
     // 2. LLM semnalizează direct că nu e sigur la ce eveniment se referă clientul.

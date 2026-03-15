@@ -55,141 +55,73 @@ export const CommercialFields = [
 export const ServiceFieldRequirements = {
     role_animatie: {
         serviceKey: "animatie",
-        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore", "numar_animatori"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "personaj_dorit", "numar_copii", "nume_sarbatorit", "varsta_sarbatoritului", "metoda_de_plata", "doreste_factura"],
-        optional: ["tematica_dorita", "interior_sau_exterior", "activitati_dorite", "observatii_animatie"],
-        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_animatori", "personaj_dorit", "numar_copii", "nume_sarbatorit", "varsta_sarbatoritului", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            personaj_dorit: "string",
-            numar_animatori: "number",
-            durata_ore: "number",
-            tematica_dorita: "string",
-            activitati_dorite: "string",
-            observatii_animatie: "string"
-        }
-    },
-    role_ursitoare: {
-        serviceKey: "ursitoare",
-        requiredForQuote: ["data_evenimentului", "localitate"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "nume_sarbatorit", "sex_copil", "metoda_de_plata", "doreste_factura"],
-        optional: ["numar_invitati", "tip_moment", "durata_moment", "observatii_ursitoare"],
-        recommendedOrder: ["data_evenimentului", "localitate", "nume_sarbatorit", "sex_copil", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            nume_sarbatorit: "string",
-            sex_copil: "string",
-            tip_moment: "string",
-            durata_moment: "number",
-            observatii_ursitoare: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "localitate", "numar_copii", "personaj_dorit", "durata_ore"],
+        requiredForBooking: ["adresa_completa", "metoda_de_plata", "doreste_factura", "nume_sarbatorit", "varsta_sarbatoritului"],
+        optional: ["interior_sau_exterior", "spatiu_disponibil", "exista_sonorizare", "alte_servicii_dorite", "observatii_logistice"],
+        recommendedOrder: ["data_evenimentului", "ora_evenimentului", "localitate", "numar_copii", "personaj_dorit", "durata_ore", "nume_sarbatorit", "varsta_sarbatoritului", "metoda_de_plata", "doreste_factura"]
     },
     role_vata_de_zahar: {
         serviceKey: "vata_de_zahar",
-        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        optional: ["numar_estimat_portii", "interior_sau_exterior", "acces_curent_electric", "observatii_vata_de_zahar"],
-        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            durata_ore: "number",
-            numar_estimat_portii: "number",
-            acces_curent_electric: "boolean",
-            observatii_vata_de_zahar: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "localitate", "durata_ore", "interior_sau_exterior"],
+        requiredForBooking: ["adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"],
+        optional: ["numar_estimat_copii", "numar_estimat_portii", "acces_curent_electric", "loc_amplasare_masina", "alte_servicii_dorite", "observatii_logistice", "acces_facil_locatie", "exista_masa_echipament", "interval_montaj"],
+        recommendedOrder: ["data_evenimentului", "ora_evenimentului", "localitate", "durata_ore", "interior_sau_exterior", "adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"]
     },
     role_popcorn: {
         serviceKey: "popcorn",
-        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        optional: ["numar_estimat_portii", "acces_curent_electric", "observatii_popcorn"],
-        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            durata_ore: "number",
-            numar_estimat_portii: "number",
-            acces_curent_electric: "boolean",
-            observatii_popcorn: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "localitate", "durata_ore", "interior_sau_exterior"],
+        requiredForBooking: ["adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"],
+        optional: ["numar_estimat_invitati", "numar_estimat_portii", "acces_curent_electric", "spatiu_amplasare", "alte_servicii_dorite", "observatii_logistice", "tip_public", "mod_servire"],
+        recommendedOrder: ["data_evenimentului", "ora_evenimentului", "localitate", "durata_ore", "interior_sau_exterior", "adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"]
     },
     role_vata_si_popcorn: {
         serviceKey: "vata_si_popcorn",
-        requiredForQuote: ["data_evenimentului", "localitate", "durata_ore"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        optional: ["numar_estimat_portii", "acces_curent_electric", "observatii_pachet"],
-        recommendedOrder: ["data_evenimentului", "localitate", "durata_ore", "numar_estimat_portii", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            durata_ore: "number",
-            numar_estimat_portii: "number",
-            acces_curent_electric: "boolean",
-            observatii_pachet: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "localitate", "durata_ore", "interior_sau_exterior"],
+        requiredForBooking: ["adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"],
+        optional: ["numar_estimat_invitati", "numar_estimat_copii", "acces_curent_electric", "spatiu_amplasare", "alte_servicii_dorite", "observatii_logistice", "amplasare_aceeasi_zona", "alimentare_simultana"],
+        recommendedOrder: ["data_evenimentului", "ora_evenimentului", "localitate", "durata_ore", "interior_sau_exterior", "adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"]
     },
     role_arcada_fara_suport: {
         serviceKey: "arcada_fara_suport",
-        requiredForQuote: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        optional: ["culori_dorite", "zona_amplasare", "interior_sau_exterior", "observatii_arcada_fara_suport"],
-        recommendedOrder: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "culori_dorite", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            metri_liniari: "number",
-            model_arcada: "string",
-            culori_dorite: "string",
-            zona_amplasare: "string",
-            observatii_arcada_fara_suport: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "culori_dorite"],
+        requiredForBooking: ["adresa_completa", "zona_amplasare", "interior_sau_exterior", "metoda_de_plata", "doreste_factura"],
+        optional: ["tematica_eveniment", "dimensiune_spatiu", "fotografie_referinta", "ora_montaj", "ora_evenimentului", "observatii_logistice", "cine_asigura_demontarea", "exista_punct_sprijin", "acces_locatie_montaj"],
+        recommendedOrder: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "culori_dorite", "interior_sau_exterior", "zona_amplasare", "adresa_completa", "metoda_de_plata", "doreste_factura"]
     },
     role_arcada_cu_cifre_volumetrice: {
         serviceKey: "arcada_cu_cifre_volumetrice",
-        requiredForQuote: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "cifre_dorite"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        optional: ["culoare_cifre", "culori_arcada", "zona_amplasare", "observatii_arcada_cu_cifre"],
-        recommendedOrder: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "cifre_dorite", "culori_arcada", "culoare_cifre", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            metri_liniari: "number",
-            model_arcada: "string",
-            cifre_dorite: "string",
-            culoare_cifre: "string",
-            culori_arcada: "string",
-            zona_amplasare: "string",
-            observatii_arcada_cu_cifre: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "cifre_dorite", "culori_dorite"],
+        requiredForBooking: ["adresa_completa", "zona_amplasare", "interior_sau_exterior", "ora_montaj", "metoda_de_plata", "doreste_factura"],
+        optional: ["culoare_cifre", "tematica_eveniment", "fotografie_referinta", "observatii_logistice", "dimensiune_cifre", "cifre_simple_sau_decorate"],
+        recommendedOrder: ["data_evenimentului", "localitate", "metri_liniari", "model_arcada", "cifre_dorite", "culori_dorite", "interior_sau_exterior", "zona_amplasare", "ora_montaj", "adresa_completa", "metoda_de_plata", "doreste_factura"]
     },
     role_arcada_pe_suport: {
         serviceKey: "arcada_pe_suport",
-        requiredForQuote: ["data_evenimentului", "localitate"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        optional: ["culori_dorite", "zona_amplasare", "interior_sau_exterior", "tip_suport", "observatii_arcada_pe_suport"],
-        recommendedOrder: ["data_evenimentului", "localitate", "culori_dorite", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            tip_suport: "string",
-            culori_dorite: "string",
-            zona_amplasare: "string",
-            observatii_arcada_pe_suport: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "localitate", "tip_suport", "culori_dorite"],
+        requiredForBooking: ["adresa_completa", "zona_amplasare", "interior_sau_exterior", "ora_montaj", "metoda_de_plata", "doreste_factura"],
+        optional: ["tematica_eveniment", "fotografie_referinta", "observatii_logistice", "dimensiune_suport", "model_standard_sau_personalizat", "elemente_extra_suport"],
+        recommendedOrder: ["data_evenimentului", "localitate", "tip_suport", "culori_dorite", "interior_sau_exterior", "zona_amplasare", "ora_montaj", "adresa_completa", "metoda_de_plata", "doreste_factura"]
+    },
+    role_ursitoare: {
+        serviceKey: "ursitoare",
+        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "localitate", "nume_sarbatorit", "tip_locatie"],
+        requiredForBooking: ["adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"],
+        optional: ["program_ursitoare", "numar_invitati", "botez_restaurant_sau_acasa", "observatii_logistice", "tematica_dorita", "sex_copil", "varsta_sarbatoritului", "stil_moment", "program_exact_intrare"],
+        recommendedOrder: ["data_evenimentului", "ora_evenimentului", "localitate", "nume_sarbatorit", "tip_locatie", "adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"]
     },
     role_mos_craciun: {
         serviceKey: "mos_craciun",
-        requiredForQuote: ["data_evenimentului", "localitate", "durata_vizita"],
-        requiredForBooking: ["ora_vizitei", "adresa_completa", "numar_copii", "metoda_de_plata", "doreste_factura"],
-        optional: ["nume_sarbatorit", "cadouri_pregatite", "tip_eveniment", "observatii_mos_craciun"],
-        recommendedOrder: ["data_evenimentului", "localitate", "durata_vizita", "numar_copii", "ora_vizitei", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            ora_vizitei: "string",
-            durata_vizita: "number",
-            numar_copii: "number",
-            cadouri_pregatite: "boolean",
-            observatii_mos_craciun: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "localitate", "tip_eveniment", "durata_vizita"],
+        requiredForBooking: ["adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"],
+        optional: ["numar_copii", "numele_copiilor", "varstele_copiilor", "se_ofera_cadouri", "cine_da_cadourile", "observatii_logistice", "tip_locatie", "mosul_stie_numele", "mesaj_personalizat", "intra_singur_sau_cu_ajutor"],
+        recommendedOrder: ["data_evenimentului", "ora_evenimentului", "localitate", "tip_eveniment", "durata_vizita", "adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"]
     },
     role_parfumerie: {
         serviceKey: "parfumerie",
-        requiredForQuote: ["data_evenimentului", "localitate", "numar_participanti"],
-        requiredForBooking: ["ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        optional: ["varsta_participantilor", "durata_atelier", "tip_eveniment", "format_atelier", "observatii_parfumerie"],
-        recommendedOrder: ["data_evenimentului", "localitate", "numar_participanti", "ora_evenimentului", "adresa_completa", "metoda_de_plata", "doreste_factura"],
-        detailsSchema: {
-            numar_participanti: "number",
-            durata_atelier: "number",
-            format_atelier: "string",
-            observatii_parfumerie: "string"
-        }
+        requiredForQuote: ["data_evenimentului", "ora_evenimentului", "localitate", "tip_eveniment", "numar_participanti"],
+        requiredForBooking: ["adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"],
+        optional: ["interval_dorit", "varsta_participantilor", "interior_sau_exterior", "spatiu_disponibil", "observatii_logistice", "copii_sau_adulti", "atelier_sau_stand", "branding_personalizare"],
+        recommendedOrder: ["data_evenimentului", "ora_evenimentului", "localitate", "tip_eveniment", "numar_participanti", "adresa_completa", "persoana_contact", "telefon_contact", "metoda_de_plata", "doreste_factura"]
     }
 };
 

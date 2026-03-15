@@ -194,9 +194,19 @@ export async function processConversation(conversation_id, message_id = null, op
             }
         }
 
-        // ── 2. Load entity memory ──
+        // ── 2. Load entity memory & Multi-Event Context ──
         const existingMemory = await loadClientMemory(clientId);
-        console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, locations=${existingMemory.usual_locations.length}, services=${existingMemory.usual_services.length}`);
+        
+        let clientContext = null;
+        if (clientId) {
+            const { data: clientRow } = await supabase.from('clients').select('phone').eq('id', clientId).single();
+            const phoneE164 = clientRow?.phone;
+            if (phoneE164) {
+                const { loadClientContext } = await import('../agent/clientMemoryLoader.mjs');
+                clientContext = await loadClientContext(phoneE164, conversation_id);
+            }
+        }
+        console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, Multi-Event: ${clientContext ? clientContext.active_events_count + ' active events' : 'none'}`);
 
         // ── 2.0.1. Load Relationship Data ──
         const relationshipData = await loadRelationshipData(clientId);
@@ -770,6 +780,32 @@ export async function processConversation(conversation_id, message_id = null, op
         // Detect mutation
         const mutation = detectEventMutation(analysis, existingDraftRow);
         let mutationResult = { applied: false };
+
+        // ── 8.1 Multi-Event Gatekeeper ──
+        if (clientContext) {
+            const { evaluateMutationIntent, commitEventMutation } = await import('../agent/mutationGatekeeper.mjs');
+            
+            const intentObj = analysis.mutation_intent || { 
+                mutation: mutation.mutation_type !== 'no_mutation' ? { 
+                    target_event_id: analysis.target_event_id || null, 
+                    field: mutation.changed_field || mutation.mutation_type, 
+                    new_value: mutation.new_value 
+                } : null,
+                requires_disambiguation: analysis.requires_disambiguation === true,
+                client_confirmed_mutation: analysis.client_confirmed_mutation === true
+            };
+            
+            const gatekeeperResult = await evaluateMutationIntent(intentObj, clientContext);
+            
+            if (gatekeeperResult.action === 'block_ask_disambiguation' || gatekeeperResult.action === 'block_ask_confirmation') {
+                console.log(`[Pipeline] Gatekeeper blocked DB Write: ${gatekeeperResult.reason}`);
+                // Intersectam mutation-ul nativ si il anulam sa nu modifice un Plan de Event orbeste.
+                mutation.mutation_type = 'no_mutation'; 
+            } else if (gatekeeperResult.action === 'apply_mutation') {
+                 await commitEventMutation(gatekeeperResult, clientId);
+                 console.log(`[Pipeline] Gatekeeper approved & logged mutation: ${gatekeeperResult.field}`);
+            }
+        }
 
         if (mutation.mutation_type !== 'no_mutation') {
             mutationResult = await applyEventMutation({

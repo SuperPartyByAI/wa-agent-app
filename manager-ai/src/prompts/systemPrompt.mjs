@@ -48,8 +48,25 @@ function buildToolsFromLiveRegistry() {
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { eventPlan = null, partyDraft = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null, goalDirective = null } = {}) {
+export function buildSystemPrompt(existingMemory = null, { clientContext = null, eventPlan = null, partyDraft = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null, goalDirective = null } = {}) {
     const catalogBlock = buildCatalogPromptBlock();
+
+    let clientContextBlock = '';
+    if (clientContext && !clientContext.is_new_client) {
+        clientContextBlock = `\n=== CLIENT & PORTOFOLIU EVENIMENTE (MULTI-EVENT) ===
+Profil Client: ${clientContext.client.name || 'Necunoscut'}${clientContext.client.type === 'firma' ? ' (Firma/Protocol)' : ''}
+${clientContext.client.billing_preset ? 'Date Facturare Recurente: ' + JSON.stringify(clientContext.client.billing_preset) : ''}
+Memorie Relatie: ${clientContext.memory}
+
+Evenimente Active (${clientContext.active_events_count}):
+${clientContext.events.map(ev => `- [EventID: ${ev.event_id}] Data: ${ev.date || '-'} | Locatie: ${ev.location || '-'} | Sarbatorit: ${ev.celebrant || '-'} | Servicii: ${ev.service_summary || '-'} | Status: ${ev.status} / ${ev.commercial_status}`).join('\n')}
+
+CRITIC IMPORTANT PENTRU MUTATII:
+1. Nu amesteca datele! Daca clientul are >1 evenimente active si doreste sa schimbe Data, Ora, Personajul sau Locatia, TREBUIE OBLIGATORIU sa ceri CLARIFICARE: "Va referiti la petrecerea din X sau petrecerea Y?". Nu presupune (disambiguare).
+2. Orice actiune propusa asupra Portofoliului trebuie ancorata cu EventID.
+3. Daca identifici ca cere o petrecere pur NOUA, nu suprascrie evenimentul vechi.
+=== SFARSIT PORTOFOLIU ===\n`;
+    }
 
     let roleBlock = '';
     if (activeRolesText) {

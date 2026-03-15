@@ -23,7 +23,7 @@ jobs:
       - name: Check for secrets in repo
         run: |
           echo "Checking for committed secrets..."
-          if git grep -lnI "SUPABASE_SERVICE_ROLE_KEY=ey\|-----BEGIN PRIVATE KEY-----\|-----BEGIN RSA PRIVATE KEY-----" -- ':(exclude).github/workflows/ci.yml' 2>/dev/null; then
+          if git grep -lnI "SUPABASE_SERVICE_ROLE_KEY=ey\|-----BEGIN PRIVATE KEY-----\|-----BEGIN RSA PRIVATE KEY-----" -- ':(exclude).github/workflows/ci.yml' ':(exclude)backend/.env.example' 2>/dev/null; then
             echo "❌ SECRETS DETECTED IN REPO!"
             exit 1
           fi

@@ -18,6 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { validateRoleConfigPayload } from '../policy/roleConfigSchema.mjs';
+import { refreshPlaybookCache } from '../agent/businessPlaybook.mjs';
 
 const router = Router();
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -540,6 +541,47 @@ router.get('/dashboard', async (req, res) => {
             employees: { total: empR.count },
             analytics: { events: analyticsR.count, kb_misses: misses.count }
         });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ═══════════════════════════════════════════════════
+// H. PLAYBOOKS & PROMPTS (Phase 11)
+// ═══════════════════════════════════════════════════
+
+router.get('/playbooks', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('sales_playbooks')
+            .select('*')
+            .order('name', { ascending: true });
+        if (error) throw error;
+        res.json({ playbooks: data || [] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/playbooks/:key', async (req, res) => {
+    try {
+        const key = req.params.key;
+        const updates = { 
+            strategy: req.body.strategy, 
+            tone: req.body.tone,
+            updated_at: new Date().toISOString()
+        };
+        
+        const { data, error } = await supabase.from('sales_playbooks')
+            .update(updates)
+            .eq('key', key)
+            .select()
+            .single();
+            
+        if (error) throw error;
+        
+        // Log the prompt change in the audit trail
+        await logAudit('playbooks', 'update', 'playbook', key, updates, req.body._reason || 'Updated via Admin Suite');
+        
+        // Notify the RAM cache to reload the patched prompts instantly!
+        refreshPlaybookCache().catch(e => console.error('Cache reload warn:', e.message));
+        
+        res.json({ status: 'updated', playbook: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

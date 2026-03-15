@@ -6,6 +6,37 @@
  * Handles objections, vague requests ("how much?"), and cross-selling.
  */
 
+import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '../config/env.mjs';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+/**
+ * IN-MEMORY CACHE FOR LIVE PROMPTS (Populated from DB)
+ * These values override the default hardcoded strategies and tones.
+ */
+let PlaybookDBPatch = {};
+
+export async function refreshPlaybookCache() {
+    try {
+        const { data, error } = await supabase.from('sales_playbooks').select('key, strategy, tone');
+        if (error) throw error;
+        
+        const newCache = {};
+        for (const row of (data || [])) {
+            newCache[row.key] = { strategy: row.strategy, tone: row.tone };
+        }
+        
+        PlaybookDBPatch = newCache;
+        console.log(`[Playbook] Reloaded ${Object.keys(newCache).length} live prompts from DB.`);
+    } catch (err) {
+        console.error(`[Playbook] Failed to refresh live prompts from DB:`, err.message);
+    }
+}
+
+// Initial load
+refreshPlaybookCache().catch(console.error);
+
 export const PlaybookStrategies = {
     // ── 1. VAGUE / GENERIC INQUIRIES ──
     vague_inquiry: {
@@ -106,10 +137,14 @@ export function evaluatePlaybook(context) {
         const rule = PlaybookStrategies[key];
         if (rule && rule.condition(context)) {
             console.log(`[Playbook] Matched strategy: ${key}`);
+            
+            // Prefer the live DB-patched strategy and tone over the hardcoded defaults
+            const livePatch = PlaybookDBPatch[key] || {};
+            
             return {
                 playbook_key: key,
-                strategy: rule.strategy,
-                tone: rule.tone
+                strategy: livePatch.strategy || rule.strategy,
+                tone: livePatch.tone || rule.tone
             };
         }
     }

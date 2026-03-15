@@ -145,7 +145,7 @@ document.querySelectorAll('.nav-item').forEach(n=>{
   });
 });
 
-function loadModule(m){const l={operator:()=>{},creier:loadCreier,roles:loadRoles};if(l[m])l[m]()}
+function loadModule(m){const l={operator:()=>{},creier:loadCreier,roles:()=>{loadRoles();loadPlaybooks();}};if(l[m])l[m]()}
 const tokenFromUrl = new URLSearchParams(window.location.search).get('token');
 if(tokenFromUrl) localStorage.setItem('token', tokenFromUrl);
 
@@ -538,9 +538,16 @@ async function loadRoles(){
   _rolesCache = (kb.entries || []).filter(x => x.knowledge_key && x.knowledge_key.startsWith('role_'));
   const el = document.getElementById('mod-roles');
 
-  let h = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
-    <h2>Rolurile și Logica Asistentului (${_rolesCache.length})</h2>
-    <button class="btn btn-primary" style="font-size:16px; padding:12px 24px" onclick="openRoleModal()">+ Crează Rol Nou</button>
+  let h = `<div id="playbooks-container" style="margin-bottom: 40px">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+      <h2>🧠 Logica de Vânzare & Conversație (Playbooks)</h2>
+    </div>
+    <div id="playbooks-grid" class="grid-3" style="gap:16px; display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));"><div class="loader"><div class="spinner"></div></div></div>
+  </div>`;
+
+  h += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
+    <h2>💰 Fișele Postului (Servicii & Prețuri) (${_rolesCache.length})</h2>
+    <button class="btn btn-primary" style="font-size:16px; padding:12px 24px" onclick="openRoleModal()">+ Crează Fișă Nouă</button>
   </div>`;
 
   h += `<div class="grid-3" style="gap:16px; display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">`;
@@ -843,6 +850,79 @@ async function deleteRoleRule(id) {
     closeModal();
     loadRoles();
   } catch(e) { alert('Eroare: ' + e.message); }
+}
+
+async function loadPlaybooks() {
+  try {
+    const res = await api(API + '/playbooks');
+    const playbooks = res.playbooks || [];
+    let h = '';
+    for (const p of playbooks) {
+      h += `<div class="card" style="cursor:pointer; border:1px solid var(--border); background:var(--surface2);" onclick='openPlaybookModal(${JSON.stringify(p).replace(/'/g, "&#39;")})' onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <b style="font-size:15px; color:var(--text)">${p.name || p.key}</b>
+          <span class="tag tag-purple">${p.tone}</span>
+        </div>
+        <div style="font-size:12px; color:var(--dim); margin-bottom:12px; min-height: 34px">${p.description || ''}</div>
+        <div style="color:var(--dim); font-size:11px; margin-bottom:4px; text-transform:uppercase">Instrucțiune AI:</div>
+        <div style="font-size:13px; color:var(--text); opacity:0.9; white-space:pre-wrap; border-left: 2px solid var(--accent); padding-left: 8px;">${p.strategy.substring(0, 150)}...</div>
+      </div>`;
+    }
+    const container = document.getElementById('playbooks-grid');
+    if (container) container.innerHTML = h || '<div class="empty">Nu au fost găsite playbooks. Asigurați-vă că migrarea DB a rulat.</div>';
+  } catch (e) {
+    document.getElementById('playbooks-grid').innerHTML = `<div style="color:var(--red)">Eroare la încărcare: ${e.message}</div>`;
+  }
+}
+
+function openPlaybookModal(p) {
+  const h = `
+    <h2 style="margin-bottom:8px; font-size:20px">Modifică Comportament AI: <span style="color:var(--accent)">${p.name || p.key}</span></h2>
+    <p style="color:var(--dim); font-size:13px; margin-bottom:24px">${p.description || ''}</p>
+    <input type="hidden" id="pbKey" value="${p.key}">
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:14px; font-weight:600; margin-bottom:8px; display:block">Instrucțiunea strategică (Prompt)</label>
+      <div style="font-size:12px; color:var(--dim); margin-bottom:8px">Aceasta este linia de comandă exactă pe care modelul LLM o va primi atunci când condiția acestui playbook este îndeplinită. Fii clar și direct.</div>
+      <textarea id="pbStrategy" class="input" rows="5" style="font-family: monospace; font-size: 13px; line-height: 1.5; padding: 12px">${p.strategy}</textarea>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <label style="font-size:14px; font-weight:600; margin-bottom:8px; display:block">Tonalitatea dorită (Tone)</label>
+      <input type="text" id="pbTone" class="input" value="${p.tone}" style="padding: 10px">
+    </div>
+    
+    <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px; padding-top:16px; border-top:1px solid var(--border)">
+      <button class="btn btn-outline" style="border-radius:8px" onclick="closeModal()">Anulează</button>
+      <button class="btn btn-primary" style="font-size:14px; padding:8px 24px; border-radius:8px" onclick="savePlaybook()">Aplică Live ⚡</button>
+    </div>
+  `;
+  openModal(h);
+}
+
+async function savePlaybook() {
+  const key = document.getElementById('pbKey').value;
+  const strategy = document.getElementById('pbStrategy').value.trim();
+  const tone = document.getElementById('pbTone').value.trim();
+  
+  if (!strategy || !tone) return alert('Ambele câmpuri sunt obligatorii!');
+  
+  try {
+    const btn = document.querySelector('.modal .btn-primary');
+    if(btn) { btn.textContent = 'Se aplică...'; btn.disabled = true; }
+    
+    await api(API+'/playbooks/'+key, { 
+      method: 'PUT',
+      body: JSON.stringify({ strategy, tone })
+    });
+    
+    closeModal();
+    loadPlaybooks();
+  } catch(e) { 
+    alert('Eroare: ' + e.message); 
+    const btn = document.querySelector('.modal .btn-primary');
+    if(btn) { btn.textContent = 'Aplică Live ⚡'; btn.disabled = false; }
+  }
 }
 
 // ═══════════════════════════════════════

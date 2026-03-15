@@ -495,6 +495,20 @@ export async function processConversation(conversation_id, message_id = null, op
 
         console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
         const t_llm_start = Date.now();
+
+        // --- SHADOW NOTEBOOKLM RUN ---
+        const { runShadowPipeline } = await import('../integrations/notebookLmShadowEvaluator.mjs');
+        const shadowContext = {
+            profile: { id: clientId },
+            events: eventPlan ? [eventPlan] : [],
+            memorySummary: existingMemory?.internal_notes_summary || '',
+            transcript: transcript
+        };
+        
+        // Fire and forget, no await to block the main pipeline
+        runShadowPipeline(shadowContext).catch(e => console.error('[Shadow] Uncaught error:', e));
+        // -----------------------------
+
         let analysis = await callLocalLLM(systemPrompt, userMessage);
         const t_llm_ms = Date.now() - t_llm_start;
         console.log(`[Pipeline] LLM analysis completed in ${t_llm_ms}ms`);

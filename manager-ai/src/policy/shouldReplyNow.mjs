@@ -125,6 +125,8 @@ export async function shouldReplyNow({
 
 
         // ── 8. Wait for missing info (intent but incomplete data) ──
+        // [Disabled by USER] AI is now allowed to answer immediately to short/incomplete messages
+        /*
         if (lastClientMessage) {
             const hasIntent = /animator|popcorn|vata|ursitoare|petrecere|eveniment|nunta|botez|serbare|arcada|baloane|cifre|mos|gheata|parfumerie/i.test(lastClientMessage);
             if (hasIntent) {
@@ -149,6 +151,7 @@ export async function shouldReplyNow({
                 }
             }
         }
+        */
 
         // ── 9. Fetch last AI reply for comparison ──
         const { data: lastSentRows } = await supabase

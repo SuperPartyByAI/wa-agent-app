@@ -1,6 +1,6 @@
 {
-  "version": "v1773533133375",
-  "loaded_at": "2026-03-15T00:05:33.375Z",
+  "version": "v1773533793450",
+  "loaded_at": "2026-03-15T00:16:33.450Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -193,48 +193,6 @@
   ],
   "policies": [
     {
-      "id": "c8d1ebef-11e6-4195-bf8d-df4a688e19dc",
-      "knowledge_key": "baloane_info",
-      "category": "services",
-      "service_tags": [
-        "arcada_baloane",
-        "arcada_suport",
-        "arcada_exterior",
-        "suport_arcada_baloane",
-        "cifre_volumetrice"
-      ],
-      "question_patterns": [
-        "baloane",
-        "arcada baloane",
-        "aranjament baloane",
-        "decor baloane",
-        "cifre baloane",
-        "cifre volumetrice"
-      ],
-      "answer_template": "Oferim decoruri din baloane pentru orice eveniment! 🎈\n\n• Arcadă de baloane (diverse modele și dimensiuni)\n• Aranjamente personalizate\n• Cifre volumetrice din baloane\n• Buchet de baloane cu heliu\n\nSpuneți-mi ce tip de eveniment aveți, data și locația, și vă fac o ofertă!",
-      "metadata": {
-        "service_type": "arcada_baloane"
-      },
-      "required_context": [
-        "event_type",
-        "event_date",
-        "location"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 45,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T00:02:22.852+00:00",
-      "policy_config": null
-    },
-    {
       "id": "acdd9a5f-6b1b-4515-b11c-5f1a5fc59408",
       "knowledge_key": "covered_locations",
       "category": "faq",
@@ -372,6 +330,48 @@
       "times_used": 1,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
       "updated_at": "2026-03-14T19:05:38.445+00:00",
+      "policy_config": null
+    },
+    {
+      "id": "c8d1ebef-11e6-4195-bf8d-df4a688e19dc",
+      "knowledge_key": "baloane_info",
+      "category": "services",
+      "service_tags": [
+        "arcada_baloane",
+        "arcada_suport",
+        "arcada_exterior",
+        "suport_arcada_baloane",
+        "cifre_volumetrice"
+      ],
+      "question_patterns": [
+        "baloane",
+        "arcada baloane",
+        "aranjament baloane",
+        "decor baloane",
+        "cifre baloane",
+        "cifre volumetrice"
+      ],
+      "answer_template": "Oferim decoruri din baloane pentru orice eveniment! 🎈\n\n• Arcadă de baloane (diverse modele și dimensiuni)\n• Aranjamente personalizate\n• Cifre volumetrice din baloane\n• Buchet de baloane cu heliu\n\nSpuneți-mi ce tip de eveniment aveți, data și locația, și vă fac o ofertă!",
+      "metadata": {
+        "service_type": "arcada_baloane"
+      },
+      "required_context": [
+        "event_type",
+        "event_date",
+        "location"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 52,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-15T00:16:27.949+00:00",
       "policy_config": null
     },
     {
@@ -593,49 +593,6 @@
       "policy_config": null
     },
     {
-      "id": "cf1228e4-3c40-4ecb-91a0-e604cf752f89",
-      "knowledge_key": "booking_info_required",
-      "category": "faq",
-      "service_tags": [
-        "animator",
-        "popcorn",
-        "vata_zahar",
-        "ursitoare",
-        "arcada_baloane"
-      ],
-      "question_patterns": [
-        "cum rezerv",
-        "cum pot rezerva",
-        "vreau sa rezerv",
-        "booking",
-        "rezervare"
-      ],
-      "answer_template": "Pentru o rezervare, am nevoie de următoarele detalii:\n\n📅 Data evenimentului\n📍 Locația\n👶 Numărul de copii / invitați\n🎂 Tipul evenimentului (aniversare, botez, nuntă, etc.)\n🎈 Ce servicii vă interesează\n\nDupă ce am aceste informații, vă trimitem o ofertă personalizată!",
-      "metadata": {
-        "note": "generic booking info"
-      },
-      "required_context": [
-        "event_date",
-        "location",
-        "guest_count",
-        "event_type",
-        "services"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 70,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-14T15:03:42.998+00:00",
-      "policy_config": null
-    },
-    {
       "id": "66a85482-3c62-4b83-814e-f4b77eb57722",
       "knowledge_key": "role_arcada_pe_suport",
       "category": "services",
@@ -662,9 +619,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:09.021188+00:00",
       "valid_until": null,
-      "times_used": 51,
+      "times_used": 55,
       "created_at": "2026-03-14T16:50:09.021188+00:00",
-      "updated_at": "2026-03-15T00:04:23.813+00:00",
+      "updated_at": "2026-03-15T00:16:29.979+00:00",
       "policy_config": {
         "label": "Arcadă pe suport",
         "active": true,
@@ -718,6 +675,49 @@
         },
         "approval_status": "approved"
       }
+    },
+    {
+      "id": "cf1228e4-3c40-4ecb-91a0-e604cf752f89",
+      "knowledge_key": "booking_info_required",
+      "category": "faq",
+      "service_tags": [
+        "animator",
+        "popcorn",
+        "vata_zahar",
+        "ursitoare",
+        "arcada_baloane"
+      ],
+      "question_patterns": [
+        "cum rezerv",
+        "cum pot rezerva",
+        "vreau sa rezerv",
+        "booking",
+        "rezervare"
+      ],
+      "answer_template": "Pentru o rezervare, am nevoie de următoarele detalii:\n\n📅 Data evenimentului\n📍 Locația\n👶 Numărul de copii / invitați\n🎂 Tipul evenimentului (aniversare, botez, nuntă, etc.)\n🎈 Ce servicii vă interesează\n\nDupă ce am aceste informații, vă trimitem o ofertă personalizată!",
+      "metadata": {
+        "note": "generic booking info"
+      },
+      "required_context": [
+        "event_date",
+        "location",
+        "guest_count",
+        "event_type",
+        "services"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 70,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-14T15:03:42.998+00:00",
+      "policy_config": null
     },
     {
       "id": "f68aa6cc-8cd6-4685-9de9-a19fe8a3c709",
@@ -801,6 +801,91 @@
       }
     },
     {
+      "id": "80d18ad5-a0ad-48d4-8227-b49a1843e61f",
+      "knowledge_key": "role_vata_de_zahar",
+      "category": "services",
+      "service_tags": [
+        "vata",
+        "vată",
+        "vata_de_zahar",
+        "cotton_candy"
+      ],
+      "question_patterns": [
+        "vata",
+        "vata de zahar",
+        "vată de zahăr",
+        "cotton candy",
+        "vata pe bat",
+        "vată pe băț"
+      ],
+      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.186263+00:00",
+      "valid_until": null,
+      "times_used": 65,
+      "created_at": "2026-03-14T16:50:09.186263+00:00",
+      "updated_at": "2026-03-15T00:16:27.106+00:00",
+      "policy_config": {
+        "label": "Vată de zahăr",
+        "active": true,
+        "priority": 333,
+        "role_key": "role_vata_de_zahar",
+        "triggers": {
+          "keywords": [
+            "vata",
+            "vata de zahar",
+            "vată de zahăr",
+            "cotton candy",
+            "vata pe bat",
+            "vată pe băț"
+          ],
+          "service_tags": [
+            "vata",
+            "vată",
+            "vata_de_zahar",
+            "cotton_candy"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Avem disponibil serviciul de vată de zahăr preparată pe loc, foarte apreciat la petrecerile pentru copii.",
+          "upsell": "Se combină excelent cu popcorn sau cu un pachet de animație.",
+          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți mașina de vată de zahăr?"
+        },
+        "service_key": "vata_de_zahar",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 490,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 170,
+          "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
       "id": "e8541896-a358-4164-a6d1-64d75fd7f356",
       "knowledge_key": "role_parfumerie",
       "category": "services",
@@ -875,95 +960,6 @@
           },
           "extra_hour_price": 150,
           "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
-      "id": "ae236668-49ed-4aa2-b746-165c559d4d61",
-      "knowledge_key": "role_arcada_fara_suport",
-      "category": "services",
-      "service_tags": [
-        "arcada_fara_suport",
-        "arcada",
-        "baloane"
-      ],
-      "question_patterns": [
-        "arcada organica",
-        "arcada organică",
-        "arcada fara suport",
-        "arcada fără suport",
-        "baloane perete"
-      ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.105878+00:00",
-      "valid_until": null,
-      "times_used": 73,
-      "created_at": "2026-03-14T16:50:09.105878+00:00",
-      "updated_at": "2026-03-15T00:05:25.767+00:00",
-      "policy_config": {
-        "label": "Arcadă fără suport",
-        "active": true,
-        "priority": 95,
-        "role_key": "role_arcada_fara_suport",
-        "triggers": {
-          "keywords": [
-            "arcada organica",
-            "arcada organică",
-            "arcada fara suport",
-            "arcada fără suport",
-            "baloane perete"
-          ],
-          "service_tags": [
-            "arcada_fara_suport",
-            "arcada",
-            "baloane"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Realizăm arcade organice fără suport, potrivite pentru candy bar, backdrop sau photo corner.",
-          "upsell": "Se poate completa foarte frumos cu panouri, cifre sau decor personalizat.",
-          "closing_question": "Ne spui data, locația și dimensiunea aproximativă dorită?"
-        },
-        "service_key": "arcada_fara_suport",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 300,
-          "fixed_price": 0,
-          "pricing_model": "linear_meter",
-          "allowed_models": [
-            "organica",
-            "anorganica"
-          ],
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 0,
-          "allow_model_choice": true,
-          "price_per_linear_meter": 200,
-          "included_duration_hours": 1
         },
         "approval_status": "approved"
       }
@@ -1054,581 +1050,6 @@
         },
         "approval_status": "approved"
       }
-    },
-    {
-      "id": "05b716a0-4a3b-4f04-8bf4-8af2f20bfaff",
-      "knowledge_key": "role_popcorn",
-      "category": "services",
-      "service_tags": [
-        "popcorn",
-        "aparat_popcorn"
-      ],
-      "question_patterns": [
-        "popcorn",
-        "aparat popcorn",
-        "masina popcorn",
-        "mașină popcorn"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.273661+00:00",
-      "valid_until": null,
-      "times_used": 0,
-      "created_at": "2026-03-14T16:50:09.273661+00:00",
-      "updated_at": "2026-03-14T20:55:27.816+00:00",
-      "policy_config": {
-        "label": "Popcorn",
-        "active": true,
-        "priority": 140,
-        "role_key": "role_popcorn",
-        "triggers": {
-          "keywords": [
-            "popcorn",
-            "aparat popcorn",
-            "masina popcorn",
-            "mașină popcorn"
-          ],
-          "service_tags": [
-            "popcorn",
-            "aparat_popcorn"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Oferim serviciu de popcorn preparat pe loc, potrivit pentru petreceri și evenimente cu copii.",
-          "upsell": "Merge foarte bine împreună cu vată de zahăr sau animație.",
-          "closing_question": "Ne spui data, locația și durata pentru care doriți serviciul de popcorn?"
-        },
-        "service_key": "popcorn",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 490,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 170,
-          "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
-      "id": "05c78480-09e8-4478-a6cf-5de305dfa4f4",
-      "knowledge_key": "role_vata_si_popcorn",
-      "category": "services",
-      "service_tags": [
-        "vata_si_popcorn",
-        "vata",
-        "popcorn"
-      ],
-      "question_patterns": [
-        "vata si popcorn",
-        "vată și popcorn",
-        "popcorn si vata",
-        "pachet vata popcorn"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.350039+00:00",
-      "valid_until": null,
-      "times_used": 0,
-      "created_at": "2026-03-14T16:50:09.350039+00:00",
-      "updated_at": "2026-03-14T20:55:28.046+00:00",
-      "policy_config": {
-        "label": "Vată și Popcorn",
-        "active": true,
-        "priority": 180,
-        "role_key": "role_vata_si_popcorn",
-        "triggers": {
-          "keywords": [
-            "vata si popcorn",
-            "vată și popcorn",
-            "popcorn si vata",
-            "pachet vata popcorn"
-          ],
-          "service_tags": [
-            "vata_si_popcorn",
-            "vata",
-            "popcorn"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Avem pachet combinat cu vată de zahăr și popcorn, foarte potrivit pentru petreceri de copii.",
-          "upsell": "Este una dintre cele mai bune variante dacă doriți două atracții food în același eveniment.",
-          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți pachetul cu vată și popcorn?"
-        },
-        "service_key": "vata_si_popcorn",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 900,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 300,
-          "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
-      "id": "499c6cad-2094-44cd-88cc-fd7c53aff926",
-      "knowledge_key": "role_animatie",
-      "category": "services",
-      "service_tags": [
-        "animatie",
-        "animatori",
-        "mascote"
-      ],
-      "question_patterns": [
-        "animatie",
-        "animatori",
-        "animatori",
-        "mascote",
-        "mascotă",
-        "personaj",
-        "personaje",
-        "spiderman",
-        "printesa",
-        "prințesă",
-        "petrecere copii",
-        "pachet de animatie",
-        "ore de animatie"
-      ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:08.760045+00:00",
-      "valid_until": null,
-      "times_used": 0,
-      "created_at": "2026-03-14T16:50:08.760045+00:00",
-      "updated_at": "2026-03-14T21:46:51.006+00:00",
-      "policy_config": {
-        "label": "Animație",
-        "active": true,
-        "priority": 120,
-        "role_key": "role_animatie",
-        "triggers": {
-          "keywords": [
-            "animatie",
-            "animatori",
-            "animatori",
-            "mascote",
-            "mascotă",
-            "personaj",
-            "personaje",
-            "spiderman",
-            "printesa",
-            "prințesă",
-            "petrecere copii",
-            "pachet de animatie",
-            "ore de animatie"
-          ],
-          "service_tags": [
-            "animatie",
-            "animatori",
-            "mascote"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Avem disponibil serviciul de animație pentru petreceri de copii, cu personaje și activități interactive.",
-          "upsell": "Se combină foarte bine cu popcorn, vată de zahăr sau baloane modelabile.",
-          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți animația?"
-        },
-        "service_key": "animatie",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 480,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 180,
-          "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
-      "id": "80d18ad5-a0ad-48d4-8227-b49a1843e61f",
-      "knowledge_key": "role_vata_de_zahar",
-      "category": "services",
-      "service_tags": [
-        "vata",
-        "vată",
-        "vata_de_zahar",
-        "cotton_candy"
-      ],
-      "question_patterns": [
-        "vata",
-        "vata de zahar",
-        "vată de zahăr",
-        "cotton candy",
-        "vata pe bat",
-        "vată pe băț"
-      ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.186263+00:00",
-      "valid_until": null,
-      "times_used": 56,
-      "created_at": "2026-03-14T16:50:09.186263+00:00",
-      "updated_at": "2026-03-15T00:05:23.329+00:00",
-      "policy_config": {
-        "label": "Vată de zahăr",
-        "active": true,
-        "priority": 333,
-        "role_key": "role_vata_de_zahar",
-        "triggers": {
-          "keywords": [
-            "vata",
-            "vata de zahar",
-            "vată de zahăr",
-            "cotton candy",
-            "vata pe bat",
-            "vată pe băț"
-          ],
-          "service_tags": [
-            "vata",
-            "vată",
-            "vata_de_zahar",
-            "cotton_candy"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Avem disponibil serviciul de vată de zahăr preparată pe loc, foarte apreciat la petrecerile pentru copii.",
-          "upsell": "Se combină excelent cu popcorn sau cu un pachet de animație.",
-          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți mașina de vată de zahăr?"
-        },
-        "service_key": "vata_de_zahar",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 490,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 170,
-          "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
-      "id": "5ecbeded-9240-4933-a399-0451415d117e",
-      "knowledge_key": "animator_packages",
-      "category": "packages",
-      "service_tags": [
-        "animator"
-      ],
-      "question_patterns": [
-        "pachete animatie",
-        "animator copii",
-        "animatie petrecere",
-        "ce aveti pentru petrecere",
-        "animator",
-        "animatie",
-        "ce pachete aveti",
-        "ce variante aveti",
-        "pachete animator",
-        "ce include pachetul",
-        "ce include",
-        "ce contine pachetul",
-        "pachetul de 490",
-        "pachetul de 540",
-        "pachetul de 590",
-        "pachetul de 840",
-        "pachetul de 1290",
-        "490 lei",
-        "540 lei",
-        "590 lei",
-        "840 lei",
-        "1290 lei",
-        "include la animator",
-        "aveti cu popcorn",
-        "aveti cu vata",
-        "aveti cu confetti",
-        "aveti cu ursitoare",
-        "aveti cu tort",
-        "super 3",
-        "super 5"
-      ],
-      "answer_template": "Avem mai multe variante de animație, de la 490 lei până la 1290 lei 🎉\n\nDe exemplu:\n• 1 personaj · 2 ore — 490 lei\n• Super 3: 2 personaje · 2 ore + confetti — 840 lei\n• 1 personaj · 2 ore + vată + popcorn — 840 lei\n• 1 animator · 3 ore + 4 ursitoare — 1290 lei\n\nToate includ transport gratuit în București.\nDacă vrei, îți recomand imediat varianta potrivită în funcție de vârsta copilului, numărul de invitați și data evenimentului! 😊",
-      "metadata": {
-        "currency": "RON",
-        "packages": [
-          {
-            "tags": [
-              "basic",
-              "entry"
-            ],
-            "price": 490,
-            "title": "1 Personaj · 2 ore",
-            "includes": [
-              "Jocuri & concursuri interactive",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri & coregrafii",
-              "Tatuaje temporare",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_1p_2h",
-            "weekday_only": false,
-            "duration_text": "2 ore",
-            "character_count": 1
-          },
-          {
-            "tags": [
-              "basic",
-              "weekday"
-            ],
-            "price": 490,
-            "title": "2 Personaje · 1 oră (L–V)",
-            "includes": [
-              "Jocuri & concursuri interactive",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri & coregrafii",
-              "Tatuaje temporare",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_2p_1h_weekday",
-            "weekday_only": true,
-            "duration_text": "1 oră",
-            "character_count": 2
-          },
-          {
-            "tags": [
-              "premium",
-              "confetti",
-              "named"
-            ],
-            "price": 840,
-            "title": "Super 3",
-            "includes": [
-              "Jocuri & concursuri interactive",
-              "Confetti party",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri & coregrafii",
-              "Tatuaje temporare",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": "2 Personaje · 2 ore + Confetti",
-            "package_code": "super_3_confetti",
-            "weekday_only": false,
-            "duration_text": "2 ore",
-            "character_count": 2
-          },
-          {
-            "tags": [
-              "combo",
-              "tort"
-            ],
-            "price": 590,
-            "title": "1 Personaj · 1 oră + Tort dulciuri",
-            "includes": [
-              "Tort din dulciuri (22–24 copii)",
-              "Jocuri & concursuri",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_tort_dulciuri",
-            "weekday_only": false,
-            "duration_text": "1 oră",
-            "character_count": 1
-          },
-          {
-            "tags": [
-              "combo",
-              "popcorn",
-              "vata"
-            ],
-            "price": 840,
-            "title": "1 Pers. · 2 ore + 1h Vată + 1h Popcorn",
-            "includes": [
-              "Mașină vată de zahăr + popcorn",
-              "Jocuri & concursuri",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_vata_popcorn",
-            "weekday_only": false,
-            "duration_text": "2 ore animator + 1h vată + 1h popcorn",
-            "character_count": 1
-          },
-          {
-            "tags": [
-              "premium",
-              "confetti",
-              "banner",
-              "named"
-            ],
-            "price": 540,
-            "title": "Super 5",
-            "includes": [
-              "Banner personalizat + Tun confetti",
-              "Jocuri & concursuri",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": "1 Animator · 2 ore + Banner + Confetti",
-            "package_code": "super_5_banner_confetti",
-            "weekday_only": false,
-            "duration_text": "2 ore",
-            "character_count": 1
-          },
-          {
-            "tags": [
-              "premium",
-              "ursitoare",
-              "botez"
-            ],
-            "price": 1290,
-            "title": "1 Animator · 3 ore + 4 Ursitoare",
-            "includes": [
-              "Spectacol 4 ursitoare botez",
-              "Jocuri & concursuri",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_3h_4_ursitoare",
-            "weekday_only": false,
-            "duration_text": "3 ore",
-            "character_count": 1
-          }
-        ],
-        "price_range": {
-          "max": 1290,
-          "min": 490
-        },
-        "transport_notes": "Transport gratuit în București"
-      },
-      "required_context": [
-        "event_type",
-        "child_count",
-        "event_date",
-        "location"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 375,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T00:04:23.525+00:00",
-      "policy_config": null
     },
     {
       "id": "ecb891b4-ac29-42b8-b0f8-3b1cb71b993e",
@@ -2011,11 +1432,590 @@
       "verified_by": null,
       "valid_from": "2026-03-14T00:38:23.590769+00:00",
       "valid_until": null,
-      "times_used": 84,
+      "times_used": 86,
       "created_at": "2026-03-14T00:38:23.590769+00:00",
-      "updated_at": "2026-03-15T00:05:17.217+00:00",
+      "updated_at": "2026-03-15T00:16:28.768+00:00",
+      "policy_config": null
+    },
+    {
+      "id": "ae236668-49ed-4aa2-b746-165c559d4d61",
+      "knowledge_key": "role_arcada_fara_suport",
+      "category": "services",
+      "service_tags": [
+        "arcada_fara_suport",
+        "arcada",
+        "baloane"
+      ],
+      "question_patterns": [
+        "arcada organica",
+        "arcada organică",
+        "arcada fara suport",
+        "arcada fără suport",
+        "baloane perete"
+      ],
+      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.105878+00:00",
+      "valid_until": null,
+      "times_used": 79,
+      "created_at": "2026-03-14T16:50:09.105878+00:00",
+      "updated_at": "2026-03-15T00:16:32.53+00:00",
+      "policy_config": {
+        "label": "Arcadă fără suport",
+        "active": true,
+        "priority": 95,
+        "role_key": "role_arcada_fara_suport",
+        "triggers": {
+          "keywords": [
+            "arcada organica",
+            "arcada organică",
+            "arcada fara suport",
+            "arcada fără suport",
+            "baloane perete"
+          ],
+          "service_tags": [
+            "arcada_fara_suport",
+            "arcada",
+            "baloane"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Realizăm arcade organice fără suport, potrivite pentru candy bar, backdrop sau photo corner.",
+          "upsell": "Se poate completa foarte frumos cu panouri, cifre sau decor personalizat.",
+          "closing_question": "Ne spui data, locația și dimensiunea aproximativă dorită?"
+        },
+        "service_key": "arcada_fara_suport",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 300,
+          "fixed_price": 0,
+          "pricing_model": "linear_meter",
+          "allowed_models": [
+            "organica",
+            "anorganica"
+          ],
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 0,
+          "allow_model_choice": true,
+          "price_per_linear_meter": 200,
+          "included_duration_hours": 1
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
+      "id": "05b716a0-4a3b-4f04-8bf4-8af2f20bfaff",
+      "knowledge_key": "role_popcorn",
+      "category": "services",
+      "service_tags": [
+        "popcorn",
+        "aparat_popcorn"
+      ],
+      "question_patterns": [
+        "popcorn",
+        "aparat popcorn",
+        "masina popcorn",
+        "mașină popcorn"
+      ],
+      "answer_template": "",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.273661+00:00",
+      "valid_until": null,
+      "times_used": 0,
+      "created_at": "2026-03-14T16:50:09.273661+00:00",
+      "updated_at": "2026-03-14T20:55:27.816+00:00",
+      "policy_config": {
+        "label": "Popcorn",
+        "active": true,
+        "priority": 140,
+        "role_key": "role_popcorn",
+        "triggers": {
+          "keywords": [
+            "popcorn",
+            "aparat popcorn",
+            "masina popcorn",
+            "mașină popcorn"
+          ],
+          "service_tags": [
+            "popcorn",
+            "aparat_popcorn"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Oferim serviciu de popcorn preparat pe loc, potrivit pentru petreceri și evenimente cu copii.",
+          "upsell": "Merge foarte bine împreună cu vată de zahăr sau animație.",
+          "closing_question": "Ne spui data, locația și durata pentru care doriți serviciul de popcorn?"
+        },
+        "service_key": "popcorn",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 490,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 170,
+          "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
+      "id": "05c78480-09e8-4478-a6cf-5de305dfa4f4",
+      "knowledge_key": "role_vata_si_popcorn",
+      "category": "services",
+      "service_tags": [
+        "vata_si_popcorn",
+        "vata",
+        "popcorn"
+      ],
+      "question_patterns": [
+        "vata si popcorn",
+        "vată și popcorn",
+        "popcorn si vata",
+        "pachet vata popcorn"
+      ],
+      "answer_template": "",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.350039+00:00",
+      "valid_until": null,
+      "times_used": 0,
+      "created_at": "2026-03-14T16:50:09.350039+00:00",
+      "updated_at": "2026-03-14T20:55:28.046+00:00",
+      "policy_config": {
+        "label": "Vată și Popcorn",
+        "active": true,
+        "priority": 180,
+        "role_key": "role_vata_si_popcorn",
+        "triggers": {
+          "keywords": [
+            "vata si popcorn",
+            "vată și popcorn",
+            "popcorn si vata",
+            "pachet vata popcorn"
+          ],
+          "service_tags": [
+            "vata_si_popcorn",
+            "vata",
+            "popcorn"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Avem pachet combinat cu vată de zahăr și popcorn, foarte potrivit pentru petreceri de copii.",
+          "upsell": "Este una dintre cele mai bune variante dacă doriți două atracții food în același eveniment.",
+          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți pachetul cu vată și popcorn?"
+        },
+        "service_key": "vata_si_popcorn",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 900,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 300,
+          "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
+      "id": "499c6cad-2094-44cd-88cc-fd7c53aff926",
+      "knowledge_key": "role_animatie",
+      "category": "services",
+      "service_tags": [
+        "animatie",
+        "animatori",
+        "mascote"
+      ],
+      "question_patterns": [
+        "animatie",
+        "animatori",
+        "animatori",
+        "mascote",
+        "mascotă",
+        "personaj",
+        "personaje",
+        "spiderman",
+        "printesa",
+        "prințesă",
+        "petrecere copii",
+        "pachet de animatie",
+        "ore de animatie"
+      ],
+      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:08.760045+00:00",
+      "valid_until": null,
+      "times_used": 0,
+      "created_at": "2026-03-14T16:50:08.760045+00:00",
+      "updated_at": "2026-03-14T21:46:51.006+00:00",
+      "policy_config": {
+        "label": "Animație",
+        "active": true,
+        "priority": 120,
+        "role_key": "role_animatie",
+        "triggers": {
+          "keywords": [
+            "animatie",
+            "animatori",
+            "animatori",
+            "mascote",
+            "mascotă",
+            "personaj",
+            "personaje",
+            "spiderman",
+            "printesa",
+            "prințesă",
+            "petrecere copii",
+            "pachet de animatie",
+            "ore de animatie"
+          ],
+          "service_tags": [
+            "animatie",
+            "animatori",
+            "mascote"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Avem disponibil serviciul de animație pentru petreceri de copii, cu personaje și activități interactive.",
+          "upsell": "Se combină foarte bine cu popcorn, vată de zahăr sau baloane modelabile.",
+          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți animația?"
+        },
+        "service_key": "animatie",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 480,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 180,
+          "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
+      "id": "5ecbeded-9240-4933-a399-0451415d117e",
+      "knowledge_key": "animator_packages",
+      "category": "packages",
+      "service_tags": [
+        "animator"
+      ],
+      "question_patterns": [
+        "pachete animatie",
+        "animator copii",
+        "animatie petrecere",
+        "ce aveti pentru petrecere",
+        "animator",
+        "animatie",
+        "ce pachete aveti",
+        "ce variante aveti",
+        "pachete animator",
+        "ce include pachetul",
+        "ce include",
+        "ce contine pachetul",
+        "pachetul de 490",
+        "pachetul de 540",
+        "pachetul de 590",
+        "pachetul de 840",
+        "pachetul de 1290",
+        "490 lei",
+        "540 lei",
+        "590 lei",
+        "840 lei",
+        "1290 lei",
+        "include la animator",
+        "aveti cu popcorn",
+        "aveti cu vata",
+        "aveti cu confetti",
+        "aveti cu ursitoare",
+        "aveti cu tort",
+        "super 3",
+        "super 5"
+      ],
+      "answer_template": "Avem mai multe variante de animație, de la 490 lei până la 1290 lei 🎉\n\nDe exemplu:\n• 1 personaj · 2 ore — 490 lei\n• Super 3: 2 personaje · 2 ore + confetti — 840 lei\n• 1 personaj · 2 ore + vată + popcorn — 840 lei\n• 1 animator · 3 ore + 4 ursitoare — 1290 lei\n\nToate includ transport gratuit în București.\nDacă vrei, îți recomand imediat varianta potrivită în funcție de vârsta copilului, numărul de invitați și data evenimentului! 😊",
+      "metadata": {
+        "currency": "RON",
+        "packages": [
+          {
+            "tags": [
+              "basic",
+              "entry"
+            ],
+            "price": 490,
+            "title": "1 Personaj · 2 ore",
+            "includes": [
+              "Jocuri & concursuri interactive",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri & coregrafii",
+              "Tatuaje temporare",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_1p_2h",
+            "weekday_only": false,
+            "duration_text": "2 ore",
+            "character_count": 1
+          },
+          {
+            "tags": [
+              "basic",
+              "weekday"
+            ],
+            "price": 490,
+            "title": "2 Personaje · 1 oră (L–V)",
+            "includes": [
+              "Jocuri & concursuri interactive",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri & coregrafii",
+              "Tatuaje temporare",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_2p_1h_weekday",
+            "weekday_only": true,
+            "duration_text": "1 oră",
+            "character_count": 2
+          },
+          {
+            "tags": [
+              "premium",
+              "confetti",
+              "named"
+            ],
+            "price": 840,
+            "title": "Super 3",
+            "includes": [
+              "Jocuri & concursuri interactive",
+              "Confetti party",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri & coregrafii",
+              "Tatuaje temporare",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": "2 Personaje · 2 ore + Confetti",
+            "package_code": "super_3_confetti",
+            "weekday_only": false,
+            "duration_text": "2 ore",
+            "character_count": 2
+          },
+          {
+            "tags": [
+              "combo",
+              "tort"
+            ],
+            "price": 590,
+            "title": "1 Personaj · 1 oră + Tort dulciuri",
+            "includes": [
+              "Tort din dulciuri (22–24 copii)",
+              "Jocuri & concursuri",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_tort_dulciuri",
+            "weekday_only": false,
+            "duration_text": "1 oră",
+            "character_count": 1
+          },
+          {
+            "tags": [
+              "combo",
+              "popcorn",
+              "vata"
+            ],
+            "price": 840,
+            "title": "1 Pers. · 2 ore + 1h Vată + 1h Popcorn",
+            "includes": [
+              "Mașină vată de zahăr + popcorn",
+              "Jocuri & concursuri",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_vata_popcorn",
+            "weekday_only": false,
+            "duration_text": "2 ore animator + 1h vată + 1h popcorn",
+            "character_count": 1
+          },
+          {
+            "tags": [
+              "premium",
+              "confetti",
+              "banner",
+              "named"
+            ],
+            "price": 540,
+            "title": "Super 5",
+            "includes": [
+              "Banner personalizat + Tun confetti",
+              "Jocuri & concursuri",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": "1 Animator · 2 ore + Banner + Confetti",
+            "package_code": "super_5_banner_confetti",
+            "weekday_only": false,
+            "duration_text": "2 ore",
+            "character_count": 1
+          },
+          {
+            "tags": [
+              "premium",
+              "ursitoare",
+              "botez"
+            ],
+            "price": 1290,
+            "title": "1 Animator · 3 ore + 4 Ursitoare",
+            "includes": [
+              "Spectacol 4 ursitoare botez",
+              "Jocuri & concursuri",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_3h_4_ursitoare",
+            "weekday_only": false,
+            "duration_text": "3 ore",
+            "character_count": 1
+          }
+        ],
+        "price_range": {
+          "max": 1290,
+          "min": 490
+        },
+        "transport_notes": "Transport gratuit în București"
+      },
+      "required_context": [
+        "event_type",
+        "child_count",
+        "event_date",
+        "location"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 375,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-15T00:04:23.525+00:00",
       "policy_config": null
     }
   ],
-  "checksum": "07f1e7f4cd3d5a7ed0d2aa077879545ac099300d70dd1207d5a4d4e8e55fae91"
+  "checksum": "8c1ded6f34de50ab662071ac1b76502bfde7a02347a4b3e3c9fa8cfcdd81e300"
 }

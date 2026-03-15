@@ -51,26 +51,11 @@ async function runTest(test) {
         // Run AI pipeline end-to-end
         await processConversation(convId, msgId);
 
-        // Fetch resulting Party Draft
-        let draft = null;
-        try {
-            const { data } = await supabase.from('ai_party_drafts').select('*').eq('conversation_id', convId).single();
-            draft = data;
-        } catch (e) { }
+        // Fetch resulting Party Draft directly from the Live DB
+        const { data: draft, error: draftErr } = await supabase.from('ai_party_drafts').select('*').eq('conversation_id', convId).single();
+        if (draftErr) console.warn("[DB Warning] " + draftErr.message);
 
-        // Fallback to local file if Supabase fails (due to missing 003 table)
-        if (!draft) {
-            try {
-                const fs = await import('fs');
-                const p = `manager-ai/.fallback_draft_${convId}.json`;
-                if (fs.existsSync(p)) {
-                    draft = JSON.parse(fs.readFileSync(p, 'utf8'));
-                    fs.unlinkSync(p); // clean up
-                }
-            } catch (e) { }
-        }
-
-        console.log('\n✅ [PARTY DRAFT SAVED]');
+        console.log('\n✅ [PARTY DRAFT SAVED (DB LIVE)]');
         console.dir(draft || "No draft found", { depth: null, colors: true });
 
         // Fetch resulting AI Reply

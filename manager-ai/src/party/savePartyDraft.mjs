@@ -24,11 +24,7 @@ export async function savePartyDraft(partyDraft) {
             console.error(`[savePartyDraft] DB Error: ${error.message} \nDetails: ${error.details}`);
             // If the table literally doesn't exist yet (because the DDL hasn't run), log but don't hard crash
             if (error.code === '42P01' || error.message.includes('Could not find the table')) {
-                console.warn("[savePartyDraft] The ai_party_drafts table does not exist. Saving to local fallback.");
-                try {
-                    const fs = await import('fs');
-                    fs.writeFileSync(`manager-ai/.fallback_draft_${partyDraft.conversation_id}.json`, JSON.stringify(partyDraft, null, 2));
-                } catch(e) {}
+                console.warn("[savePartyDraft] The ai_party_drafts table does not exist. Ignoring save.");
             }
             return false;
         }

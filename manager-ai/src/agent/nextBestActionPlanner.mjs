@@ -85,10 +85,11 @@ export function computeNextBestAction(context) {
 
     // 4. Service Detected, Data Missing
     if (missingMetrics && !missingMetrics.readyForQuote) {
-        const nextField = missingMetrics.nextFieldToAsk || 'details';
+        const missingFieldsArr = missingMetrics.missing || [];
+        const missingText = missingFieldsArr.length > 0 ? missingFieldsArr.slice(0, 3).join(", ") : 'detalii';
         return {
             action: NBA_ACTIONS.ASK_MISSING_FIELDS,
-            instruction: `The client wants ${runtimeState.primary_service}. You must ask ONLY for "${nextField}". Do NOT ask for any other missing fields right now. Take it strictly step-by-step.` + playbookInjection,
+            instruction: `The client wants ${runtimeState.primary_service}. Ask conversationally for the missing details (${missingText}). You can ask for multiple things at once naturally, but keep the tone warm and helpful.` + playbookInjection,
             nextState: 'colectare_date',
             playbookKey
         };

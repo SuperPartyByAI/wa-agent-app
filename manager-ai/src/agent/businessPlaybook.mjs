@@ -34,8 +34,8 @@ export const PlaybookStrategies = {
     // ── 3. STANDARD DATA COLLECTION ──
     standard_collection: {
         condition: (context) => context.missingMetrics && !context.missingMetrics.readyForQuote,
-        strategy: "Condu discuția pas cu pas. Cere STRICT informația care lipsește, conform indicației primite. Nu oferi prețul final încă. Confirmă scurt ce ai înțeles (dacă au dat date noi) și adresează întrebarea.",
-        tone: "organized_helpful"
+        strategy: "Condu discuția într-un mod prietenos și natural. Cere informațiile logistice de care ai nevoie pentru a-i face o ofertă (cum ar fi data, locația, numărul de copii), dar fără a fi robotic. Poți cere 2-3 detalii o dată pentru a scurta conversația, dar păstrează un ton cald și consultativ.",
+        tone: "friendly_consultative"
     },
 
     // ── 4. QUOTATION PITCH ──

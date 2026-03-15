@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Notebook & Templates | Superparty</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
+        .sidebar { background: #2c3e50; color: white; min-height: 100vh; padding: 20px; }
+        .sidebar a { color: #ecf0f1; text-decoration: none; display: block; padding: 10px; margin-bottom: 5px; border-radius: 5px; }
+        .sidebar a:hover, .sidebar a.active { background: #34495e; }
+        .card { border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; border-radius: 10px; }
+        .slot-badge { font-size: 0.8rem; padding: 5px 10px; border-radius: 20px; background: #e9ecef; color: #495057; margin-bottom: 5px; display: inline-block;}
+        .slot-filled { background: #d1e7dd; color: #0f5132; }
+        .slot-empty { background: #f8d7da; color: #842029; }
+        .section-header { border-bottom: 2px solid #e9ecef; padding-bottom: 10px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar shadow-sm">
+                <h4 class="mb-4 fw-bold"><i class="fa-solid fa-robot text-primary"></i> Superparty AI</h4>
+                <a href="#templates" class="active" id="nav-templates"><i class="fa-solid fa-list-check me-2"></i> Șabloane AI</a>
+                <a href="#notebooks" id="nav-notebooks"><i class="fa-solid fa-address-book me-2"></i> Caiete Clienți (Live)</a>
+                 <hr class="border-secondary">
+                <a href="/admin-suite.html"><i class="fa-solid fa-arrow-left me-2"></i> Către Suita Veche</a>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-10 p-4">
+                
+                <!-- Section: Templates -->
+                <div id="section-templates">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="fw-bold mb-0">Șabloane Extragere Date (AI Templates)</h2>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTemplateModal">
+                            <i class="fa-solid fa-plus me-1"></i> Șablon Nou
+                        </button>
+                    </div>
+                    <p class="text-muted">Aici definești "ce" trebuie să afle AI-ul de la clienți în discuție, pentru diferitele servicii dorite.</p>
+                    
+                    <div class="row" id="templates-container">
+                        <div class="col-12 text-center text-muted" id="templates-loading">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div> Încărcare șabloane...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Notebooks (Live Clients) -->
+                <div id="section-notebooks" class="d-none">
+                    <h2 class="fw-bold mb-4">Caiete Digitale (Informații extrase de pe WhatsApp)</h2>
+                    <p class="text-muted">Aceasta este vizualizarea "În Timp Real" a căsuțelor pe care AI-ul le bifează din discuțiile cu clienții.</p>
+                    
+                    <div class="row" id="notebooks-container">
+                        <div class="col-12 text-center text-muted" id="notebooks-loading">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div> Se aduc datele de pe WhatsApp...
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Template Nou -->
+    <div class="modal fade" id="newTemplateModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Constructor de Șabloane</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ID Unic Șablon (ex: botez_basm, animator_simplu)</label>
+                        <input type="text" class="form-control" id="tpl-key" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nume Afișat</label>
+                        <input type="text" class="form-control" id="tpl-name" placeholder="Pachet Animatori Standard" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Instrucțiune Secretă pentru AI (Atitudine)</label>
+                        <textarea class="form-control" id="tpl-instruction" rows="3" placeholder="Fii cald, prietenos și direcționează conversația pentru a afla detaliile."></textarea>
+                    </div>
+                    
+                    <hr>
+                    <h6 class="fw-bold mb-3"><i class="fa-solid fa-check-square text-success me-2"></i>Ce Detalii Să Bifeze / Extragă? (Căsuțele Șablonului)</h6>
+                    
+                    <div id="fields-list">
+                        <!-- Fields injected here -->
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addFieldRow()">
+                        <i class="fa-solid fa-plus me-1"></i> Adaugă Căsuță Nouă (Slot)
+                    </button>
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Renunță</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-template">Salvează Șabloan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template for a field row (hidden) -->
+    <template id="field-row-template">
+        <div class="row mb-2 field-row align-items-center">
+            <div class="col-md-4">
+                <input type="text" class="form-control field-name" placeholder="id_camp (ex: ora_eveniment)">
+            </div>
+            <div class="col-md-7">
+                <input type="text" class="form-control field-desc" placeholder="Instrucțiune AI (ex: Ora exactă la care vrea să înceapă)">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-link text-danger p-0 delete-field"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/ai-notebook.js"></script>
+</body>
+</html>

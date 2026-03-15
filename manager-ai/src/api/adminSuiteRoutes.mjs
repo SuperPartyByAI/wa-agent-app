@@ -585,4 +585,43 @@ router.put('/playbooks/:key', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- AI NOTEBOOK DASHBOARD ROUTES ---
+
+// 1. Get all templates (Blueprints)
+router.get('/notebook-templates', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('ai_notebook_templates')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json({ templates: data || [] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. Create/Update template
+router.post('/notebook-templates', async (req, res) => {
+    try {
+        const payload = req.body;
+        const { data, error } = await supabase.from('ai_notebook_templates')
+            .upsert(payload, { onConflict: 'key' })
+            .select()
+            .single();
+        if (error) throw error;
+        res.json({ status: 'saved', template: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. Get all active client notebooks (Live WhatsApp view)
+router.get('/client-notebooks', async (req, res) => {
+    try {
+        // Includes the template schema so the UI knows what slots exist
+        const { data, error } = await supabase.from('ai_client_notebooks')
+            .select('*, template:ai_notebook_templates(json_schema)')
+            .order('updated_at', { ascending: false })
+            .limit(50);
+        if (error) throw error;
+        res.json({ notebooks: data || [] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 export default router;

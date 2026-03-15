@@ -87,8 +87,8 @@ export function evaluatePlaybook(context) {
         'impatient_price',
         'upsell_ready',
         'quotation',
-        'standard_collection',
-        'vague_inquiry'
+        'vague_inquiry',
+        'standard_collection'
     ];
 
     for (const key of priorityChecks) {

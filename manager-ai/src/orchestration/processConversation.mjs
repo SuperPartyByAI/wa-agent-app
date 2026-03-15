@@ -623,8 +623,11 @@ export async function processConversation(conversation_id, message_id = null, op
         // Let the normal composer reply with "Cu ce vă pot ajuta?" first
         const GREETING_ONLY = /^(bun[aă]|salut|hey|hello|hi|bun[aă]\s*(seara|ziua|dimineata|dimineața)|sal|hei|ce\s*faci|servus)\s*[!.,?]*$/i;
         const isGreeting = lastClientMessageText && GREETING_ONLY.test(lastClientMessageText.trim());
+        
+        // Faza 4 Business Playbook Bypass: Never hijack with a KB direct answer if the Playbook has a specific strategy
+        const isPlaybookAction = ['HANDLE_OBJECTION', 'EXPLAIN_VAGUE_INQUIRY', 'ASK_MISSING_AND_SUGGEST_PRICE'].includes(decision?.action || toolAction?.name);
 
-        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility) && !isGreeting) {
+        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility) && !isGreeting && !isPlaybookAction) {
             // Package presenter — detect intent + format reply (summary/detail/compare/pricing/duration)
             const { detectPackageIntent, formatPackageReply, hasStructuredPackages } = await import('../knowledge/packagePresenter.mjs');
             let kbReply;

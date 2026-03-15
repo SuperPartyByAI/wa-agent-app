@@ -427,7 +427,7 @@ export async function processConversation(conversation_id, message_id = null, op
 
         const activeRoles = await extractActiveRoles(lastClientMessageText, eventPlan);
         const activeRolesText = activeRoles && activeRoles.length > 0 ? buildActiveCommercialPoliciesBlock(activeRoles) : null;
-        const activeRoleKeys = activeRoles ? activeRoles.map(r => r.service_key) : [];
+        const activeRoleKeys = activeRoles ? activeRoles.map(r => r.role_id) : [];
         
         if (!runtimeState.primary_service && eventPlan?.selected_package) {
             runtimeState.primary_service = eventPlan.selected_package;

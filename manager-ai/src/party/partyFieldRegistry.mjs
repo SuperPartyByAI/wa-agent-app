@@ -80,7 +80,7 @@ export const ServiceFieldRequirements = {
             observatii_ursitoare: "string"
         }
     },
-    role_vata_zahar: {
+    role_vata_de_zahar: {
         serviceKey: "vata_de_zahar",
         requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "durata_ore"],
         requiredForBooking: ["metoda_de_plata", "doreste_factura"],
@@ -104,7 +104,7 @@ export const ServiceFieldRequirements = {
             observatii_popcorn: "string"
         }
     },
-    role_vata_popcorn: {
+    role_vata_si_popcorn: {
         serviceKey: "vata_si_popcorn",
         requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "durata_ore"],
         requiredForBooking: ["metoda_de_plata", "doreste_factura"],
@@ -129,7 +129,7 @@ export const ServiceFieldRequirements = {
             observatii_arcada_fara_suport: "string"
         }
     },
-    role_arcada_cu_cifre: {
+    role_arcada_cu_cifre_volumetrice: {
         serviceKey: "arcada_cu_cifre_volumetrice",
         requiredForQuote: ["data_evenimentului", "ora_evenimentului", "adresa_completa", "metri_liniari", "model_arcada", "cifre_dorite"],
         requiredForBooking: ["metoda_de_plata", "doreste_factura"],

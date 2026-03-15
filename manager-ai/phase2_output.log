@@ -1,0 +1,100 @@
+[38;5;142m[dotenvx@1.55.1] injecting env (18) from .env[39m
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[Service Catalog] Loaded 12 services (v1.0): animator, ursitoare, vata_zahar, popcorn, arcada_baloane, arcada_suport, arcada_exterior, suport_arcada_baloane, cifre_volumetrice, mos_craciun, parfumerie, gheata_carbonica
+
+======================================================
+[TEST] A. Simple Greeting -> "Bună seara"
+======================================================
+[Pipeline] Starting for dee20ce8-e861-4bb9-a25c-5d470b86208d...
+[Pipeline] Attempting to acquire lock for dee20ce8-e861-4bb9-a25c-5d470b86208d...
+[Pipeline] Lock acquired for dee20ce8-e861-4bb9-a25c-5d470b86208d.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: 71aab6be)
+[Pipeline] Fetching messages for dee20ce8-e861-4bb9-a25c-5d470b86208d...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client 19d40fd8-1678-44c9-902d-08aad1443f31: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 409905d7-b517-43a7-b915-e705ff9475e5 for conv dee20ce8-e861-4bb9-a25c-5d470b86208d
+[Pipeline] Goal: new_lead, EventPlan: 409905d7-b517-43a7-b915-e705ff9475e5 (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: no_fast_path_match)
+[SRE] Loaded 13 service definitions
+[KBMatcher] Loaded 20 active approved entries
+[Agent] State=lead_nou, Score=10(cold), Primary=null, NBA=reply_greeting, NextState=salut_initial
+
+>>> PHASE 1 RUNTIME STATE DUMP:
+{
+  "lead_state": "lead_nou",
+  "primary_service": null,
+  "next_best_action": null,
+  "missing_fields": []
+}
+
+>>> LLM GENERATED ACTION:
+null
+
+======================================================
+[TEST] B. New Commercial Lead -> "Vreau vată de zahăr"
+======================================================
+[Pipeline] Starting for cd5ec5d2-e463-4570-8949-4527639f5528...
+[Pipeline] Attempting to acquire lock for cd5ec5d2-e463-4570-8949-4527639f5528...
+[Pipeline] Lock acquired for cd5ec5d2-e463-4570-8949-4527639f5528.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: 71aab6be)
+[Pipeline] Fetching messages for cd5ec5d2-e463-4570-8949-4527639f5528...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client c4c578fb-5801-468b-b524-91386763c04c: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan ce20dd8d-e301-4f1a-8cb6-ea45d1099b7e for conv cd5ec5d2-e463-4570-8949-4527639f5528
+[Pipeline] Goal: new_lead, EventPlan: ce20dd8d-e301-4f1a-8cb6-ea45d1099b7e (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: no_fast_path_match)
+[Agent] State=lead_nou, Score=10(cold), Primary=vata_de_zahar, NBA=ask_missing_fields, NextState=colectare_date
+
+>>> PHASE 1 RUNTIME STATE DUMP:
+{
+  "lead_state": "lead_nou",
+  "primary_service": null,
+  "next_best_action": null,
+  "missing_fields": []
+}
+
+>>> LLM GENERATED ACTION:
+null
+
+======================================================
+[TEST] C. Bundle Priority -> "Vreau vată și popcorn"
+======================================================
+[Pipeline] Starting for 5b79b24c-0610-42d9-9750-ed758eac785e...
+[Pipeline] Attempting to acquire lock for 5b79b24c-0610-42d9-9750-ed758eac785e...
+[Pipeline] Lock acquired for 5b79b24c-0610-42d9-9750-ed758eac785e.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: 71aab6be)
+[Pipeline] Fetching messages for 5b79b24c-0610-42d9-9750-ed758eac785e...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client e0af7465-d194-40b4-a40a-1a31a0ded922: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 0f902b06-3359-44b7-a54d-997718569a3f for conv 5b79b24c-0610-42d9-9750-ed758eac785e
+[Pipeline] Goal: new_lead, EventPlan: 0f902b06-3359-44b7-a54d-997718569a3f (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: no_fast_path_match)
+[Agent] State=lead_nou, Score=10(cold), Primary=vata_de_zahar, NBA=ask_missing_fields, NextState=colectare_date
+
+>>> PHASE 1 RUNTIME STATE DUMP:
+{
+  "lead_state": "lead_nou",
+  "primary_service": null,
+  "next_best_action": null,
+  "missing_fields": []
+}
+
+>>> LLM GENERATED ACTION:
+null
+
+======================================================
+[TEST] D. Metric Arcade -> "Vreau arcadă organică de 3 metri"
+======================================================
+[Pipeline] Starting for b812e414-c837-4299-8b32-b9184bc62850...
+[Pipeline] Attempting to acquire lock for b812e414-c837-4299-8b32-b9184bc62850...
+[Pipeline] Lock acquired for b812e414-c837-4299-8b32-b9184bc62850.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: 71aab6be)
+[Pipeline] Fetching messages for b812e414-c837-4299-8b32-b9184bc62850...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client cadb2556-1260-4317-bd08-ef9d8246ca7d: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 1c229afc-9d2e-403b-a5c8-9557f05d7329 for conv b812e414-c837-4299-8b32-b9184bc62850
+[Pipeline] Goal: new_lead, EventPlan: 1c229afc-9d2e-403b-a5c8-9557f05d7329 (status=draft), Quote: none

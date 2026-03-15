@@ -122,6 +122,13 @@ export async function updateEventPlan(planId, conversationId, updates, changedBy
     const cleanUpdates = {};
     for (const [key, value] of Object.entries(updates)) {
         if (value === undefined || value === null) continue;
+        
+        // Phase 3 Compatibility Layer: Ignore fields not present in legacy schema
+        if (!current.hasOwnProperty(key)) {
+            // Ignored, they will be picked up by the Party Draft pipeline instead
+            continue;
+        }
+
         const oldVal = current[key];
         if (JSON.stringify(oldVal) !== JSON.stringify(value)) {
             delta[key] = { before: oldVal, after: value };

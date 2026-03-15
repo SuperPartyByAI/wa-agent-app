@@ -30,19 +30,59 @@ export const ACTION_REGISTRY = {
         schema: {
             type: 'object',
             properties: {
-                event_date: { type: 'string', description: 'Date of the event (e.g., 20 aprilie)' },
-                event_time: { type: 'string', description: 'Time of the event (e.g., 17:00)' },
-                location: { type: 'string', description: 'Location/City' },
-                children_count_estimate: { type: 'number', description: 'Estimated number of children' },
-                child_name: { type: 'string', description: 'Name of the celebrated child' },
-                duration_hours: { type: 'number', description: 'Duration of the event in hours' },
-                animator_count: { type: 'number', description: 'Number of animators requested' },
-                selected_package: { type: 'string', description: 'The specific package requested (e.g. super_3_confetti)' },
-                linear_meters: { type: 'number', description: 'Metri liniari pentru arcade de baloane (ex. 3, 4, 5)' },
-                model_choice: { type: 'string', description: 'Modelul, forma sau culorile dorite (ex. organica, rotunda)' },
-                payment_method_preference: { type: 'string', enum: ['transfer', 'cash', 'card', 'necunoscut'] },
-                invoice_requested: { type: 'string', enum: ['true', 'false', 'necunoscut'] },
-                advance_status: { type: 'string', enum: ['requested', 'confirmed', 'necunoscut'] }
+                // General Fields
+                tip_eveniment: { type: 'string', description: 'Tipul evenimentului (ex. botez, zi de nastere, nunta)' },
+                data_evenimentului: { type: 'string', description: 'Data evenimentului (ex. 20 aprilie)' },
+                ora_evenimentului: { type: 'string', description: 'Ora evenimentului (ex. 17:00)' },
+                locatie_eveniment: { type: 'string', description: 'Locatia generala sau numele locatiei' },
+                localitate: { type: 'string', description: 'Localitatea' },
+                judet: { type: 'string', description: 'Judetul' },
+                adresa_completa: { type: 'string', description: 'Adresa exacta/completa a locatiei' },
+                interior_sau_exterior: { type: 'string', description: 'Interior sau exterior' },
+                numar_estimativ_invitati: { type: 'number', description: 'Numar total estimativ de invitati' },
+                numar_copii: { type: 'number', description: 'Numar de copii participanti' },
+                nume_sarbatorit: { type: 'string', description: 'Numele sarbatoritului (copilului)' },
+                data_nasterii_sarbatoritului: { type: 'string', description: 'Data nasterii copilului' },
+                varsta_sarbatoritului: { type: 'string', description: 'Varsta copilului (ex. implineste 5 ani)' },
+                tematica_eveniment: { type: 'string', description: 'Tematica petrecerii' },
+                observatii_generale: { type: 'string', description: 'Observatii sau mentiuni generale' },
+
+                // Billing Fields
+                metoda_de_plata: { type: 'string', description: 'Metoda de plata aleasa: cash, transfer bancar' },
+                doreste_factura: { type: 'boolean', description: 'Daca clientul vrea factura (true/false)' },
+                nume_facturare: { type: 'string', description: 'Numele pe care se face factura' },
+                firma: { type: 'string', description: 'Numele firmei pentru facturare' },
+                cui: { type: 'string', description: 'CUI-ul firmei' },
+                reg_com: { type: 'string', description: 'Numarul de Inregistrare la Registrul Comertului' },
+                adresa_facturare: { type: 'string', description: 'Adresa integrala de facturare' },
+                email_facturare: { type: 'string', description: 'Adresa de email unde va fi trimisa factura/oferta' },
+                persoana_contact_facturare: { type: 'string', description: 'Numele persoanei de contact pentru facturare' },
+                telefon_facturare: { type: 'string', description: 'Numarul de telefon' },
+                
+                // Animatie
+                personaj_dorit: { type: 'string', description: 'Personajul dorit pentru animatie (ex. Spiderman, Elsa)' },
+                numar_animatori: { type: 'number', description: 'Numarul de animatori dorit' },
+                durata_ore: { type: 'number', description: 'Durata in ore a prestarii serviciului (animatie, vata de zahar, popcorn)' },
+                tematica_dorita: { type: 'string', description: 'Tematica dorita pentru activitati' },
+                activitati_dorite: { type: 'string', description: 'Activitati dorite de la clovni sau animatori' },
+                observatii_animatie: { type: 'string', description: 'Detalii specifice despre animatie' },
+
+                // Arcade & Mascote
+                metri_liniari: { type: 'number', description: 'Metri liniari pentru arcada de baloane' },
+                model_arcada: { type: 'string', description: 'Modelul (ex. organica, clasica) sau forma dorita' },
+                culori_dorite: { type: 'string', description: 'Culorile dorite pentru baloane' },
+                zona_amplasare: { type: 'string', description: 'Locul de amplasare a arcadei' },
+                cifre_dorite: { type: 'string', description: 'Ce cifre (numere) doreste sa ataseze la arcada' },
+                culoare_cifre: { type: 'string', description: 'Culoarea cifrelor' },
+                culori_arcada: { type: 'string', description: 'Culori specifice arcadei (daca e separata de cifre)' },
+                tip_suport: { type: 'string', description: 'Tip suport (cerc, panou etc.)' },
+                
+                // Vata / Popcorn
+                numar_estimat_portii: { type: 'number', description: 'Numar portii vata/popcorn' },
+                acces_curent_electric: { type: 'boolean', description: 'Daca exista acces la sursa de curent (true/false)' },
+                observatii_vata_de_zahar: { type: 'string', description: 'Observatii pentru vata de zahar' },
+                observatii_popcorn: { type: 'string', description: 'Observatii pentru masina de popcorn' },
+                observatii_pachet: { type: 'string', description: 'Observatii pentru pachetul combinat (vata+popcorn)' }
             }
             // All properties are optional (it's a partial update)
         },

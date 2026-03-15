@@ -1,0 +1,22 @@
+## 🚀 Sincronizare Completă Arhitectură Agent Autonom (Faza 1 & 2)
+
+Acest PR unifică toate direcțiile lucrate până în acest moment pentru trecerea la Agent Autonom:
+
+1. **Commercial Policy Engine**
+   - Registrul de roluri (`approvedRoleRegistry`), schema UI (`roleConfigSchema`).
+   - Generarea blocului activ comercial (`buildActiveCommercialPoliciesBlock`).
+   - Matcher-ul de cunoștințe actualizat și `adminSuiteRoutes` pentru salvare persistentă a `policy.json`.
+2. **Admin UI Save Fixes**
+   - Reparare payload category invalid, fix închiderea modalului pe front-end la HTTP != 200, afișarea metadatelor pe dashboard cards.
+3. **Pricing Model & Arcade Native Support**
+   - Implementare `linear_meters` și `model_choice` (organic/clasic) nativ în parse-ul NLP LLM.
+   - Evaluare corectă a modelelor de preț: hourly, fixed_price, linear_meter.
+4. **Greeting / Acknowledgment Behavior**
+   - "Bună seara / Salut" => setat pe `reply_only` pentru deschidere caldă.
+   - "ok / da / mersi" => setat pe `stay_silent` pentru early-exit din pipeline.
+5. **Autonomy Phase 1 & 2 (Agent Structurat)**
+   - `nextBestActionPlanner.mjs` & `missingFieldsEngine.mjs`
+   - `goalEngine.mjs`, `leadScoring.mjs`, `replySelfCheck.mjs`
+   - Injectări în `processConversation.mjs` și `systemPrompt.mjs`.
+6. **Database Event Schema Updates**
+   - Migrarea `002_lead_runtime_state.sql` pentru persistarea stării.

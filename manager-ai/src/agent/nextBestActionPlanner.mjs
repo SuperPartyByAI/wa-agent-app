@@ -35,7 +35,9 @@ export function computeNextBestAction(context) {
     const { runtimeState, missingMetrics, humanTakeover, isAcknowledgment, isGreeting, clientMessageText } = context;
 
     // Evaluate Business Playbook rules to find tactical approach
+    console.log(`[NBA Planner] Evaluating playbook with primary_service=${runtimeState.primary_service}, isGreeting=${isGreeting}`);
     const playbookStrategy = evaluatePlaybook(context);
+    console.log(`[NBA Planner] Playbook Strategy Result:`, playbookStrategy);
     let playbookInjection = '';
     const playbookKey = playbookStrategy ? playbookStrategy.playbook_key : null;
     if (playbookStrategy) {

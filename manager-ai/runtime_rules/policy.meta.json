@@ -1,9 +1,9 @@
 {
-  "version": "v1773536913451",
-  "checksum": "sha256:8d2aad6f8c44c8492b593ac041a55d6e74edd4002b5c38810256ad82255a2a66",
+  "version": "v1773575014396",
+  "checksum": "sha256:150dd7b689818643f99ed806200e2588c4dc7a7b5cf59e487fb9c84c6e59895f",
   "rules_count": 4,
   "coverage_count": 10,
   "policies_count": 21,
-  "loaded_at": "2026-03-15T01:08:33.451Z",
+  "loaded_at": "2026-03-15T11:43:34.396Z",
   "source": "supabase"
 }

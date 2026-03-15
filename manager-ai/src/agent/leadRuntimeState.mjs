@@ -28,7 +28,18 @@ export function createEmptyLeadState(conversationId) {
         missing_fields: [],
         human_takeover: false,
         lead_score: 0.00,
-        follow_up_due_at: null
+        follow_up_due_at: null,
+        followup_status: 'none',
+        followup_count: 0,
+        last_followup_sent_at: null,
+        handoff_to_operator: false,
+        handoff_reason: null,
+        closed_status: 'open',
+        closed_at: null,
+        operator_owned_at: null,
+        operator_id: null,
+        do_not_followup: false,
+        do_not_followup_reason: null
     };
 }
 

@@ -24,8 +24,8 @@ import { evaluateEscalation } from '../policy/evaluateEscalation.mjs';
 import { evaluateFastPath } from './evaluateFastPath.mjs';
 import { buildFastPathReply } from '../replies/buildFastPathReply.mjs';
 import { shouldReplyNow, acquireConversationLock, releaseConversationLock } from '../policy/shouldReplyNow.mjs';
-import { evaluateFollowUpEligibility } from '../policy/evaluateFollowUpEligibility.mjs';
-import { scheduleFollowUp, clearFollowUp } from '../orchestration/scheduleFollowUp.mjs';
+import { evaluateOperatorHandoff, didClientSayReturn } from '../agent/followUpEngine.mjs';
+import { clearFollowUp } from '../orchestration/scheduleFollowUp.mjs';
 import { loadGoalState, transitionGoalState } from '../workflow/goalStateMachine.mjs';
 import { evaluateGoalTransition } from '../workflow/goalTransitions.mjs';
 import { evaluateNextBestAction } from '../workflow/evaluateNextBestAction.mjs';
@@ -286,30 +286,7 @@ export async function processConversation(conversation_id, message_id = null, op
             if (replyDecision.decision === 'reply_now') {
                 await clearFollowUp(conversation_id, 'ai_replied_now_fastpath');
             } else if (['wait_for_more_messages', 'wait_for_missing_info'].includes(replyDecision.decision)) {
-                const fpFollowUpElig = evaluateFollowUpEligibility({
-                    replyDecision: replyDecision.decision,
-                    lastClientMessage: lastClientMessageText,
-                    conversationStage: convStateForFP?.current_stage || 'lead',
-                    nextStep: fastPath.fast_path_type,
-                    conversationStatus: convStateForFP?.current_stage,
-                    closingSignalDetected: replyDecision.closingSignalDetected,
-                    customerPausedDetected: replyDecision.customerPausedDetected,
-                    humanTakeoverActive: replyDecision.humanTakeoverActive,
-                    aiCommitmentPending: replyDecision.aiCommitmentPending
-                });
-                if (fpFollowUpElig.eligible) {
-                    const schedResult = await scheduleFollowUp({
-                        conversationId: conversation_id,
-                        followUpReason: fpFollowUpElig.followUpType,
-                        openQuestionDetected: fpFollowUpElig.openQuestionDetected,
-                        customerIntentUnanswered: fpFollowUpElig.customerIntentUnanswered,
-                        missingFields: fpFollowUpElig.missingFields,
-                        triggerMessageId: message_id,
-                        nextStep: fastPath.fast_path_type,
-                        lastCustomerMessageAt: new Date().toISOString()
-                    });
-                    console.log(`[FastPath] Follow-up: ${schedResult.scheduled ? 'SCHEDULED' : 'NOT scheduled'} (${schedResult.reason})`);
-                }
+                // Fast path wait: minimal logic, follow-up will be evaluated autonomously by FollowUpEngine Job if eligible.
             }
 
             // Update conversation state
@@ -886,17 +863,50 @@ export async function processConversation(conversation_id, message_id = null, op
         await supabase.from('ai_conversation_state').upsert(statePayload);
 
         // ── 8.4.2. Persist Autonomous Runtime State ──
-        if (typeof runtimeState !== 'undefined' && typeof nextTarget !== 'undefined') {
-            await saveLeadRuntimeState(conversation_id, {
-                lead_state: nextTarget.nextState,
-                last_agent_goal: nextTarget.instruction.substring(0, 200),
-                next_best_action: nextTarget.action,
-                primary_service: runtimeState.primary_service,
-                active_roles: runtimeState.active_roles,
-                missing_fields: missingMetrics?.missing || [],
-                human_takeover: runtimeState.human_takeover
+        if (typeof runtimeState !== 'undefined') {
+            const handoffReason = evaluateOperatorHandoff({
+                runtimeState: runtimeState,
+                clientMessageText: lastClientMessageText
             });
-            console.log(`[Agent] Persisted runtime state to DB: ${nextTarget.nextState} / ${nextTarget.action}`);
+            const saidReturn = didClientSayReturn(lastClientMessageText);
+
+            let updates = {};
+            if (typeof nextTarget !== 'undefined') {
+                updates.lead_state = nextTarget.nextState;
+                updates.last_agent_goal = nextTarget.instruction.substring(0, 200);
+                updates.next_best_action = nextTarget.action;
+            }
+            updates.primary_service = runtimeState.primary_service;
+            updates.active_roles = runtimeState.active_roles;
+            updates.missing_fields = missingMetrics?.missing || [];
+            updates.human_takeover = runtimeState.human_takeover;
+
+            if (handoffReason) {
+                updates.handoff_to_operator = true;
+                updates.handoff_reason = handoffReason;
+                updates.closed_status = 'operator_owned';
+                updates.operator_owned_at = new Date().toISOString();
+                console.log(`[Pipeline] Force Handoff: ${handoffReason}`);
+            }
+            if (saidReturn) {
+                updates.do_not_followup = true;
+                updates.do_not_followup_reason = 'client_said_revin_eu';
+                console.log(`[Pipeline] Follow-up BLOCKED: client will return`);
+            }
+            // Set 24h follow-up due if we reached an offer/quote state and need to wait
+            if (typeof nextTarget !== 'undefined' && nextTarget.nextState === 'oferta_trimisa') {
+                const due = new Date();
+                due.setHours(due.getHours() + 24);
+                updates.follow_up_due_at = due.toISOString();
+                updates.followup_status = 'pending';
+            }
+
+            await saveLeadRuntimeState(conversation_id, updates);
+            if (typeof nextTarget !== 'undefined') {
+                console.log(`[Agent] Persisted runtime state to DB: ${nextTarget.nextState} / ${nextTarget.action}`);
+            } else {
+                console.log(`[Agent] Persisted runtime state to DB (Wait/FastPath).`);
+            }
         }
 
         // ── 8.5. Service Detection Confidence Guard ──
@@ -1308,33 +1318,8 @@ export async function processConversation(conversation_id, message_id = null, op
                 sentBy = 'reply_engine';
                 console.log(`[Pipeline] Auto-reply BLOCKED: ${replyDecisionResult.decision} — ${replyDecisionResult.reason} (${replyDecisionResult.details || ''})`);
 
-                // Evaluate follow-up eligibility for wait decisions
-                const followUpElig = evaluateFollowUpEligibility({
-                    replyDecision: replyDecisionResult.decision,
-                    lastClientMessage: lastClientMessageText,
-                    conversationStage: decision.conversation_stage,
-                    existingDraft: existingDraftRow,
-                    nextStep: progression.next_step,
-                    conversationStatus: dbStage,
-                    closingSignalDetected: replyDecisionResult.closingSignalDetected,
-                    customerPausedDetected: replyDecisionResult.customerPausedDetected,
-                    humanTakeoverActive: replyDecisionResult.humanTakeoverActive,
-                    aiCommitmentPending: replyDecisionResult.aiCommitmentPending
-                });
-
-                if (followUpElig.eligible) {
-                    const schedResult = await scheduleFollowUp({
-                        conversationId: conversation_id,
-                        followUpReason: followUpElig.followUpType,
-                        openQuestionDetected: followUpElig.openQuestionDetected,
-                        customerIntentUnanswered: followUpElig.customerIntentUnanswered,
-                        missingFields: followUpElig.missingFields,
-                        triggerMessageId: message_id,
-                        nextStep: progression.next_step,
-                        lastCustomerMessageAt: new Date().toISOString()
-                    });
-                    console.log(`[Pipeline] Follow-up: ${schedResult.scheduled ? 'SCHEDULED' : 'NOT scheduled'} (${schedResult.reason})`);
-                }
+                // Evaluate follow-up eligibility for wait decisions: 
+                // Handled natively by FollowUpEngine Job tracking `follow_up_due_at` on runtime DB.
             }
         } else if (decision.escalation_reason) {
             console.log(`[Pipeline] Escalation: ${decision.escalation_reason}`);

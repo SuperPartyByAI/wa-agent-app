@@ -64,13 +64,23 @@ export function computeNextBestAction(context) {
     }
 
     // 2. Greeting
-    if (isGreeting && !runtimeState.primary_service) {
-        return {
-            action: NBA_ACTIONS.REPLY_GREETING,
-            instruction: 'Greet the user warmly and ask how Superparty can help them today. Do not assume any services yet.' + playbookInjection,
-            nextState: 'salut_initial',
-            playbookKey
-        };
+    if (isGreeting) {
+        if (!runtimeState.primary_service) {
+            return {
+                action: NBA_ACTIONS.REPLY_GREETING,
+                instruction: 'Greet the user warmly and ask how Superparty can help them today. Do not assume any services yet.' + playbookInjection,
+                nextState: 'salut_initial',
+                playbookKey
+            };
+        } else {
+            // Context-aware greeting reply instead of aggressively asking for missing fields
+            return {
+                action: NBA_ACTIONS.REPLY_GREETING,
+                instruction: `Acknowledge the user's greeting warmly. Keep the conversation natural, do not aggressively ask for event missing fields right now.` + playbookInjection,
+                nextState: runtimeState.lead_state,
+                playbookKey
+            };
+        }
     }
 
     // 3. No Service Detected Yet

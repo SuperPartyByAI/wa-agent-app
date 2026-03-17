@@ -145,14 +145,17 @@ export async function processConversation(conversation_id, message_id = null, op
         const clientId = convData?.client_id;
         const conversationCreatedAt = convData?.created_at;
 
-        // Fetch messages
-        console.log(`[Pipeline] Fetching messages for ${conversation_id}...`);
+        // Fetch ALL conversations for this client to act as the global Notebook memory
+        const { data: clientConvs } = await supabase.from('conversations').select('id').eq('client_id', clientId);
+        const convIds = clientConvs && clientConvs.length > 0 ? clientConvs.map(c => c.id) : [conversation_id];
+
+        console.log(`[Pipeline] Fetching messages across ${convIds.length} conversations for client ${clientId}...`);
         const { data: messages, error: msgErr } = await supabase
             .from('messages')
             .select('content, direction, created_at, sender_type')
-            .eq('conversation_id', conversation_id)
+            .in('conversation_id', convIds)
             .order('created_at', { ascending: false })
-            .limit(50);
+            .limit(100);
 
         if (msgErr) {
             console.error(`[Pipeline] Failed to fetch messages`, msgErr);
@@ -487,17 +490,53 @@ export async function processConversation(conversation_id, message_id = null, op
         
         console.log(`[Agent] State=${runtimeState.lead_state}, Score=${scoring.score}(${scoring.temperature}), Primary=${runtimeState.primary_service}, NBA=${nextTarget.action}, NextState=${nextTarget.nextState}`);
 
-        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, partyDraft, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
-        
-        if (process.env.LOG_LEVEL === 'debug') {
-             console.debug('\n--- systemPrompt START ---\n', systemPrompt, '\n--- systemPrompt END ---\n');
-        }
+        const { getActiveNotebook, buildNotebookPromptSection, updateNotebookIfRequired } = await import('../agent/notebookFiller.mjs');
+        const activeNotebookContext = await getActiveNotebook(contextPack?.client_context?.client?.real_phone_e164 || 'unknown', runtimeState.primary_service);
+        const notebookPromptExtra = buildNotebookPromptSection(activeNotebookContext);
 
-        console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
+        const baseSystemPrompt = buildSystemPrompt(existingMemory, { eventPlan, partyDraft, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
+        const systemPrompt = baseSystemPrompt + '\n' + notebookPromptExtra;
+        
+        
+        console.log(`[Pipeline] Calling NotebookLM Adapter (${transcript.length} chars)...`);
+        const { askNotebookLM } = await import('../integrations/notebookLmAdapter.mjs');
+        
+        let instructions = operator_prompt ? `Operator Prompt (STRICT INSTRUCTION): ${operator_prompt}` : "Analyze the context and return your JSON decision.";
+        
+        const nbPayload = {
+            profile: existingMemory,
+            events: partyDraft || eventPlan || [],
+            memorySummary: `Lead State: ${runtimeState.lead_state}\nPrimary Service: ${runtimeState.primary_service}\nExtra Instructions: ${instructions}`,
+            transcript: transcript,
+            knowledgeBase: activeRolesText || "No active specific commercial policies"
+        };
+        
         const t_llm_start = Date.now();
-        let analysis = await callLocalLLM(systemPrompt, userMessage);
-        const t_llm_ms = Date.now() - t_llm_start;
-        console.log(`[Pipeline] LLM analysis completed in ${t_llm_ms}ms`);
+        let analysis = null;
+        try {
+            const nbResult = await askNotebookLM(nbPayload);
+            const t_llm_ms = Date.now() - t_llm_start;
+            console.log(`[Pipeline] NotebookLM analysis completed in ${t_llm_ms}ms`, nbResult);
+            
+            if (nbResult) {
+                analysis = {
+                    assistant_reply: nbResult.replyDraft,
+                    tool_action: { name: nbResult.recommendedAction || 'reply_only', arguments: nbResult.extractedFields || {} },
+                    decision: {
+                        can_auto_reply: nbResult.confidence > 70 && !nbResult.needsConfirmation,
+                        needs_human_review: nbResult.needsConfirmation || nbResult.needsClarification,
+                        confidence_score: nbResult.confidence || 85,
+                        reply_status: 'pending',
+                        next_step: nbResult.recommendedAction || 'reply_only',
+                        escalation_reason: nbResult.needsClarification ? 'notebook_lm_clarification_needed' : null
+                    },
+                    notebook_updates: nbResult.extractedFields || {},
+                    service_requirements: []
+                };
+            }
+        } catch (err) {
+            console.error(`[Pipeline] NotebookLM exception:`, err);
+        }
 
         // --- SHADOW QUICK PATCH (V2 Architecture) ---
         try {
@@ -522,6 +561,16 @@ export async function processConversation(conversation_id, message_id = null, op
             
             const extractedFields = { _raw_text: userMessage, ...parsedLlm };
             const mapped = mapAndValidate(extractedFields, userMessage);
+            
+            // --- NOTEBOOK AI: Save Slots from Whatsapp Chat INDEPENDENTLY ---
+            if (parsedLlm.notebook_updates) {
+                try {
+                    const phoneForNotebook = contextPack?.client_context?.client?.real_phone_e164 || 'unknown';
+                    await updateNotebookIfRequired(phoneForNotebook, runtimeState.primary_service, parsedLlm.notebook_updates);
+                } catch(nErr) {
+                    console.error('[Notebook AI] Update error:', nErr);
+                }
+            }
             
             // evaluateMutationIntent expects llmIntent, clientContext
             const gateRes = await evaluateMutationIntent(parsedLlm, { events: [] });
@@ -572,10 +621,11 @@ export async function processConversation(conversation_id, message_id = null, op
         // The LLM now strictly returns { assistant_reply, tool_action }.
         // The properties below are legacy fallback stubs kept temporarily to satisfy
         // the remaining orchestration pipeline without triggering large rewrites.
-        const serviceData = postProcessServices(analysis);
-        serviceData.service_requirements = analysis.service_requirements || [];
+        const safeAnalysis = analysis || {};
+        const serviceData = postProcessServices(safeAnalysis);
+        serviceData.service_requirements = safeAnalysis.service_requirements || [];
 
-        const decision = analysis.decision || {
+        const decision = safeAnalysis.decision || {
             can_auto_reply: true,   // Trust the tool_action pathway
             needs_human_review: false,
             escalation_reason: null,

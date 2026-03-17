@@ -74,6 +74,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .tab-inline{padding:8px 14px;font-size:12px;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:all .2s}
 .tab-inline:hover{color:var(--text)}.tab-inline.active{color:var(--accent);border-bottom-color:var(--accent)}
 </style>
+<script src="/js/auth-guard.js"></script>
 </head>
 <body>
 
@@ -84,6 +85,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
     <div class="nav-divider"></div>
     <div class="nav-item" data-module="creier"><span class="icon">🧠</span>Creier AI</div>
     <div class="nav-item" data-module="roles"><span class="icon">🎭</span>Roluri & Logică</div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" data-module="vertex"><span class="icon">🤖</span>Vertex AI</div>
   </div>
 </div>
 
@@ -109,6 +112,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 
     <!-- ═══ ROLES ═══ -->
     <div class="panel" id="mod-roles"><div class="loader"><div class="spinner"></div></div></div>
+
+    <!-- ═══ VERTEX AI ═══ -->
+    <div class="panel" id="mod-vertex"><div class="loader"><div class="spinner"></div></div></div>
 
   </div>
 
@@ -145,7 +151,7 @@ document.querySelectorAll('.nav-item').forEach(n=>{
   });
 });
 
-function loadModule(m){const l={operator:()=>{},creier:loadCreier,roles:()=>{loadRoles();loadPlaybooks();}};if(l[m])l[m]()}
+function loadModule(m){const l={operator:()=>{},creier:loadCreier,roles:()=>{loadRoles();loadPlaybooks();},vertex:loadVertex};if(l[m])l[m]()}
 const tokenFromUrl = new URLSearchParams(window.location.search).get('token');
 if(tokenFromUrl) localStorage.setItem('token', tokenFromUrl);
 
@@ -163,6 +169,13 @@ function timeAgo(d){const s=Math.floor((new Date()-new Date(d))/1e3);if(s<60)ret
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 function openModal(h){document.getElementById('modalContent').innerHTML=h;document.getElementById('modal').classList.add('open')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+document.addEventListener('keydown', e => {
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();document.getElementById('globalSearch').focus()}
+});
+
+// Auto-load first module
+document.querySelector('[data-module="operator"]').click();
 
 function searchGlobal(){
   const q=document.getElementById('globalSearch').value.trim();
@@ -500,7 +513,7 @@ async function saveCreierRule() {
   }
 
   const payload = {
-    category: 'general',
+    category: 'faq',
     question_patterns: patterns,
     answer_template: rulStr,
     approval_status: 'approved'
@@ -1022,6 +1035,201 @@ async function loadAudit(){
       <td>${l.action}</td><td>${l.entity_type||'—'} ${(l.entity_id||'').substring(0,8)}</td><td>${l.changed_by}</td><td style="font-size:12px;color:var(--dim)">${l.reason||'—'}</td></tr>`}
   h+='</tbody></table>';
   el.innerHTML=h;
+}
+
+// ═══════════════════════════════════════
+// VERTEX AI CONFIG
+// ═══════════════════════════════════════
+const VERTEX_API = '/api/ai';
+
+async function loadVertex() {
+  const el = document.getElementById('mod-vertex');
+  try {
+    const cfg = await fetch(VERTEX_API+'/config').then(r=>r.json());
+    const sessions = await fetch(VERTEX_API+'/sessions?limit=10').then(r=>r.json());
+    const events = await fetch(VERTEX_API+'/events?limit=10').then(r=>r.json());
+    const actions = await fetch(VERTEX_API+'/actions?limit=10').then(r=>r.json());
+
+    const configMap = {};
+    (cfg.config||[]).forEach(c => configMap[c.config_key] = c.config_value);
+
+    let h = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2>🤖 Vertex AI — Configurare Agent</h2>
+      <button class="btn btn-primary" onclick="testVertexAI()">🧪 Testează Live</button>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <h3 style="margin-bottom:16px;color:var(--accent)">📝 System Prompt</h3>
+        <p style="font-size:12px;color:var(--dim);margin-bottom:8px">Acesta este promptul principal. AI-ul va urma aceste reguli în fiecare conversație.</p>
+        <textarea id="vtxPrompt" rows="10" style="font-size:14px;line-height:1.6;padding:14px">${configMap.system_prompt||''}</textarea>
+        <button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="saveVertexConfig('system_prompt',document.getElementById('vtxPrompt').value)">💾 Salvează Promptul</button>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <h3 style="margin-bottom:12px;color:var(--accent)">⚙️ Parametri Model</h3>
+          <div class="form-group"><label>Model AI</label>
+            <select id="vtxModel" onchange="saveVertexConfig('vertex_model',this.value)">
+              <option ${configMap.vertex_model==='gemini-2.5-flash-lite'?'selected':''}>gemini-2.5-flash-lite</option>
+              <option ${configMap.vertex_model==='gemini-2.5-flash'?'selected':''}>gemini-2.5-flash</option>
+              <option ${configMap.vertex_model==='gemini-2.5-pro'?'selected':''}>gemini-2.5-pro</option>
+              <option ${configMap.vertex_model==='gemini-2.0-flash'?'selected':''}>gemini-2.0-flash</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label>Temperatură (creativitate)</label>
+              <input type="number" step="0.1" min="0" max="2" id="vtxTemp" value="${configMap.temperature||'0.3'}" onchange="saveVertexConfig('temperature',this.value)">
+            </div>
+            <div class="form-group"><label>Max Tokeni</label>
+              <input type="number" id="vtxTokens" value="${configMap.max_tokens||'2048'}" onchange="saveVertexConfig('max_tokens',this.value)">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label>Tools (Function Calling)</label>
+              <select id="vtxTools" onchange="saveVertexConfig('tools_enabled',this.value)">
+                <option value="true" ${configMap.tools_enabled==='true'?'selected':''}>✅ Activ</option>
+                <option value="false" ${configMap.tools_enabled==='false'?'selected':''}>❌ Dezactivat</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Auto-Reply WhatsApp</label>
+              <select id="vtxAuto" onchange="saveVertexConfig('auto_reply',this.value)">
+                <option value="true" ${configMap.auto_reply==='true'?'selected':''}>✅ Activ</option>
+                <option value="false" ${configMap.auto_reply==='false'?'selected':''}>❌ Dezactivat</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:8px;color:var(--accent)">📊 Statistici</h3>
+          <div class="grid-3">
+            <div class="stat-card"><div class="number">${sessions.count||0}</div><div class="label">Sesiuni</div></div>
+            <div class="stat-card"><div class="number">${events.count||0}</div><div class="label">Evenimente</div></div>
+            <div class="stat-card"><div class="number">${actions.count||0}</div><div class="label">Acțiuni</div></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    // Sessions table
+    h += `<h3 style="margin:20px 0 12px">💬 Sesiuni Recente</h3>`;
+    if(sessions.sessions?.length){
+      h += `<table><thead><tr><th>Telefon</th><th>Status</th><th>Mesaje</th><th>Creat</th><th>Actualizat</th><th></th></tr></thead><tbody>`;
+      for(const s of sessions.sessions){
+        h += `<tr>
+          <td><b>${s.phone_e164||'—'}</b></td>
+          <td><span class="tag tag-${s.session_status==='active'?'green':s.session_status==='escalated'?'orange':'blue'}">${s.session_status}</span></td>
+          <td>${s.messages_count||0}</td>
+          <td style="font-size:11px">${timeAgo(s.created_at)}</td>
+          <td style="font-size:11px">${timeAgo(s.updated_at)}</td>
+          <td><button class="btn btn-sm btn-outline" onclick="viewVertexSession('${s.id}')">💬 Mesaje</button></td>
+        </tr>`;
+      }
+      h += '</tbody></table>';
+    } else { h += '<div class="empty"><div class="icon">💬</div><p>Nicio sesiune încă. Trimite un mesaj pe WhatsApp!</p></div>'; }
+
+    // Events table
+    h += `<h3 style="margin:20px 0 12px">🎉 Petreceri / Evenimente Notate</h3>`;
+    if(events.events?.length){
+      h += `<table><thead><tr><th>Tip</th><th>Dată</th><th>Locație</th><th>Invitați</th><th>Servicii</th><th>Status</th></tr></thead><tbody>`;
+      for(const e of events.events){
+        h += `<tr>
+          <td><b>${e.event_type||'—'}</b></td>
+          <td>${e.event_date||'TBD'} ${e.event_time||''}</td>
+          <td>${e.location||'TBD'}</td>
+          <td>${e.guest_count||'?'}</td>
+          <td style="font-size:11px">${(e.services||[]).join(', ')||'—'}</td>
+          <td><span class="tag tag-${e.status==='confirmed'?'green':'purple'}">${e.status||'draft'}</span></td>
+        </tr>`;
+      }
+      h += '</tbody></table>';
+    } else { h += '<div class="empty"><div class="icon">🎉</div><p>Niciun eveniment notat. AI-ul le va nota automat!</p></div>'; }
+
+    // Actions log
+    h += `<h3 style="margin:20px 0 12px">🔧 Ultimele Acțiuni</h3>`;
+    if(actions.actions?.length){
+      h += `<table><thead><tr><th>Acțiune</th><th>Succes</th><th>Argumente</th><th>Ora</th></tr></thead><tbody>`;
+      for(const a of actions.actions){
+        h += `<tr>
+          <td><b>${a.action_name}</b></td>
+          <td>${a.success?'<span class="tag tag-green">✅</span>':'<span class="tag tag-red">❌</span>'}</td>
+          <td style="font-size:11px"><span class="truncate">${JSON.stringify(a.action_args||{})}</span></td>
+          <td style="font-size:11px">${timeAgo(a.executed_at)}</td>
+        </tr>`;
+      }
+      h += '</tbody></table>';
+    } else { h += '<div class="empty"><div class="icon">🔧</div><p>Nicio acțiune executată încă.</p></div>'; }
+
+    el.innerHTML = h;
+  } catch(e) {
+    el.innerHTML = `<div class="empty"><div class="icon">⚠️</div><p>Eroare: ${e.message}</p><p style="font-size:12px;color:var(--dim);margin-top:8px">Serverul manager-ai pornit?</p></div>`;
+  }
+}
+
+async function saveVertexConfig(key, value) {
+  try {
+    await fetch(VERTEX_API+'/config/'+key, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({value})
+    });
+    // Visual feedback
+    const btns = document.querySelectorAll('.btn-primary');
+    const lastBtn = btns[btns.length-1];
+    if(key === 'system_prompt') {
+      const btn = document.querySelector('[onclick*="saveVertexConfig\'system_prompt\'"]') || lastBtn;
+      if(btn) { const orig = btn.textContent; btn.textContent = '✅ Salvat!'; btn.style.background = 'var(--green)'; setTimeout(()=>{btn.textContent=orig;btn.style.background='';},2000); }
+    }
+  } catch(e) { alert('Eroare salvare: ' + e.message); }
+}
+
+async function viewVertexSession(sessionId) {
+  try {
+    const res = await fetch(VERTEX_API+'/sessions/'+sessionId+'/messages').then(r=>r.json());
+    let h = `<h2>💬 Conversație</h2><div style="max-height:500px;overflow-y:auto;padding:8px;background:var(--bg);border-radius:8px;margin-top:12px">`;
+    for(const m of (res.messages||[])) {
+      const isUser = m.role === 'user';
+      h += `<div class="msg-bubble msg-${isUser?'client':'ai'}" style="margin-bottom:8px">
+        <div style="font-size:10px;color:var(--dim);margin-bottom:4px">${isUser?'👤 Client':'🤖 AI'} — ${timeAgo(m.created_at)}</div>
+        ${m.content || (m.function_name ? '🔧 '+m.function_name : '—')}
+      </div>`;
+    }
+    h += '</div><div style="margin-top:16px;text-align:right"><button class="btn btn-outline" onclick="closeModal()">Închide</button></div>';
+    openModal(h);
+  } catch(e) { alert('Eroare: '+e.message); }
+}
+
+function testVertexAI() {
+  openModal(`
+    <h2>🧪 Test Vertex AI</h2>
+    <div class="form-group"><label>Telefon (simulat)</label><input id="vtxTestPhone" value="+40700000001"></div>
+    <div class="form-group"><label>Mesajul clientului</label><textarea id="vtxTestMsg" rows="3" placeholder="Buna ziua, vreau o petrecere..."></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal()">Anulează</button>
+      <button class="btn btn-primary" id="vtxTestBtn" onclick="runVertexTest()">🚀 Trimite la AI</button>
+    </div>
+    <div id="vtxTestResult" style="margin-top:16px"></div>
+  `);
+}
+
+async function runVertexTest() {
+  const phone = document.getElementById('vtxTestPhone').value;
+  const msg = document.getElementById('vtxTestMsg').value;
+  if(!msg) return alert('Scrie un mesaj!');
+  const btn = document.getElementById('vtxTestBtn');
+  btn.textContent = '⏳ Se procesează...'; btn.disabled = true;
+  try {
+    const res = await fetch(VERTEX_API+'/test', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({phone, message: msg})
+    }).then(r=>r.json());
+    document.getElementById('vtxTestResult').innerHTML = `
+      <div class="card" style="border-color:var(--green)">
+        <div style="font-size:11px;color:var(--dim);margin-bottom:8px">Răspuns în ${res.latencyMs||'?'}ms${res.functionCall?' | 🔧 '+res.functionCall.name:''}</div>
+        <div style="font-size:15px;line-height:1.6;white-space:pre-wrap">${res.reply||res.error||'fără răspuns'}</div>
+      </div>`;
+  } catch(e) { document.getElementById('vtxTestResult').innerHTML = `<div class="card" style="border-color:var(--red)">❌ ${e.message}</div>`; }
+  btn.textContent = '🚀 Trimite la AI'; btn.disabled = false;
 }
 
 // ── Init ──

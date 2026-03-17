@@ -48,7 +48,9 @@ async function loadTemplates() {
     container.innerHTML = '<div class="col-12 text-center text-muted"><div class="spinner-border spinner-border-sm me-2"></div> Încărcare...</div>';
     
     try {
-        const res = await fetch('/api/admin/notebook-templates');
+        const token = localStorage.getItem('sp_session_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch('/api/admin/notebook-templates', { headers });
         if (!res.ok) throw new Error('Failed to load templates');
         const data = await res.json();
         
@@ -84,7 +86,9 @@ async function loadNotebooks() {
     container.innerHTML = '<div class="col-12 text-center text-muted"><div class="spinner-border spinner-border-sm me-2"></div> Se aduc datele de pe WhatsApp...</div>';
     
     try {
-        const res = await fetch('/api/admin/client-notebooks');
+        const token = localStorage.getItem('sp_session_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch('/api/admin/client-notebooks', { headers });
         if (!res.ok) throw new Error('Failed to load notebooks');
         const data = await res.json();
         
@@ -164,9 +168,13 @@ async function saveTemplate() {
     btn.innerHTML = 'Se salvează...';
 
     try {
+        const token = localStorage.getItem('sp_session_token');
         const res = await fetch('/api/admin/notebook-templates', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
             body: JSON.stringify(payload)
         });
         

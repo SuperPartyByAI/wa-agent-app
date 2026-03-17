@@ -196,10 +196,15 @@ export async function shouldReplyNow({
             return { ...result, decision: 'stay_silent', reason: 'blocked_recent_ai_cooldown', details: `Last AI reply ${elapsedSec}s ago`, turnState: 'cooldown' };
         }
 
-        // ── 13. Duplicate guard ──
+        // ── 13. Duplicate guard (except for conversational greetings) ──
         if (similarity > DUP_THRESHOLD) {
-            console.log(`[ReplyEngine] Stay silent: duplicate (${(similarity * 100).toFixed(0)}%)`);
-            return { ...result, decision: 'stay_silent', reason: 'blocked_duplicate_reply', turnState: 'duplicate', duplicateRisk: true };
+            const isGreetingStep = nextStep === 'reply_greeting' || nextStep === 'salut_initial';
+            if (isGreetingStep) {
+                console.log(`[ReplyEngine] Bypassing duplicate guard because step is a conversational greeting (sim=${(similarity * 100).toFixed(0)}%)`);
+            } else {
+                console.log(`[ReplyEngine] Stay silent: duplicate (${(similarity * 100).toFixed(0)}%)`);
+                return { ...result, decision: 'stay_silent', reason: 'blocked_duplicate_reply', turnState: 'duplicate', duplicateRisk: true };
+            }
         }
 
         // ── 14. No new info ──

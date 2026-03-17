@@ -1,7 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
-const supabase = createClient('https://jrfhprnuxxfwkwjwdsez.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyZmhwcm51eHhmd2t3andkc2V6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAwMjIzMiwiZXhwIjoyMDg4NTc4MjMyfQ.0SoUFRVD3PyQg45QKvBM0yDoGJMNrsV-1KyGX0TA4yI');
-async function run() {
-  const { data, error } = await supabase.from('ai_event_plans').select('*').limit(1);
-  console.log(Object.keys(data[0]));
+import { vertexDb } from './src/vertex/vertexClient.mjs';
+
+async function test() {
+    try {
+        console.log('Testing vertexDb query...');
+        if (!vertexDb) {
+            console.error('vertexDb is null!');
+            return;
+        }
+        const { data, error } = await vertexDb.from('ai_notebook_templates').select('*');
+        if (error) {
+            console.error('Supabase Error:', error);
+        } else {
+            console.log('Success!', data);
+        }
+    } catch (e) {
+        console.error('Runtime Exception:', e);
+    }
 }
-run();
+test();

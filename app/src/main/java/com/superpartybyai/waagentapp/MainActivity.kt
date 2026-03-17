@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavHostController
 import com.superpartybyai.features.auth.AuthScreen
 import com.superpartybyai.waagentapp.ui.MainShellScreen
+import com.superpartybyai.waagentapp.ui.theme.SuperpartyTheme
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.GlobalScope
@@ -27,7 +28,7 @@ class MainActivity : ComponentActivity() {
         com.superpartybyai.core.AppConfig.BACKEND_URL = BuildConfig.BACKEND_URL
         com.superpartybyai.core.AppConfig.API_KEY = BuildConfig.API_KEY
         setContent {
-            MaterialTheme {
+            SuperpartyTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val navController = rememberNavController()
 

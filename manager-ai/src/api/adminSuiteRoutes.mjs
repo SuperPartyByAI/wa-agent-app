@@ -14,6 +14,7 @@
 import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '../config/env.mjs';
+import { vertexDb } from '../vertex/vertexClient.mjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -590,7 +591,7 @@ router.put('/playbooks/:key', async (req, res) => {
 // 1. Get all templates (Blueprints)
 router.get('/notebook-templates', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('ai_notebook_templates')
+        const { data, error } = await vertexDb.from('ai_notebook_templates')
             .select('*')
             .order('created_at', { ascending: false });
         if (error) throw error;
@@ -602,7 +603,7 @@ router.get('/notebook-templates', async (req, res) => {
 router.post('/notebook-templates', async (req, res) => {
     try {
         const payload = req.body;
-        const { data, error } = await supabase.from('ai_notebook_templates')
+        const { data, error } = await vertexDb.from('ai_notebook_templates')
             .upsert(payload, { onConflict: 'key' })
             .select()
             .single();
@@ -615,7 +616,7 @@ router.post('/notebook-templates', async (req, res) => {
 router.get('/client-notebooks', async (req, res) => {
     try {
         // Includes the template schema so the UI knows what slots exist
-        const { data, error } = await supabase.from('ai_client_notebooks')
+        const { data, error } = await vertexDb.from('ai_client_notebooks')
             .select('*, template:ai_notebook_templates(json_schema)')
             .order('updated_at', { ascending: false })
             .limit(50);

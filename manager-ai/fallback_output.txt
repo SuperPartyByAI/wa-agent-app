@@ -1,0 +1,205 @@
+[38;5;142m[dotenvx@1.55.1] injecting env (13) from .env[39m
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+=== TEST FALLBACK LLM CAP-COADA ===
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[Service Catalog] Loaded 12 services (v1.0): animator, ursitoare, vata_zahar, popcorn, arcada_baloane, arcada_suport, arcada_exterior, suport_arcada_baloane, cifre_volumetrice, mos_craciun, parfumerie, gheata_carbonica
+Injecting false message into DB... Conv ID: 97254e6b-e372-4976-a549-c30080733405
+Running processConversation... (Expecting LLM failure & Fallback execution)
+[Pipeline] Starting for 97254e6b-e372-4976-a549-c30080733405...
+[Pipeline] Attempting to acquire lock for 97254e6b-e372-4976-a549-c30080733405...
+[Pipeline] Lock acquired for 97254e6b-e372-4976-a549-c30080733405.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: e459ba03)
+[Pipeline] Fetching messages for 97254e6b-e372-4976-a549-c30080733405...
+[Pipeline] Found 1 messages.
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+[Pipeline] Entity memory: type=unknown, Multi-Event: 0 active events
+[RelationshipMemory] Client 39c976aa-34bd-430a-b2f0-7609a34cfdc7: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 9de3a958-a924-45b9-a484-9b9ab0d996d3 for conv 97254e6b-e372-4976-a549-c30080733405
+[Pipeline] Goal: new_lead, EventPlan: 9de3a958-a924-45b9-a484-9b9ab0d996d3 (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: no_fast_path_match)
+[SRE] Loaded 13 service definitions
+[KBMatcher] Loaded 20 active approved entries
+[NBA Planner] Evaluating playbook with primary_service=null, isGreeting=false
+[Playbook] Matched strategy: quotation
+[NBA Planner] Playbook Strategy Result: {
+  playbook_key: 'quotation',
+  strategy: 'Generează oferta clară și structurată. Prezintă serviciul ca fiind soluția ideală. Fii entuziast! La final, invită-i să confirme dacă sunt de acord cu detaliile sau dacă doresc să adăugăm și altceva (ex. baloane, mașină de bule). Nu cere avansul direct, cere acordul pe ofertă.',
+  tone: 'enthusiastic_sales'
+}
+[Agent] State=lead_nou, Score=80(hot), Primary=null, NBA=identify_service, NextState=identificare_serviciu
+
+--- systemPrompt START ---
+ Esti asistentul AI al Superparty — companie de organizare evenimente si petreceri.
+Analizeaza conversatia WhatsApp de mai jos dintre echipa noastra (Superparty) si un Client.
+Extrage detaliile principale folosind DOAR informatiile explicite din conversatie. Nu inventa nimic.
+
+IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.
+
+=== CATALOGUL NOSTRU DE SERVICII ===
+- animator (Animator / Animatoare): Animatoare sau animatori pentru petreceri copii. Program de divertisment, jocuri, dans.
+  Cuvinte cheie / Sinonime de detectie: animator, animatoare, spiderman, batman, elsa, anna, sofia, printese, mascote, clovn, minnie, mickey, sonic, mario, patrula, chase, marshall, skye
+  Campuri obligatorii: varsta_copil, nume_copil, nr_copii, durata_ore, nr_animatori, ora_eveniment, data_eveniment, locatie
+  Campuri optionale: tematica, personaj_preferat
+- ursitoare (Ursitoare): Ursitoare pentru botez. Program de ursire cu accesorii tradiționale.
+  Campuri obligatorii: data_eveniment, locatie, nr_invitati, sex_copil, nume_copil
+  Campuri optionale: religie, tematica_botez, ora_eveniment
+- vata_zahar (Vata de Zahar): Stand de vata de zahar pentru evenimente. Include aparat + operator.
+  Campuri obligatorii: data_eveniment, locatie, durata_ore, nr_estimat_portii
+  Campuri optionale: culori_vata, interior_exterior
+- popcorn (Popcorn): Stand de popcorn pentru evenimente. Include aparat + operator.
+  Campuri obligatorii: data_eveniment, locatie, durata_ore, nr_estimat_portii
+  Campuri optionale: arome, interior_exterior
+- arcada_baloane (Arcada Baloane): Arcada decorativa din baloane pentru intrare, candy bar sau photo corner.
+  Campuri obligatorii: data_eveniment, locatie, culori_baloane, dimensiune_arcada
+  Campuri optionale: tematica, tip_baloane, personalizare_text
+- arcada_suport (Arcada pe Suport): Arcada decorativa montata pe suport metalic. Varianta stabila, fara fixare pe perete.
+  Campuri obligatorii: data_eveniment, locatie, culori_baloane, dimensiune
+  Campuri optionale: tematica, tip_suport
+- arcada_exterior (Arcada Exterior): Arcada de baloane special conceputa pentru evenimente in exterior. Rezistenta la vant.
+  Campuri obligatorii: data_eveniment, locatie, culori_baloane, dimensiune
+  Campuri optionale: tematica, tip_fixare
+- suport_arcada_baloane (Suport Arcada cu Baloane): Structura de suport pentru arcada de baloane. Se inchiriaza separat sau impreuna cu arcada.
+  Campuri obligatorii: data_eveniment, locatie, dimensiune_suport
+  Campuri optionale: include_baloane, tip_suport
+- cifre_volumetrice (Cifre Volumetrice): Cifre volumetrice luminoase sau decorate pentru aniversari, candy bar.
+  Campuri obligatorii: data_eveniment, locatie, cifra_dorita, culoare
+  Campuri optionale: cu_lumini, cu_baloane, dimensiune
+- mos_craciun (Mos Craciun): Vizita Mos Craciun la domiciliu, firma sau eveniment. Include costum profesional.
+  Campuri obligatorii: data_eveniment, locatie, ora_vizita, nr_copii, lista_cadouri
+  Campuri optionale: durata, cerinte_speciale
+- parfumerie (Parfumerie / Atelier Parfumuri): Atelier interactiv de creare parfumuri. Activitate creativa pentru copii sau adulti.
+  Campuri obligatorii: data_eveniment, locatie, nr_participanti, varsta_participanti
+  Campuri optionale: durata, tematica
+- gheata_carbonica (Gheata Carbonica / Efect Fum): Efect de fum greu cu gheata carbonica pentru intrari spectaculoase, dansul mirilor, etc.
+  Campuri obligatorii: data_eveniment, locatie, moment_utilizare, durata_efect
+  Campuri optionale: nr_masini_fum, interior_exterior
+=== SFARSIT CATALOG ===
+
+=== RELATIE CLIENT ===
+Client NOU — prima conversatie
+Ultima interactiune: 15.03.2026
+IMPORTANT: Daca este client recurent, saluta-l cald si scurt. Nu-l trata ca pe un lead nou. Daca are rezervare activa, verifica daca doreste modificare sau eveniment NOU — cere clarificare.
+=== SFARSIT RELATIE ===
+
+=== PLAN EVENIMENT CURENT ===
+CAMPURI LIPSA: requested_services, event_date, location, children_count_estimate, event_time, child_age, payment_method_preference, invoice_requested, advance_status
+Gata recomandare: NU
+Gata de oferta: NU
+Gata de rezervare: NU
+Completare: 10%
+IMPORTANT: Nu intreba informatii deja completate. Cere DOAR campurile lipsa. Daca planul e gata de oferta, ofera sa faci propunere.
+=== SFARSIT PLAN ===
+
+=== OBIECTIV STRATEGIC CURENT ===
+Obiectiv: qualify_lead
+Strategie de comunicare: Fii primitor și cald. Află ce servicii dorește clientul fără să îl grăbești.
+=== SFARSIT OBIECTIV STRATEGIC ===
+
+=== NEXT BEST ACTION (INSTRUCTIUNE STRICTA) ===
+Actiune ceruta: identify_service
+Instructiune: Acknowledge the user but clarify exactly which services they are interested in (e.g. animators, cotton candy, balloons).
+[PLAYBOOK OVERRIDE - TONE: enthusiastic_sales] -> Generează oferta clară și structurată. Prezintă serviciul ca fiind soluția ideală. Fii entuziast! La final, invită-i să confirme dacă sunt de acord cu detaliile sau dacă doresc să adăugăm și altceva (ex. baloane, mașină de bule). Nu cere avansul direct, cere acordul pe ofertă.
+
+CRITIC IMPORTANT: Daca exista o directiva [PLAYBOOK OVERRIDE - TONE:], ACEASTA ARE PRIORITATE ABSOLUTA. Adopta acel ton si urmeaza strategia playbook-ului. Trebuie sa raspunzi EXACT conform acestei instructiuni in campul assistant_reply. Fara abateri. Obiectivul tau curent este sa executi aceasta actiune!
+=== SFARSIT NEXT BEST ACTION ===
+
+SARCINA TA:
+1. Identifica ce SERVICII din catalogul nostru sunt cerute sau mentionate in conversatie.
+2. Pentru fiecare serviciu detectat, extrage campurile obligatorii completate sau pune null daca lipsesc.
+3. Calculeaza ce campuri lipsesc PER SERVICIU.
+4. Sugereaza cross-sell bazat pe serviciile detectate.
+5. Genereaza un raspuns sugerat care cere fix informatiile lipsa pentru serviciile detectate.
+6. Clasifica entitatea: este CLIENT final, COLABORATOR (organizeaza pentru altcineva), PARTENER/intermediar, sau NECUNOSCUT.
+7. Detecteaza obiceiuri si preferinte.
+
+Returneaza un obiect JSON STRICT conform acestui format cu 3 chei principale:
+{
+  "selected_services": ["ex: animatie", "popcorn"],  // Bazeaza-te pe CATALOGUL NOSTRU
+  "assistant_reply": "Textul exact pe care operatorul il poate trimite pe WhatsApp. Cere SPECIFIC ce lipseste. Daca locatia/serviciile sunt uzuale, confirma-le direct. Profesional, cald. Salut cu Buna!, nu Buna ziua. Max 3-4 propozitii.",
+  "tool_action": {
+    "name": "Numele actiunii din registrul de unelte",
+    "arguments": {
+      "cheie": "valoare_extrasa"
+    }
+  }
+}
+
+=== UNELTE DISPONIBILE PENTRU tool_action.name ===
+1. "reply_only": Used when the agent only needs to converse, answer questions, or ask for clarifications without modifying any database records.
+   - arguments: { "reason": "..." }
+
+2. "archive_plan": Used to softly discard an event plan because the client explicitly canceled, rejected the offer, or the conversation resulted in a dead-end.
+   - arguments: { "reason": "..." }
+
+3. "update_event_plan": Used to safely update the current Event Plan draft with newly extracted entities (date, location, packages, children count, payment details).
+   - arguments: { "tip_eveniment": "...", "data_evenimentului": "...", "ora_evenimentului": "...", "locatie_eveniment": "...", "localitate": "...", "judet": "...", "adresa_completa": "...", "interior_sau_exterior": "...", "numar_estimativ_invitati": "...", "numar_copii": "...", "nume_sarbatorit": "...", "data_nasterii_sarbatoritului": "...", "varsta_sarbatoritului": "...", "tematica_eveniment": "...", "observatii_generale": "...", "metoda_de_plata": "...", "doreste_factura": "...", "nume_facturare": "...", "firma": "...", "cui": "...", "reg_com": "...", "adresa_facturare": "...", "email_facturare": "...", "persoana_contact_facturare": "...", "telefon_facturare": "...", "personaj_dorit": "...", "numar_animatori": "...", "durata_ore": "...", "tematica_dorita": "...", "activitati_dorite": "...", "observatii_animatie": "...", "metri_liniari": "...", "model_arcada": "...", "culori_dorite": "...", "zona_amplasare": "...", "cifre_dorite": "...", "culoare_cifre": "...", "culori_arcada": "...", "tip_suport": "...", "numar_estimat_portii": "...", "acces_curent_electric": "...", "observatii_vata_de_zahar": "...", "observatii_popcorn": "...", "observatii_pachet": "..." }
+
+4. "handoff_to_operator": Used when the AI cannot satisfy the client request, encounters an aggressive objection, or the user explicitly asks for a human.
+   - arguments: { "reason": "..." }
+
+5. "generate_quote_draft": Used to actively trigger the generation of a pricing quote draft based on the current Event Plan.
+   - arguments: { "target_package": "..." }
+
+6. "confirm_booking_from_ai_plan": Used to finalize the event and dispatch it to the Core API for official booking creation. High risk.
+   - arguments: { "ai_event_plan_id": "..." }
+=== SFARSIT UNELTE ===
+[context_pack v1.1.0 | SHA:e459ba03 | prompt:2.0.0]
+
+REGULI GENERALE:
+- Alege CEA MAI BUNA UNEALTA (tool) care se potriveste intentiei curente.
+- CRITIC: Daca ultimul mesaj al clientului este DOAR un salut (ex. "Buna", "Buna seara", "Salut"), TREBUIE sa folosesti DOAR unealta "reply_only". Aceasta asigura furnizarea unui raspuns scurt si cald de deschidere.
+- Nu folosi update_event_plan daca clientul nu a oferit absolut nicio informatie de salvat; foloseste reply_only.
+- Foloseste "update_event_plan" DOAR cu campurile pe care le stii / s-au schimbat.
+- CRITIC: Cand folosesti update_event_plan, PUNE in arguments FIECARE CAMP extras din mesaj.
+  Exemplu 1: daca clientul zice "vreau pe 20 aprilie in Bucuresti", arguments TREBUIE sa contina:
+  { "data_evenimentului": "2026-04-20", "localitate": "București" }
+  Exemplu 2: daca clientul cere "arcada organica de 3 metri", extrage obligatoriu { "metri_liniari": 3, "model_arcada": "organica" }.
+  NU lasa arguments gol — daca ai ales update_event_plan, PUNE datele in arguments!
+- Formate recomandate: data_evenimentului=YYYY-MM-DD, numar_copii=numar, metoda_de_plata=text, doreste_factura=boolean. Respectă tipurile!
+REGULI DE CLARIFICARE (OBLIGATORII):
+- Daca mesajul clientului este AMBIGUU sau INCOMPLET, NU executa side effects. Foloseste "reply_only" si cere clarificare naturala.
+- Daca nu e clar daca clientul vrea eveniment NOU sau MODIFICARE la unul existent, INTREABA inainte de a executa.
+- Daca nu e clar daca vrea OFERTA sau CONFIRMARE, cere clarificare.
+- Daca mesajul este vag ("vreau si eu ceva", "muta-l pe maine", "da, e bine") si nu exista context suficient, cere detalii.
+- Daca referinta la entitate este neclara (care eveniment? care rezervare?), cere specificare.
+- NU inventa informatii. NU ghici date, locatii sau servicii. Daca nu stii, intreaba.
+- Cand ceri clarificare, fii SCURT, POLITICOS si UTIL. Exemple:
+  "Scuze, nu am inteles exact. Vrei eveniment nou sau sa modificam cel existent?"
+  "Nu mi-e clar daca vrei doar oferta sau sa confirmam rezervarea. Ce preferi?"
+  "Poti reformula putin? Vreau sa notez corect."
+  "Nu am prins exact data si ora. Mi le poti scrie complet?"
+- Preferi clarificarea in loc de executie gresita.
+- Trebuie sa raspunzi DOAR acel format JSON cu 2 randuri, nimic inainte sau dupa. 
+--- systemPrompt END ---
+
+[Pipeline] Calling LLM with 48 chars...
+[LLM] Gemini JSON failed (135ms): HTTP 400: [{
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/goog
+[LLM] Falling back to Ollama...
+[LLM] Ollama fallback also failed: fetch failed
+[Pipeline] LLM analysis completed in 140ms
+[Pipeline] LLM unreachable or returned invalid JSON for conv 97254e6b-e372-4976-a549-c30080733405. Triggering Graceful Fallback.
+[Pipeline] Sending Outbound Fallback Message to 97254e6b-e372-4976-a549-c30080733405
+[AutoSend] Network error: fetch failed
+
+--- Checking DB for output ---
+1. Outbound Messages sent to client:
+[]
+
+2. Engine Decision logs (ai_reply_decisions):
+[
+  {
+    suggested_reply: 'Sistemul meu întâmpină o întârziere momentană. Un coleg te va prelua în cel mai scurt timp pentru a te ajuta!',
+    escalation_reason: 'llm_unreachable_timeout',
+    reply_status: 'blocked'
+  }
+]
+
+=== TEST RESULTS ===
+❌ TEST FAIL: Nu s-au inregistrat rezultatele asteptate în DB.

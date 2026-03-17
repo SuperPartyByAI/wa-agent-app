@@ -1,6 +1,6 @@
 {
-  "version": "v1773603931408",
-  "loaded_at": "2026-03-15T19:45:31.408Z",
+  "version": "v1773740573021",
+  "loaded_at": "2026-03-17T09:42:53.021Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -9,7 +9,7 @@
       "query_type": "costume_query",
       "trigger_stage": "discovery",
       "trigger_conditions": {},
-      "behavior": "USE_KB",
+      "behavior": "use_kb",
       "priority": 80,
       "status": "active",
       "examples": [
@@ -22,9 +22,7 @@
       "created_by": "operator",
       "approved_by": null,
       "created_at": "2026-03-14T09:22:28.414823+00:00",
-      "updated_at": "2026-03-14T09:22:28.414823+00:00",
-      "trigger": "COSTUME_QUERY",
-      "stage": "DISCOVERY"
+      "updated_at": "2026-03-14T09:22:28.414823+00:00"
     },
     {
       "id": "4cb5c6c8-38ce-4ba3-9e73-a0a7d9b1a86a",
@@ -33,7 +31,7 @@
       "query_type": "price_question",
       "trigger_stage": "discovery",
       "trigger_conditions": {},
-      "behavior": "CLARIFY_FIRST",
+      "behavior": "clarify_first",
       "priority": 70,
       "status": "active",
       "examples": [
@@ -46,9 +44,7 @@
       "created_by": "operator",
       "approved_by": null,
       "created_at": "2026-03-14T09:22:28.414823+00:00",
-      "updated_at": "2026-03-14T09:22:28.414823+00:00",
-      "trigger": "PRICE_QUESTION",
-      "stage": "DISCOVERY"
+      "updated_at": "2026-03-14T09:22:28.414823+00:00"
     },
     {
       "id": "e115781c-03ea-410c-b2d4-0b77d2d0c089",
@@ -57,16 +53,14 @@
       "query_type": "reschedule",
       "trigger_stage": "coordination",
       "trigger_conditions": {},
-      "behavior": "CLARIFY_FIRST",
+      "behavior": "clarify_first",
       "priority": 60,
       "status": "active",
       "examples": [],
       "created_by": "operator",
       "approved_by": null,
       "created_at": "2026-03-14T09:22:28.414823+00:00",
-      "updated_at": "2026-03-14T09:22:28.414823+00:00",
-      "trigger": "RESCHEDULE",
-      "stage": "COORDINATION"
+      "updated_at": "2026-03-14T09:22:28.414823+00:00"
     },
     {
       "id": "c522fa73-82a9-4a9a-a50d-c375cc24460f",
@@ -75,26 +69,14 @@
       "query_type": "any",
       "trigger_stage": "any",
       "trigger_conditions": {},
-      "behavior": "AUTO_REPLY",
+      "behavior": "use_memory",
       "priority": 50,
       "status": "active",
       "examples": [],
       "created_by": "operator",
       "approved_by": null,
       "created_at": "2026-03-14T09:22:28.414823+00:00",
-      "updated_at": "2026-03-14T09:22:28.414823+00:00",
-      "trigger": "ANY",
-      "stage": "ANY"
-    },
-    {
-      "id": "25115f87-a35b-495c-b9d4-0d0581edfe91",
-      "name": "Complaint Handling",
-      "description": "Stop auto-reply if complaints",
-      "trigger": "COMPLAINT",
-      "stage": "ANY",
-      "behavior": "HANDOFF",
-      "priority": 100,
-      "status": "active"
+      "updated_at": "2026-03-14T09:22:28.414823+00:00"
     }
   ],
   "coverage": [
@@ -107,8 +89,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "allow_autoreply"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "6bd095bb-a4f6-408c-96c4-37e8c17a0837",
@@ -119,8 +100,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "allow_autoreply"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "dd2cef82-90b4-4145-8db2-f0e5e9051be0",
@@ -131,8 +111,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "shadow_only"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "80770944-cd27-420a-b51b-d2ce594f7676",
@@ -143,8 +122,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "shadow_only"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "9ccf30b4-3572-463c-9661-4fecab17c7ec",
@@ -155,8 +133,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "shadow_only"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "35d9ec7e-e6d8-4cdf-a8e0-b87c84495da4",
@@ -167,8 +144,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "operator_review"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "caf4f058-e659-4630-94c8-03ce33943b5d",
@@ -179,8 +155,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "operator_review"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "110443dc-6e40-4462-b3c9-e72eace5c02d",
@@ -191,8 +166,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "operator_review"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "fe778832-69d5-4afa-a5f7-cf045c89e2ce",
@@ -203,8 +177,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "blocked"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     },
     {
       "id": "5772f98a-d427-43c5-9fda-df69d074ba71",
@@ -215,8 +188,7 @@
       "conditions": {},
       "active": true,
       "updated_by": null,
-      "updated_at": "2026-03-14T09:22:03.11825+00:00",
-      "allowed_mode": "blocked"
+      "updated_at": "2026-03-14T09:22:03.11825+00:00"
     }
   ],
   "policies": [
@@ -326,41 +298,6 @@
       "policy_config": null
     },
     {
-      "id": "69fd2c80-e912-4f67-a4bd-7c01c34003c8",
-      "knowledge_key": "vata_zahar_info",
-      "category": "services",
-      "service_tags": [
-        "vata_zahar"
-      ],
-      "question_patterns": [
-        "vata de zahar",
-        "vata zahar",
-        "cotton candy",
-        "stand vata"
-      ],
-      "answer_template": "Da, avem stand de vată de zahăr! 🍭\n\nSe poate închiria separat sau ca parte dintr-un pachet complet de petrecere.\nVă putem face o ofertă personalizată.\n\nCe dată aveți în vedere și unde va fi evenimentul?",
-      "metadata": {
-        "service_type": "vata_zahar"
-      },
-      "required_context": [
-        "event_date",
-        "location"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": false,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 1,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-14T19:05:38.445+00:00",
-      "policy_config": null
-    },
-    {
       "id": "c8d1ebef-11e6-4195-bf8d-df4a688e19dc",
       "knowledge_key": "baloane_info",
       "category": "services",
@@ -397,9 +334,44 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 112,
+      "times_used": 114,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T10:51:55.148+00:00",
+      "updated_at": "2026-03-15T20:12:22.683+00:00",
+      "policy_config": null
+    },
+    {
+      "id": "69fd2c80-e912-4f67-a4bd-7c01c34003c8",
+      "knowledge_key": "vata_zahar_info",
+      "category": "services",
+      "service_tags": [
+        "vata_zahar"
+      ],
+      "question_patterns": [
+        "vata de zahar",
+        "vata zahar",
+        "cotton candy",
+        "stand vata"
+      ],
+      "answer_template": "Da, avem stand de vată de zahăr! 🍭\n\nSe poate închiria separat sau ca parte dintr-un pachet complet de petrecere.\nVă putem face o ofertă personalizată.\n\nCe dată aveți în vedere și unde va fi evenimentul?",
+      "metadata": {
+        "service_type": "vata_zahar"
+      },
+      "required_context": [
+        "event_date",
+        "location"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": false,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 1,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-14T19:05:38.445+00:00",
       "policy_config": null
     },
     {
@@ -440,9 +412,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 298,
+      "times_used": 326,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T13:45:21.251+00:00",
+      "updated_at": "2026-03-15T21:55:16.352+00:00",
       "policy_config": null
     },
     {
@@ -658,9 +630,9 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 320,
+      "times_used": 444,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T17:03:22.411+00:00",
+      "updated_at": "2026-03-16T16:12:53.567+00:00",
       "policy_config": null
     },
     {
@@ -1662,9 +1634,9 @@
       "verified_by": null,
       "valid_from": "2026-03-14T16:50:08.760045+00:00",
       "valid_until": null,
-      "times_used": 24,
+      "times_used": 41,
       "created_at": "2026-03-14T16:50:08.760045+00:00",
-      "updated_at": "2026-03-15T13:55:00.934+00:00",
+      "updated_at": "2026-03-16T16:07:42.967+00:00",
       "policy_config": {
         "label": "Animație",
         "active": true,
@@ -2039,11 +2011,11 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 678,
+      "times_used": 957,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-15T17:03:22.413+00:00",
+      "updated_at": "2026-03-17T07:35:45.603+00:00",
       "policy_config": null
     }
   ],
-  "checksum": "6efdea3d7a4b9699f0d1a4c97c514c928c22feba04a0363869bffed20d7b669b"
+  "checksum": "bca50f193fd163715a3fac09cebf182311b8f41799a0de2a355a62501b1ed3ce"
 }

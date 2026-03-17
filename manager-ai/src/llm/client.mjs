@@ -45,18 +45,41 @@ async function chatCompletion(url, headers, model, messages, options = {}) {
 }
 
 /**
- * Call Gemini API (OpenAI-compatible endpoint).
+ * Call Gemini API (Native Endpoint).
  */
 async function callGemini(systemPrompt, userMessage, options = {}) {
-    const url = `${GEMINI_BASE_URL}/chat/completions`;
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GEMINI_API_KEY}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    
+    let sysInstr = undefined;
+    if (systemPrompt) sysInstr = { role: 'system', parts: [{ text: systemPrompt }] };
+
+    const body = {
+        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        generationConfig: {
+            temperature: options.temperature ?? 0.3
+        }
     };
-    return chatCompletion(url, headers, GEMINI_MODEL, [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-    ], { ...options, timeout: GEMINI_TIMEOUT_MS });
+    if (sysInstr) body.systemInstruction = sysInstr;
+    if (options.jsonMode) body.generationConfig.responseMimeType = "application/json";
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), options.timeout || 30000);
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal
+    });
+    
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${(await response.text()).substring(0, 200)}`);
+    }
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
 }
 
 /**

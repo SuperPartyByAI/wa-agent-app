@@ -6,7 +6,8 @@ const crypto = require('crypto');
 async function sendWebhookToManagerAi(payload, attempt = 1) {
   const maxRetries = 3;
   const webhookSecret = process.env.MANAGER_AI_WEBHOOK_SECRET || 'dev-secret-123';
-  const url = process.env.MANAGER_AI_WEBHOOK_URL || 'http://91.98.16.90:3000/webhook/whts-up';
+  const url1 = process.env.MANAGER_AI_WEBHOOK_URL || 'http://localhost:3000/api/whatsapp';
+  const url2 = 'http://localhost:3005/api/ai/webhook';
   
   const bodyString = JSON.stringify(payload);
   const signature = crypto.createHmac('sha256', webhookSecret).update(bodyString).digest('hex');
@@ -15,30 +16,27 @@ async function sendWebhookToManagerAi(payload, attempt = 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
     
-    const response = await fetch(url, {
+    // Dispatch to BOTH Next.js UI Extractor and old Agent Replies Engine
+    const fetchConfig = {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'X-Hub-Signature': `sha256=${signature}`
-      },
+      headers: { 'Content-Type': 'application/json', 'X-Hub-Signature': `sha256=${signature}` },
       body: bodyString,
       signal: controller.signal
-    });
+    };
+    
+    await Promise.allSettled([
+        fetch(url1, fetchConfig).then(r => console.log(`[Webhook UI Extractor] ${url1} -> ${r.status}`)),
+        fetch(url2, fetchConfig).then(r => console.log(`[Webhook AI Reply] ${url2} -> ${r.status}`))
+    ]);
     
     clearTimeout(timeout);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    console.log(`[Webhook AI Success] Msg: ${payload.message_id} to ${url}`);
   } catch (error) {
     if (attempt < maxRetries) {
-      console.warn(`[Webhook AI Warn] Failed to send msg ${payload.message_id}, retrying ${attempt}/${maxRetries}... (${error.message})`);
+      console.warn(`[Webhook Dual Warn] Failed to send msg ${payload.message_id}, retrying ${attempt}/${maxRetries}... (${error.message})`);
       await new Promise(res => setTimeout(res, 1000 * attempt));
       await sendWebhookToManagerAi(payload, attempt + 1);
     } else {
-      console.error(`[Webhook AI Fatal] Could not send msg ${payload.message_id} after ${maxRetries} attempts: ${error.message}`);
+      console.error(`[Webhook Dual Fatal] Could not send msg ${payload.message_id} after ${maxRetries} attempts: ${error.message}`);
     }
   }
 }

@@ -82,18 +82,17 @@ async function createSupabaseData(testPayload) {
 }
 
 async function fetchReply(convId) {
-    // Wait for the webhook to process and Supabase to persist the outbound message
-    await new Promise(resolve => setTimeout(resolve, 15000));
+    // Wait for the webhook to process (15s minimum for Debounce + 10s for LLM processing)
+    await new Promise(resolve => setTimeout(resolve, 35000));
     
-    const { data } = await supabase.from('messages')
+    const { data } = await supabase.from('ai_reply_decisions')
         .select('*')
         .eq('conversation_id', convId)
-        .eq('sender_type', 'agent')
         .order('created_at', { ascending: false })
         .limit(1);
 
     if (data && data.length > 0) {
-        console.log(`[🤖 AI REPLY]: ${data[0].content}`);
+        console.log(`[🤖 AI REPLY]: ${data[0].suggested_reply}`);
     } else {
         console.log(`[❌ NO REPLY FOUND]`);
     }

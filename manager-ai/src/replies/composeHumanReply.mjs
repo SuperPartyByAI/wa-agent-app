@@ -21,7 +21,8 @@ export async function composeHumanReply({
     progression,
     kbGrounding,
     learnedContext,
-    latestQuote
+    latestQuote,
+    nextBestActionGoal
 }) {
     const draftReply = analysis.suggested_reply || 'Nu am putut genera un raspuns.';
 
@@ -42,7 +43,8 @@ export async function composeHumanReply({
         salesCycle,
         replyStyle,
         draftReply,
-        progression
+        progression,
+        nextBestActionGoal
     });
 
     // When KB grounding is active, override the system prompt to allow using KB data

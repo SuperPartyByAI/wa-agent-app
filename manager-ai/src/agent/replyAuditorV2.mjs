@@ -18,7 +18,12 @@ export async function auditReplyV2(context) {
 
     const safeDraft = draft ? JSON.stringify(draft) : '{}';
     const serviceContext = activeService && catalog.services[activeService] ? catalog.services[activeService] : null;
-    const allowedPriceInfo = serviceContext ? JSON.stringify(serviceContext.base_pricing) : 'Niciun preț sau serviciu fixat momentan.';
+    let allowedPriceInfo = serviceContext ? JSON.stringify(serviceContext.base_pricing) : 'Niciun preț sau serviciu fixat momentan.';
+
+    if (context.kbContext) {
+        const kbText = typeof context.kbContext === 'object' ? JSON.stringify(context.kbContext.factualAnswer || context.kbContext) : context.kbContext;
+        allowedPriceInfo += `\n\n[INFORMAȚII OFICIALE DIN BAZA DE CUNOȘTINȚE (KB Grounding)]\nAceste date SUNT CORECTE și aprobate a fi oferite clientului:\n${kbText}`;
+    }
 
     const systemPrompt = `
 Ești un Auditor Strict de Siguranță AI pentru un agent de vânzări (Superparty).
@@ -34,9 +39,9 @@ CONTEXT CURENT AL LEAD-ULUI:
 - Acțiune Generică Setată V1: ${nextBestAction}
 
 REGULI CRITICE (TOLERANȚĂ ZERO):
-1. INVENTARE PREȚURI: Dacă mesajul menționează un preț clar (ex. 500 RON, 400 lei) sau face o "ofertă", acesta TREBUIE să fie justificat fie de 'Costuri Oficiale', fie de cantitățile din Party Draft. Nu are voie să inventeze reduceri (ex. '10% discount'). 
-2. INVENTARE SERVICII: Nu promite servicii inexistente, gratuități inventate, sau disponibilitate garantată (se folosesc formule ca "verific disponibilitatea", "suntem liberi de principiu", nu "gata, am rezervat", dacă draft-ul e imatur).
-3. IGNORARE DATE LIPSĂ: Dacă se observă o tentativă clară de a ignora lipsa de date esențiale oferind un preț din imaginație, pici auditul.
+1. INVENTARE PREȚURI: Dacă mesajul menționează un preț clar (ex. 500 RON, 400 lei) sau face o "ofertă", acesta TREBUIE să fie justificat fie de 'Costuri Oficiale', fie de 'INFORMAȚII OFICIALE DIN KB'. Nu are voie să inventeze reduceri (ex. '10% discount'). 
+2. INVENTARE SERVICII: Nu promite servicii inexistente, gratuități inventate, sau disponibilitate garantată fără a verifica.
+3. INCOMPATIBILITATE ACȚIUNE: Dacă acțiunea setată e 'ask_missing_fields', AI-ul are voie să prezinte scurt prețurile DIN CATALOG/KB și apoi SĂ PUNĂ ÎNTREBĂRILE pentru datele lipsă. Nu respinge mesajul doar pentru că a dat un preț de plecare înainte să ceară date.
 4. TON EXTREM SAU NEPOLITICOS: Trebuie să fie cald, politicos.
 
 TREBUIE să returnezi STRICT un obiect JSON (fără alte explicații Markdown):

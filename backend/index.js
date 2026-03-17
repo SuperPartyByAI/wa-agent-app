@@ -52,7 +52,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3002;
 const API_KEY = process.env.API_KEY || "SECRET_TOKEN_CHANGE_ME";
 
 const requireApiKey = (req, res, next) => {
@@ -555,6 +555,7 @@ app.get("/health", (req, res) => {
   });
 });
 
+console.log("!!! TARGET PORT IS: ", PORT);
 app.listen(PORT, () => {
   console.log(`Baileys Node Engine running securely on port ${PORT}`);
   console.log(

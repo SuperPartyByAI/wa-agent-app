@@ -7,6 +7,20 @@ import { getRequirementsForRoles } from './partyFieldRegistry.mjs';
  * and Level 2 (Booking) readiness, based on the current Event Dossier state.
  */
 export function computeMissingPartyFields(partyDraft, activeRoleKeys = []) {
+    // Null safety: if partyDraft is null/undefined (legacy table missing), return safe defaults
+    if (!partyDraft) {
+        const reqs = getRequirementsForRoles(activeRoleKeys);
+        return {
+            missingForQuote: reqs.level1_quote || [],
+            missingForBooking: [...new Set([...(reqs.level1_quote || []), ...(reqs.level2_booking || [])])],
+            isReadyForQuote: false,
+            isReadyForBooking: false,
+            allowedOptionals: reqs.optionals || [],
+            readyForQuote: false,
+            missing: reqs.level1_quote || [],
+            nextFieldToAsk: reqs.recommendedOrder?.[0] || reqs.level1_quote?.[0] || null
+        };
+    }
     const reqs = getRequirementsForRoles(activeRoleKeys);
     
     const missingForQuote = [];

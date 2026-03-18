@@ -115,28 +115,32 @@ app.post('/webhook/whts-up', async (req, res) => {
 
                 // Trimitem răspunsul pe WhatsApp sau în Simulator
                 if (result.reply) {
+                    // ÎNTOTDEAUNA salvăm în Simulator (Shadow Chat) pentru a avea istoricul AI vizibil în Dashboard
+                    const clientRecordTime = new Date().toISOString();
+                    const aiRecordTime = new Date(new Date().getTime() + 1000).toISOString();
+                    
+                    await supabase.from('ai_training_messages').insert([
+                        {
+                            conversation_id: entry.conversation_id,
+                            sender_type: 'client',
+                            content: combinedMessage,
+                            created_at: clientRecordTime
+                        },
+                        {
+                            conversation_id: entry.conversation_id,
+                            sender_type: 'ai',
+                            content: result.reply,
+                            created_at: aiRecordTime
+                        }
+                    ]);
+                    
                     if (isAiLive) {
+                        // AI-ul este ON -> Trimite și clientului pe WhatsApp
+                        console.log(`[Pipeline] 🟢 AI Activ. Trimit pe WhatsApp.`);
                         await sendWhatsAppReply(entry.conversation_id, result.reply);
                     } else {
-                        // Shadow Simulator Mode (AI is toggled OFF from Live WhatsApp)
-                        const clientRecordTime = new Date().toISOString();
-                        const aiRecordTime = new Date(new Date().getTime() + 1000).toISOString();
-                        
-                        await supabase.from('ai_training_messages').insert([
-                            {
-                                conversation_id: entry.conversation_id,
-                                sender_type: 'client',
-                                content: combinedMessage,
-                                created_at: clientRecordTime
-                            },
-                            {
-                                conversation_id: entry.conversation_id,
-                                sender_type: 'ai',
-                                content: result.reply,
-                                created_at: aiRecordTime
-                            }
-                        ]);
-                        console.log(`[Simulator] 🛑 WhatsApp Oprit. Răspuns deviat în Shadow Chat pentru conv ${entry.conversation_id}`);
+                        // AI-ul este OFF -> Doar Simulator
+                        console.log(`[Simulator] 🛑 WhatsApp Oprit. Răspuns salvat exclusiv în Shadow Chat pentru conv ${entry.conversation_id}`);
                     }
                 }
             } catch (err) {

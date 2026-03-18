@@ -505,7 +505,7 @@ async function startSyncDaemon() {
                 .from('conversations')
                 .select('id')
                 .order('updated_at', { ascending: false })
-                .limit(50);
+                .limit(500);
                 
             if (listErr) {
                 console.error("[AI Worker Sync] Failed to scan conversations table:", listErr.message);

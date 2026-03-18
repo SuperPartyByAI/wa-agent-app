@@ -492,3 +492,39 @@ export async function processConversation(conversation_id, message_id = null, op
         console.error(`[AI Worker] Critical failure:`, error);
     }
 }
+
+// ─────────────────────────────────────────
+// 🚀 PRODUCTION BACKGROUND DAEMON (10s Polling)
+// ─────────────────────────────────────────
+async function startSyncDaemon() {
+    console.log("[AI Worker Sync] Starting infinite Vertex AI Sandbox backfill loop...");
+    while (true) {
+        try {
+            // Scan the 50 most recently active conversations
+            const { data: convs, error: listErr } = await supabase
+                .from('conversations')
+                .select('id')
+                .order('updated_at', { ascending: false })
+                .limit(50);
+                
+            if (listErr) {
+                console.error("[AI Worker Sync] Failed to scan conversations table:", listErr.message);
+            } else if (convs) {
+                for (const c of convs) {
+                    await processConversation(c.id);
+                }
+            }
+        } catch (e) {
+            console.error("[AI Worker Sync] Global daemon error:", e.message);
+        }
+        
+        // Rest for 10 seconds before the next sweep
+        await new Promise(resolve => setTimeout(resolve, 10000));
+    }
+}
+
+// Instantiate the loop if the script is run natively by PM2
+import { fileURLToPath } from 'url';
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    startSyncDaemon();
+}

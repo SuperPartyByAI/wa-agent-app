@@ -104,9 +104,40 @@ app.post('/webhook/whts-up', async (req, res) => {
                     console.log(`[Pipeline] 🔧 Funcție executată: ${result.functionCall.name}`);
                 }
                 
-                // Trimitem răspunsul pe WhatsApp
+                // Verificăm state-ul din panoul UI (ai_enabled)
+                let isAiLive = true;
+                if (vertexDb) {
+                    const { data: cfg } = await vertexDb.from('vertex_config').select('config_value').eq('config_key', 'ai_enabled').single();
+                    if (cfg && cfg.config_value === 'false') {
+                        isAiLive = false;
+                    }
+                }
+
+                // Trimitem răspunsul pe WhatsApp sau în Simulator
                 if (result.reply) {
-                    await sendWhatsAppReply(entry.conversation_id, result.reply);
+                    if (isAiLive) {
+                        await sendWhatsAppReply(entry.conversation_id, result.reply);
+                    } else {
+                        // Shadow Simulator Mode (AI is toggled OFF from Live WhatsApp)
+                        const clientRecordTime = new Date().toISOString();
+                        const aiRecordTime = new Date(new Date().getTime() + 1000).toISOString();
+                        
+                        await supabase.from('ai_training_messages').insert([
+                            {
+                                conversation_id: entry.conversation_id,
+                                sender_type: 'client',
+                                content: combinedMessage,
+                                created_at: clientRecordTime
+                            },
+                            {
+                                conversation_id: entry.conversation_id,
+                                sender_type: 'ai',
+                                content: result.reply,
+                                created_at: aiRecordTime
+                            }
+                        ]);
+                        console.log(`[Simulator] 🛑 WhatsApp Oprit. Răspuns deviat în Shadow Chat pentru conv ${entry.conversation_id}`);
+                    }
                 }
             } catch (err) {
                 console.error(`[Pipeline] ❌ Eroare:`, err.message);

@@ -7,15 +7,11 @@ dotenv.config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// LLM config — Gemini 2.0 Flash Lite
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-let LLM_MODEL = 'gemini-2.0-flash-lite';
+// LLM config — Gemini 2.5 Flash
+const GEMINI_API_KEY = process.env.VERTEX_AI_API_KEY || process.env.GEMINI_API_KEY;
+let LLM_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
-// STRICT SECURITY POLICY
-if (LLM_MODEL !== 'gemini-2.0-flash-lite') {
-    console.error("CRITICAL ERROR: DOAR gemini-2.0-flash-lite ESTE PERMIS IN APLICATIE!");
-    process.exit(1); 
-}
+// Removed strict model check to allow newer models to run seamlessly.
 
 // Safety switch — AI auto-reply kill switch
 const AI_AUTOREPLY_ENABLED = process.env.AI_AUTOREPLY_ENABLED === 'true';
@@ -279,150 +275,175 @@ export async function processConversation(conversation_id, message_id = null, op
     console.log(`[AI Worker] Starting text-understanding pipeline for ${conversation_id}...`);
 
     try {
-        // 1. Fetch conversation history
-        const { data: messages, error: msgErr } = await supabase
+        // 1. Fetch REAL client messages (chronological)
+        const { data: realMessages, error: realErr } = await supabase
             .from('messages')
             .select('content, direction, created_at, sender_type')
             .eq('conversation_id', conversation_id)
-            .order('created_at', { ascending: false })
-            .limit(50);
+            .eq('sender_type', 'client')
+            .order('created_at', { ascending: true });
 
-        if (msgErr) throw new Error(`Failed to fetch messages: ${msgErr.message}`);
-        if (!messages || messages.length === 0) return;
+        if (realErr) throw new Error(`Failed to fetch real client messages: ${realErr.message}`);
+        
+        // 2. Fetch SHADOW messages
+        const { data: shadowMessages, error: shadowErr } = await supabase
+            .from('ai_training_messages')
+            .select('content, sender_type, created_at')
+            .eq('conversation_id', conversation_id)
+            .order('created_at', { ascending: true });
 
-        const transcript = messages.reverse().map(m => 
-            `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
-        ).join('\n');
+        if (shadowErr) throw new Error(`Failed to fetch shadow messages: ${shadowErr.message}`);
 
-        // Build user message with optional operator prompt
-        let userMessage = `--- CONVERSATIE ---\n${transcript}`;
-        if (operator_prompt) {
-            userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
+        const shadowClientCount = shadowMessages ? shadowMessages.filter(m => m.sender_type === 'client').length : 0;
+        const realClientCount = realMessages ? realMessages.length : 0;
+        
+        let currentShadow = [...(shadowMessages || [])];
+        const missingClientMessages = realClientCount > shadowClientCount ? realMessages.slice(shadowClientCount) : [];
+        
+        if (missingClientMessages.length === 0) {
+            console.log(`[AI Worker] No unsimulated real client messages found for ${conversation_id}.`);
+            return;
         }
 
-        // 2. Call local LLM
-        console.log(`[AI Worker] Calling local LLM (${LLM_MODEL}) with transcript (${transcript.length} chars)${operator_prompt ? ' + operator prompt' : ''}...`);
-        
-        let analysis = await callLocalLLM(SYSTEM_PROMPT, userMessage);
-        
-        if (!analysis) {
-            console.warn(`[AI Worker] Local LLM unreachable. Using mock fallback.`);
-            analysis = {
-                client_memory: { priority_level: "normal", internal_notes_summary: "MOCK: Client interesat de organizare eveniment." },
-                event_draft: { draft_type: "petrecere_standard", structured_data: { location: null, date: null, event_type: null }, missing_fields: ["toate detaliile"] },
-                selected_services: [],
-                service_requirements: {},
-                missing_fields_per_service: {},
-                cross_sell_opportunities: [],
-                conversation_state: { current_intent: "MOCK: solicita informatii", next_best_action: "Trimite pachetele disponibile." },
-                suggested_reply: "Buna! Multumim pentru interesul acordat! Va putem oferi mai multe detalii despre pachetele noastre. Ce tip de eveniment planificati?",
-                decision: { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: "lead" }
+        console.log(`[AI Worker] Found ${missingClientMessages.length} unsimulated messages. Starting step-by-step shadow iteration.`);
+
+        // Iterate over each individual unsimulated client message chronologically
+        for (const msg of missingClientMessages) {
+            console.log(`[AI Worker] Simulating step for client message: "${msg.content.substring(0, 30)}..."`);
+            
+            // 1. Add current client msg to shadow memory trace
+            const newShadow = {
+                conversation_id,
+                sender_type: 'client',
+                content: msg.content,
+                created_at: msg.created_at
             };
-        }
+            const { error: insErr } = await supabase.from('ai_training_messages').insert(newShadow);
+            if (insErr) console.error("[AI Worker] Failed to copy real msg to shadow:", insErr.message);
+            currentShadow.push(newShadow);
 
-        // 3. Post-process services using catalog
-        const serviceData = postProcessServices(analysis);
-        
-        const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
-        const suggestedReply = analysis.suggested_reply || analysis.conversation_state?.next_best_action || 'Nu am putut genera un raspuns.';
-        
-        // Ensure sub-objects exist with defaults
-        const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: 'Nu s-a putut analiza.' };
-        const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: { location: null, date: null, event_type: null }, missing_fields: [] };
-        const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
+            // 2. Build the transcript up to this exact point
+            const transcript = currentShadow.map(m => 
+                `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'ai' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
+            ).join('\n');
 
-        // Force human review if catalog says so
-        if (serviceData.should_force_review) {
-            decision.needs_human_review = true;
-            decision.can_auto_reply = false;
-        }
-
-        console.log(`[AI Worker] Analysis complete. Services: [${serviceData.selected_services.join(', ')}], Missing per service: ${JSON.stringify(serviceData.missing_fields_per_service)}, Cross-sell: [${serviceData.cross_sell_opportunities.join(', ')}], Decision: auto=${decision.can_auto_reply}, review=${decision.needs_human_review}, confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
-
-        // 4. Upsert State into AI Core Tables
-        const { data: conv } = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
-        const clientId = conv?.client_id;
-
-        if (clientId) {
-            const { error: err1 } = await supabase.from('ai_client_memory').upsert({
-                client_id: clientId,
-                priority_level: clientMemory.priority_level,
-                internal_notes_summary: clientMemory.internal_notes_summary,
-                updated_at: new Date().toISOString()
-            });
-            if (err1) console.error("[AI Worker] DB Error memory:", err1.message);
-        }
-
-        const { data: existingDraft } = await supabase.from('ai_event_drafts').select('id').eq('conversation_id', conversation_id).maybeSingle();
-        
-        let err2 = null;
-        if (existingDraft) {
-             const { error } = await supabase.from('ai_event_drafts').update({
-                client_id: clientId,
-                draft_type: eventDraft.draft_type,
-                structured_data_json: eventDraft.structured_data,
-                missing_fields_json: eventDraft.missing_fields,
-                updated_at: new Date().toISOString()
-            }).eq('id', existingDraft.id);
-            err2 = error;
-        } else {
-             const { error } = await supabase.from('ai_event_drafts').insert({
-                conversation_id: conversation_id,
-                client_id: clientId,
-                draft_type: eventDraft.draft_type,
-                structured_data_json: eventDraft.structured_data,
-                missing_fields_json: eventDraft.missing_fields,
-                updated_at: new Date().toISOString()
-            });
-            err2 = error;
-        }
-        if (err2) console.error("[AI Worker] DB Error drafts:", err2.message);
-
-        const statePayload = {
-            conversation_id: conversation_id,
-            current_intent: convState.current_intent,
-            next_best_action: convState.next_best_action,
-            updated_at: new Date().toISOString()
-        };
-        
-        if (message_id) {
-            statePayload.last_processed_message_id = message_id;
-        }
-
-        const { error: err3 } = await supabase.from('ai_conversation_state').upsert(statePayload);
-        if (err3) console.error("[AI Worker] DB Error state:", err3.message);
-
-        // 5. Save AI reply decision (audit trail)
-        let replyStatus = 'pending';
-        let sentBy = 'pending';
-        let sentAt = null;
-
-        if (AI_AUTOREPLY_ENABLED && decision.can_auto_reply && !decision.needs_human_review && decision.confidence_score >= 75) {
-            console.log(`[AI Worker] Auto-reply conditions met (confidence=${decision.confidence_score}). Sending...`);
-            const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
-            if (sent) {
-                replyStatus = 'sent';
-                sentBy = 'ai';
-                sentAt = new Date().toISOString();
+            let userMessage = `--- CONVERSATIE ---\n${transcript}`;
+            if (operator_prompt) {
+                userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
             }
-        } else if (decision.escalation_reason) {
-            console.log(`[AI Worker] Escalation: ${decision.escalation_reason}`);
-        }
 
-        const { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
-            conversation_id: conversation_id,
-            suggested_reply: suggestedReply,
-            can_auto_reply: decision.can_auto_reply,
-            needs_human_review: decision.needs_human_review,
-            escalation_reason: decision.escalation_reason || null,
-            confidence_score: decision.confidence_score,
-            conversation_stage: decision.conversation_stage,
-            reply_status: replyStatus,
-            sent_by: sentBy,
-            sent_at: sentAt,
-            operator_prompt: operator_prompt || null
-        });
-        if (errDecision) console.error("[AI Worker] DB Error reply_decisions:", errDecision.message);
+            // 3. Call local LLM for this specific step in history
+            console.log(`[AI Worker] Calling local LLM (${LLM_MODEL}) for this step (${transcript.length} chars)...`);
+            
+            let analysis = await callLocalLLM(SYSTEM_PROMPT, userMessage);
+            
+            if (!analysis) {
+                console.warn(`[AI Worker] Local LLM unreachable. Using mock fallback.`);
+                analysis = {
+                    client_memory: { priority_level: "normal", internal_notes_summary: "MOCK: Client interesat." },
+                    event_draft: { draft_type: "petrecere_standard", structured_data: { location: null, date: null, event_type: null }, missing_fields: [] },
+                    selected_services: [],
+                    service_requirements: {},
+                    missing_fields_per_service: {},
+                    cross_sell_opportunities: [],
+                    conversation_state: { current_intent: "MOCK", next_best_action: "Fallback" },
+                    suggested_reply: "Nu putem viziona in acest moment.",
+                    decision: { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: "lead" }
+                };
+            }
+
+            // 4. Post-process services using catalog
+            const serviceData = postProcessServices(analysis);
+            
+            const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
+            const suggestedReply = analysis.suggested_reply || analysis.conversation_state?.next_best_action || 'Nu am putut genera un raspuns.';
+            
+            const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: 'Nu s-a putut analiza.' };
+            const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: { location: null, date: null, event_type: null }, missing_fields: [] };
+            const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
+
+            if (serviceData.should_force_review) {
+                decision.needs_human_review = true;
+                decision.can_auto_reply = false;
+            }
+
+            // 5. Upsert State into AI Core Tables for this step
+            const { data: conv } = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
+            const clientId = conv?.client_id;
+
+            if (clientId) {
+                const { error: err1 } = await supabase.from('ai_client_memory').upsert({
+                    client_id: clientId,
+                    priority_level: clientMemory.priority_level,
+                    internal_notes_summary: clientMemory.internal_notes_summary,
+                    updated_at: new Date().toISOString()
+                });
+                if (err1) console.error("[AI Worker] DB Error memory:", err1.message);
+            }
+
+            const { data: existingDraft } = await supabase.from('ai_event_drafts').select('id').eq('conversation_id', conversation_id).maybeSingle();
+            
+            if (existingDraft) {
+                 await supabase.from('ai_event_drafts').update({
+                    client_id: clientId, draft_type: eventDraft.draft_type, structured_data_json: eventDraft.structured_data, missing_fields_json: eventDraft.missing_fields, updated_at: new Date().toISOString()
+                }).eq('id', existingDraft.id);
+            } else {
+                 await supabase.from('ai_event_drafts').insert({
+                    conversation_id: conversation_id, client_id: clientId, draft_type: eventDraft.draft_type, structured_data_json: eventDraft.structured_data, missing_fields_json: eventDraft.missing_fields, updated_at: new Date().toISOString()
+                });
+            }
+
+            const statePayload = {
+                conversation_id: conversation_id, current_intent: convState.current_intent, next_best_action: convState.next_best_action, updated_at: new Date().toISOString()
+            };
+            if (message_id) statePayload.last_processed_message_id = message_id;
+            await supabase.from('ai_conversation_state').upsert(statePayload);
+
+            // 6. Save AI reply decision (audit trail)
+            let replyStatus = 'pending';
+            let sentBy = 'pending';
+            let sentAt = null;
+
+            // Only auto-reply on the FINAL missing message if real-time
+            const isLastMsgInBatch = msg.id === missingClientMessages[missingClientMessages.length - 1].id;
+            
+            if (isLastMsgInBatch && AI_AUTOREPLY_ENABLED && decision.can_auto_reply && !decision.needs_human_review && decision.confidence_score >= 75) {
+                console.log(`[AI Worker] Auto-reply conditions met. Sending...`);
+                const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
+                if (sent) { replyStatus = 'sent'; sentBy = 'ai'; sentAt = new Date().toISOString(); }
+            }
+
+            const { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
+                conversation_id: conversation_id,
+                suggested_reply: suggestedReply,
+                can_auto_reply: decision.can_auto_reply,
+                needs_human_review: decision.needs_human_review,
+                escalation_reason: decision.escalation_reason || null,
+                confidence_score: decision.confidence_score,
+                conversation_stage: decision.conversation_stage,
+                reply_status: replyStatus,
+                sent_by: sentBy,
+                sent_at: sentAt,
+                operator_prompt: operator_prompt || null
+            });
+            if (errDecision) console.error("[AI Worker] DB Error reply_decisions:", errDecision.message);
+
+            // 7. Append AI response to shadow memory so the NEXT step sees it!
+            const aiRecordTime = new Date(new Date(msg.created_at).getTime() + 1000).toISOString();
+            const aiShadowMsg = {
+                conversation_id: conversation_id,
+                sender_type: 'ai',
+                content: suggestedReply,
+                created_at: aiRecordTime
+            };
+            const { error: shadowAiErr } = await supabase.from('ai_training_messages').insert(aiShadowMsg);
+            if (shadowAiErr) console.error("[AI Worker] DB Error shadow ai msg:", shadowAiErr.message);
+            
+            currentShadow.push({
+                ...aiShadowMsg,
+                created_at: new Date().toISOString()
+            });
+        }
 
         // 6. Generate service-aware dynamic layout JSON for Android
         const escalationBadge = decision.escalation_reason ? `Escaladare: ${decision.escalation_reason}` : null;

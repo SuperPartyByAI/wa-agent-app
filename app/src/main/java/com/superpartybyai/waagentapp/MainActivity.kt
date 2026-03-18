@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
 
     // Expected SHA-256 of the signing certificate
     // Update this when switching to release signing key!
-    private val EXPECTED_SIGNING_HASH = "9DBB82076709399D666F4C05B58C5FB8E5819BC958E9122B573E79E8AE2225109"
+    private val EXPECTED_SIGNING_HASH = "2C3EF03985C89F96962E49629CBC76AFAFAF2151EB87699FAF4200242EDF78EC"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -124,51 +124,51 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
 
-/**
- * Check KYC status after login:
- * - If user is admin (superpartybyai@gmail.com) → go to "main" directly
- * - If employee_profiles.status == "approved" → "main"
- * - If employee_profiles.status == "pending" → "pending"
- * - If no profile exists → "onboarding"
- */
-private suspend fun checkKycStatus(): String {
-    return try {
-        val client = SupabaseClient.client
-        val userId = client.auth.currentUserOrNull()?.id ?: return "onboarding"
-        val email = client.auth.currentUserOrNull()?.email ?: ""
+    /**
+     * Check KYC status after login:
+     * - If user is admin (superpartybyai@gmail.com) → go to "main" directly
+     * - If employee_profiles.status == "approved" → "main"
+     * - If employee_profiles.status == "pending" → "pending"
+     * - If no profile exists → "onboarding"
+     */
+    private suspend fun checkKycStatus(): String {
+        return try {
+            val client = SupabaseClient.client
+            val userId = client.auth.currentUserOrNull()?.id ?: return "onboarding"
+            val email = client.auth.currentUserOrNull()?.email ?: ""
 
-        // Admin bypass
-        if (email == "superpartybyai@gmail.com") {
-            Log.d("KYC", "Admin detected, skipping KYC")
-            return "main"
-        }
-
-        // Check employee profile
-        val result = client.postgrest.from("employee_profiles")
-            .select {
-                filter { eq("user_id", userId) }
+            // Admin bypass
+            if (email == "superpartybyai@gmail.com") {
+                Log.d("KYC", "Admin detected, skipping KYC")
+                return "main"
             }
-            .decodeList<Map<String, Any?>>()
 
-        if (result.isEmpty()) {
-            Log.d("KYC", "No profile found, starting onboarding")
-            "onboarding"
-        } else {
-            val status = result[0]["status"]?.toString() ?: "pending"
-            Log.d("KYC", "Profile found, status: $status")
-            when (status) {
-                "approved" -> "main"
-                "rejected" -> "onboarding" // Let them retry
-                else -> "pending"
+            Log.d("KYC", "Checking KYC for user: $userId")
+            // Check employee profile
+            val result = client.postgrest.from("employee_profiles")
+                .select {
+                    filter { eq("user_id", userId) }
+                }
+                .decodeList<Map<String, Any?>>()
+
+            if (result.isEmpty()) {
+                Log.d("KYC", "No profile found, starting onboarding")
+                "onboarding"
+            } else {
+                val status = result[0]["status"]?.toString() ?: "pending"
+                Log.d("KYC", "Profile found, status: $status")
+                when (status) {
+                    "approved" -> "main"
+                    "rejected" -> "onboarding" // Let them retry
+                    else -> "pending"
+                }
             }
+        } catch (e: Exception) {
+            Log.e("KYC", "Error checking KYC status", e)
+            "onboarding" // Default to onboarding if error
         }
-    } catch (e: Exception) {
-        Log.e("KYC", "Error checking KYC status", e)
-        "onboarding" // Default to onboarding if error
     }
-}
 
     /**
      * Verify the APK is signed with the expected certificate.

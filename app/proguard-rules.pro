@@ -35,3 +35,14 @@
 -keep class okhttp3.** { *; }
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# R8 missing classes fix (Android doesn't have java.management)
+-dontwarn java.lang.management.**
+-dontwarn org.slf4j.**
+
+# Ktor/Supabase serialization
+-keep class io.ktor.serialization.** { *; }
+-keepclassmembers class * {
+    @io.ktor.util.KtorDsl *;
+}
+

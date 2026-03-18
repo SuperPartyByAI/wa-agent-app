@@ -9,7 +9,13 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 // LLM config — Gemini 2.0 Flash Lite
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const LLM_MODEL = 'gemini-2.0-flash-lite';
+let LLM_MODEL = 'gemini-2.0-flash-lite';
+
+// STRICT SECURITY POLICY
+if (LLM_MODEL !== 'gemini-2.0-flash-lite') {
+    console.error("CRITICAL ERROR: DOAR gemini-2.0-flash-lite ESTE PERMIS IN APLICATIE!");
+    process.exit(1); 
+}
 
 // Safety switch — AI auto-reply kill switch
 const AI_AUTOREPLY_ENABLED = process.env.AI_AUTOREPLY_ENABLED === 'true';

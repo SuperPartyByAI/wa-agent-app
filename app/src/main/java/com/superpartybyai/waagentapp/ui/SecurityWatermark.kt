@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.superpartybyai.core.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -23,33 +24,48 @@ import java.util.*
  */
 @Composable
 fun SecurityWatermark(content: @Composable () -> Unit) {
-    val email = remember {
-        SupabaseClient.client.auth.currentUserOrNull()?.email ?: "unknown"
+    // Reactively check for user email (updates after login)
+    var email by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        // Poll until user is logged in (max 30 seconds)
+        repeat(30) {
+            val user = SupabaseClient.client.auth.currentUserOrNull()
+            if (user?.email != null) {
+                email = user.email!!
+                return@LaunchedEffect
+            }
+            delay(1000)
+        }
     }
+
+    // Don't show watermark until user is logged in
     val shortId = remember(email) {
-        email.substringBefore("@").take(15).uppercase()
+        if (email.isNotEmpty()) email.substringBefore("@").take(15).uppercase() else ""
     }
     val timestamp = remember {
         SimpleDateFormat("dd.MM.yy HH:mm", Locale.getDefault()).format(Date())
     }
-    val watermarkText = "$shortId • $timestamp"
 
     Box(modifier = Modifier.fillMaxSize()) {
         content()
 
-        // Diagonal watermark grid
-        for (row in 0..5) {
-            for (col in -1..2) {
-                Text(
-                    text = watermarkText,
-                    color = Color.White.copy(alpha = 0.07f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .offset(x = (col * 180 + row * 40).dp, y = (row * 130).dp)
-                        .rotate(-30f),
-                    maxLines = 1
-                )
+        // Only show watermark when user is identified
+        if (shortId.isNotEmpty()) {
+            val watermarkText = "$shortId • $timestamp"
+            for (row in 0..5) {
+                for (col in -1..2) {
+                    Text(
+                        text = watermarkText,
+                        color = Color.White.copy(alpha = 0.06f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .offset(x = (col * 180 + row * 40).dp, y = (row * 130).dp)
+                            .rotate(-30f),
+                        maxLines = 1
+                    )
+                }
             }
         }
     }

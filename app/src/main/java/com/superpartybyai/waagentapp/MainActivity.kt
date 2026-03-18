@@ -57,7 +57,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             SuperpartyTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    SecurityWatermark {
                     val navController = rememberNavController()
 
                     NavHost(navController = navController, startDestination = "login") {
@@ -128,7 +127,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
-                    } // SecurityWatermark
+
                 }
             }
         }

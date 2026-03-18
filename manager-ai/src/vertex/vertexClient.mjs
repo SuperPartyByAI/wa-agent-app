@@ -19,7 +19,11 @@ dotenv.config();
 const VERTEX_API_KEY = process.env.VERTEX_AI_API_KEY;
 const VERTEX_PROJECT = process.env.VERTEX_AI_PROJECT || 'superparty-vertex-ai';
 const VERTEX_LOCATION = process.env.VERTEX_AI_LOCATION || 'us-central1';
-const VERTEX_MODEL = process.env.VERTEX_AI_MODEL || 'gemini-2.5-flash-lite';
+const VERTEX_MODEL = 'gemini-2.0-flash-lite';
+if (VERTEX_MODEL !== 'gemini-2.0-flash-lite') {
+    console.error("CRITICAL ERROR: DOAR gemini-2.0-flash-lite ESTE PERMIS IN APLICATIE!");
+    process.exit(1);
+}
 
 // Supabase dedicat pt Vertex AI
 const VERTEX_SUPABASE_URL = process.env.VERTEX_SUPABASE_URL;

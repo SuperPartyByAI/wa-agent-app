@@ -53,7 +53,7 @@ fun ContractScreen(onContractSigned: (Bitmap) -> Unit) {
                 )
                 // Progress bar
                 LinearProgressIndicator(
-                    progress = { 0.25f },
+                    progress = 0.25f,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)

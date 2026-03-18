@@ -36,6 +36,8 @@ dependencies {
     implementation("androidx.camera:camera-view:1.3.1")
     // ML Kit Face Detection
     implementation("com.google.mlkit:face-detection:16.1.6")
+    // Coroutines Play Services (for Task.await())
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     // Supabase Storage (for uploads)
     implementation("io.github.jan-tennert.supabase:storage-kt:2.2.3")
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.2.3")

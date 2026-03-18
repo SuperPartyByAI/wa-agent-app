@@ -83,14 +83,7 @@ val SuperpartyDarkColorScheme = darkColorScheme(
     errorContainer      = Color(0xFF3B1111),
     onErrorContainer    = Color(0xFFFCA5A5),
 
-    // Navigation surfaces
-    surfaceBright       = SurfaceBright,
-    surfaceContainer    = Surface,
-    surfaceContainerHigh = SurfaceVariant,
-    surfaceContainerHighest = SurfaceBright,
-    surfaceContainerLow = Background,
-    surfaceContainerLowest = Background,
-    surfaceDim          = Background,
+    // Navigation surfaces (surfaceBright/container only in newer M3)
 
     // Inverse
     inverseSurface      = OnBackground,

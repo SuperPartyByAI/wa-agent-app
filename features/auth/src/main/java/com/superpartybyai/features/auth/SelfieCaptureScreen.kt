@@ -55,7 +55,7 @@ fun SelfieCaptureScreen(onSelfieCaptured: (Bitmap) -> Unit) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
                 LinearProgressIndicator(
-                    progress = { 0.75f },
+                    progress = 0.75f,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)

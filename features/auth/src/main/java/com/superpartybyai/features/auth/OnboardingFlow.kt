@@ -2,8 +2,14 @@ package com.superpartybyai.features.auth
 
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.superpartybyai.core.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
@@ -12,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import kotlin.time.Duration.Companion.seconds
 
 enum class OnboardingStep { CONTRACT, ID_CARD, SELFIE, FACE_MATCH, UPLOADING, PENDING }
 
@@ -84,23 +91,23 @@ fun OnboardingFlow(onComplete: () -> Unit) {
 
 @Composable
 private fun UploadingScreen() {
-    androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        androidx.compose.foundation.layout.Column(
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            androidx.compose.material3.CircularProgressIndicator(
-                modifier = androidx.compose.ui.Modifier.size(48.dp)
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp)
             )
-            androidx.compose.foundation.layout.Spacer(
-                modifier = androidx.compose.ui.Modifier.height(16.dp)
+            Spacer(
+                modifier = Modifier.height(16.dp)
             )
-            androidx.compose.material3.Text(
+            Text(
                 "Se încarcă datele tale...\nTe rugăm așteaptă",
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge
             )
         }
     }
@@ -140,9 +147,9 @@ private suspend fun uploadKycData(
         }
 
         // Create signed URLs (valid for 1 year)
-        val contractUrl = bucket.createSignedUrl("$userId/contract.png", 31536000)
-        val idCardUrl = bucket.createSignedUrl("$userId/id_card.jpg", 31536000)
-        val selfieUrl = bucket.createSignedUrl("$userId/selfie.jpg", 31536000)
+        val contractUrl = bucket.createSignedUrl("$userId/contract.png", 31536000.seconds)
+        val idCardUrl = bucket.createSignedUrl("$userId/id_card.jpg", 31536000.seconds)
+        val selfieUrl = bucket.createSignedUrl("$userId/selfie.jpg", 31536000.seconds)
 
         // Insert employee profile
         client.postgrest.from("employee_profiles").insert(

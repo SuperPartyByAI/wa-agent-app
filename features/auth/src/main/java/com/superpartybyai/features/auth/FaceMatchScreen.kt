@@ -126,7 +126,7 @@ fun FaceMatchScreen(
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
                 LinearProgressIndicator(
-                    progress = { 1f },
+                    progress = 1f,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)

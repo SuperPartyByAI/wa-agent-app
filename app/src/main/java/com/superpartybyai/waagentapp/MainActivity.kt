@@ -17,6 +17,7 @@ import com.superpartybyai.features.auth.AuthScreen
 import com.superpartybyai.features.auth.OnboardingFlow
 import com.superpartybyai.features.auth.PendingApprovalScreen
 import com.superpartybyai.waagentapp.ui.MainShellScreen
+import com.superpartybyai.waagentapp.ui.SecurityWatermark
 import com.superpartybyai.waagentapp.ui.theme.SuperpartyTheme
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
@@ -31,6 +32,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ── Screenshot & Screen Recording Blocking ──
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
 
         // ── Integrity Check: Verify APK signature ──
         val signatureValid = verifyAppSignature()
@@ -50,6 +57,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             SuperpartyTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    SecurityWatermark {
                     val navController = rememberNavController()
 
                     NavHost(navController = navController, startDestination = "login") {
@@ -120,6 +128,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                    } // SecurityWatermark
                 }
             }
         }

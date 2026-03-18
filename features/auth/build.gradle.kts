@@ -27,4 +27,21 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    // CameraX
+    implementation("androidx.camera:camera-core:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
+    // ML Kit Face Detection
+    implementation("com.google.mlkit:face-detection:16.1.6")
+    // Supabase Storage (for uploads)
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.2.3")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.2.3")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.2.3")
+    // Credentials
+    implementation("androidx.credentials:credentials:1.2.1")
+    implementation("androidx.credentials:credentials-play-services-auth:1.2.1")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
 }

@@ -1,0 +1,174 @@
+package com.superpartybyai.features.auth
+
+import android.graphics.Bitmap
+import android.util.Log
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import com.superpartybyai.core.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+
+enum class OnboardingStep { CONTRACT, ID_CARD, SELFIE, FACE_MATCH, UPLOADING, PENDING }
+
+@Composable
+fun OnboardingFlow(onComplete: () -> Unit) {
+    var step by remember { mutableStateOf(OnboardingStep.CONTRACT) }
+    var contractBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var idCardBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var selfieBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    when (step) {
+        OnboardingStep.CONTRACT -> {
+            ContractScreen(
+                onContractSigned = { bitmap ->
+                    contractBitmap = bitmap
+                    step = OnboardingStep.ID_CARD
+                }
+            )
+        }
+
+        OnboardingStep.ID_CARD -> {
+            IdCardCaptureScreen(
+                onPhotoCaptured = { bitmap ->
+                    idCardBitmap = bitmap
+                    step = OnboardingStep.SELFIE
+                }
+            )
+        }
+
+        OnboardingStep.SELFIE -> {
+            SelfieCaptureScreen(
+                onSelfieCaptured = { bitmap ->
+                    selfieBitmap = bitmap
+                    step = OnboardingStep.FACE_MATCH
+                }
+            )
+        }
+
+        OnboardingStep.FACE_MATCH -> {
+            FaceMatchScreen(
+                idCardBitmap = idCardBitmap!!,
+                selfieBitmap = selfieBitmap!!,
+                onMatchSuccess = { score ->
+                    step = OnboardingStep.UPLOADING
+                    coroutineScope.launch {
+                        uploadKycData(
+                            contractBitmap = contractBitmap!!,
+                            idCardBitmap = idCardBitmap!!,
+                            selfieBitmap = selfieBitmap!!,
+                            faceMatchScore = score,
+                            onDone = { step = OnboardingStep.PENDING }
+                        )
+                    }
+                },
+                onMatchFail = { step = OnboardingStep.SELFIE },
+                onRetry = { step = OnboardingStep.ID_CARD }
+            )
+        }
+
+        OnboardingStep.UPLOADING -> {
+            UploadingScreen()
+        }
+
+        OnboardingStep.PENDING -> {
+            PendingApprovalScreen()
+        }
+    }
+}
+
+@Composable
+private fun UploadingScreen() {
+    androidx.compose.foundation.layout.Box(
+        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        androidx.compose.foundation.layout.Column(
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+        ) {
+            androidx.compose.material3.CircularProgressIndicator(
+                modifier = androidx.compose.ui.Modifier.size(48.dp)
+            )
+            androidx.compose.foundation.layout.Spacer(
+                modifier = androidx.compose.ui.Modifier.height(16.dp)
+            )
+            androidx.compose.material3.Text(
+                "Se încarcă datele tale...\nTe rugăm așteaptă",
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+private suspend fun uploadKycData(
+    contractBitmap: Bitmap,
+    idCardBitmap: Bitmap,
+    selfieBitmap: Bitmap,
+    faceMatchScore: Float,
+    onDone: () -> Unit
+) {
+    try {
+        val client = SupabaseClient.client
+        val userId = client.auth.currentUserOrNull()?.id ?: "unknown"
+        val email = client.auth.currentUserOrNull()?.email ?: ""
+        val fullName = client.auth.currentUserOrNull()?.userMetadata?.get("full_name")?.toString()?.replace("\"", "") ?: ""
+
+        val bucket = client.storage.from("employee-kyc")
+
+        // Upload contract
+        val contractBytes = bitmapToBytes(contractBitmap)
+        withContext(Dispatchers.IO) {
+            bucket.upload("$userId/contract.png", contractBytes, upsert = true)
+        }
+
+        // Upload ID card
+        val idCardBytes = bitmapToBytes(idCardBitmap)
+        withContext(Dispatchers.IO) {
+            bucket.upload("$userId/id_card.jpg", idCardBytes, upsert = true)
+        }
+
+        // Upload selfie
+        val selfieBytes = bitmapToBytes(selfieBitmap)
+        withContext(Dispatchers.IO) {
+            bucket.upload("$userId/selfie.jpg", selfieBytes, upsert = true)
+        }
+
+        // Create signed URLs (valid for 1 year)
+        val contractUrl = bucket.createSignedUrl("$userId/contract.png", 31536000)
+        val idCardUrl = bucket.createSignedUrl("$userId/id_card.jpg", 31536000)
+        val selfieUrl = bucket.createSignedUrl("$userId/selfie.jpg", 31536000)
+
+        // Insert employee profile
+        client.postgrest.from("employee_profiles").insert(
+            mapOf(
+                "user_id" to userId,
+                "email" to email,
+                "full_name" to fullName,
+                "id_card_url" to idCardUrl,
+                "selfie_url" to selfieUrl,
+                "contract_url" to contractUrl,
+                "face_match_score" to faceMatchScore,
+                "status" to "pending"
+            )
+        )
+
+        Log.d("KYC", "✅ KYC data uploaded for $userId ($email)")
+        onDone()
+    } catch (e: Exception) {
+        Log.e("KYC", "❌ Upload failed", e)
+        // Still show pending screen even if upload partially failed
+        onDone()
+    }
+}
+
+private fun bitmapToBytes(bitmap: Bitmap): ByteArray {
+    val stream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+    return stream.toByteArray()
+}

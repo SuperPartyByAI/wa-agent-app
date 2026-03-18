@@ -249,7 +249,7 @@ fun LivenessCheckScreen(
                 LivenessPhase.COMPLETED -> 1.0f
             }
             LinearProgressIndicator(
-                progress = { progress },
+                progress = progress,
                 modifier = Modifier.fillMaxWidth().height(4.dp),
                 color = Color(0xFF00E676),
                 trackColor = Color.White.copy(alpha = 0.3f)

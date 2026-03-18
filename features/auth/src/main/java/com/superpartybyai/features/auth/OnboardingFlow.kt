@@ -20,14 +20,14 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import kotlin.time.Duration.Companion.seconds
 
-enum class OnboardingStep { CONTRACT, ID_CARD, SELFIE, LIVENESS, FACE_MATCH, UPLOADING, PENDING }
+enum class OnboardingStep { CONTRACT, ID_CARD, LIVENESS, FACE_MATCH, UPLOADING, PENDING }
 
 @Composable
 fun OnboardingFlow(onComplete: () -> Unit) {
     var step by remember { mutableStateOf(OnboardingStep.CONTRACT) }
     var contractBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var idCardBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var selfieBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
     var livenessCenterBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var livenessLeftBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var livenessRightBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -47,15 +47,6 @@ fun OnboardingFlow(onComplete: () -> Unit) {
             IdCardCaptureScreen(
                 onPhotoCaptured = { bitmap ->
                     idCardBitmap = bitmap
-                    step = OnboardingStep.SELFIE
-                }
-            )
-        }
-
-        OnboardingStep.SELFIE -> {
-            SelfieCaptureScreen(
-                onSelfieCaptured = { bitmap ->
-                    selfieBitmap = bitmap
                     step = OnboardingStep.LIVENESS
                 }
             )
@@ -69,27 +60,27 @@ fun OnboardingFlow(onComplete: () -> Unit) {
                     livenessRightBitmap = right
                     step = OnboardingStep.FACE_MATCH
                 },
-                onCancel = { step = OnboardingStep.SELFIE }
+                onCancel = { step = OnboardingStep.ID_CARD }
             )
         }
 
         OnboardingStep.FACE_MATCH -> {
             FaceMatchScreen(
                 idCardBitmap = idCardBitmap!!,
-                selfieBitmap = selfieBitmap!!,
+                selfieBitmap = livenessCenterBitmap!!,
                 onMatchSuccess = { score ->
                     step = OnboardingStep.UPLOADING
                     coroutineScope.launch {
                         uploadKycData(
                             contractBitmap = contractBitmap!!,
                             idCardBitmap = idCardBitmap!!,
-                            selfieBitmap = selfieBitmap!!,
+                            selfieBitmap = livenessCenterBitmap!!,
                             faceMatchScore = score,
                             onDone = { step = OnboardingStep.PENDING }
                         )
                     }
                 },
-                onMatchFail = { step = OnboardingStep.SELFIE },
+                onMatchFail = { step = OnboardingStep.LIVENESS },
                 onRetry = { step = OnboardingStep.ID_CARD }
             )
         }

@@ -653,7 +653,7 @@
         "vata pe bat",
         "vată pe băț"
       ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "answer_template": "",
       "metadata": {},
       "required_context": [],
       "applicability_rules": {},
@@ -815,7 +815,7 @@
         "arcada fără suport",
         "baloane perete"
       ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "answer_template": "",
       "metadata": {},
       "required_context": [],
       "applicability_rules": {},
@@ -903,7 +903,7 @@
         "baloane cu cifre",
         "decor aniversare"
       ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "answer_template": "",
       "metadata": {},
       "required_context": [],
       "applicability_rules": {},
@@ -1622,7 +1622,7 @@
         "pachet de animatie",
         "ore de animatie"
       ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "answer_template": "",
       "metadata": {},
       "required_context": [],
       "applicability_rules": {},
@@ -1710,7 +1710,7 @@
         "arcada cu suport",
         "baloane pe suport"
       ],
-      "answer_template": "Structura acestui rol a fost migrata catre Commercial Policy Engine (JSONB). Vezi policy_config pentru logică.",
+      "answer_template": "",
       "metadata": {},
       "required_context": [],
       "applicability_rules": {},

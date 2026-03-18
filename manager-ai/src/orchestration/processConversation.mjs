@@ -52,6 +52,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
  * Send a message to WhatsApp via the whts-up transport API.
  */
 async function sendViaWhatsApp(conversationId, text) {
+    // ── SHADOW MODE GUARD: Block ALL outbound messages ──
+    if (AI_SHADOW_MODE_ENABLED) {
+        console.log(`[AutoSend] SHADOW MODE: Blocked outbound to ${conversationId} (${text.substring(0, 50)}...)`);
+        return false;
+    }
+
     const { data: conv } = await supabase.from('conversations').select('session_id').eq('id', conversationId).single();
     if (!conv?.session_id) {
         console.error('[AutoSend] No session_id for conversation', conversationId);

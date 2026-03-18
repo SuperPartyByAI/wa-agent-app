@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧪 Test Client — Superparty AI Simulator</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:#0f1117; color:#e5e7eb; height:100vh; display:flex; flex-direction:column; }
+  .header { background:linear-gradient(135deg,#1e1b4b,#312e81); padding:10px 24px; display:flex; align-items:center; gap:12px; border-bottom:1px solid rgba(255,255,255,0.08); }
+  .header h1 { font-size:16px; font-weight:600; }
+  .header .tag { background:#f59e0b; color:#000; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; }
+  .header .status { margin-left:auto; font-size:12px; color:#9ca3af; }
+
+  /* TABS BAR */
+  .tabs-bar { display:flex; align-items:center; gap:0; background:#111827; border-bottom:1px solid rgba(255,255,255,0.06); overflow-x:auto; min-height:38px; }
+  .tab { padding:8px 16px; font-size:12px; cursor:pointer; border-right:1px solid rgba(255,255,255,0.04); color:#9ca3af; display:flex; align-items:center; gap:6px; white-space:nowrap; position:relative; transition:all 0.15s; }
+  .tab:hover { background:rgba(255,255,255,0.04); color:#e5e7eb; }
+  .tab.active { background:rgba(124,58,237,0.15); color:#a78bfa; border-bottom:2px solid #7c3aed; }
+  .tab .tab-close { font-size:14px; opacity:0.4; margin-left:4px; }
+  .tab .tab-close:hover { opacity:1; color:#ef4444; }
+  .tab .msg-count { font-size:9px; background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:8px; }
+  .tab-new { padding:8px 14px; font-size:16px; cursor:pointer; color:#34d399; border:none; background:transparent; font-weight:700; }
+  .tab-new:hover { background:rgba(52,211,153,0.1); }
+
+  .main { flex:1; display:flex; overflow:hidden; }
+
+  /* LEFT: Chat */
+  .chat-side { flex:1; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,0.06); }
+  .chat-title { padding:10px 16px; font-size:13px; font-weight:600; color:#a5b4fc; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02); }
+  .chat-area { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:8px; }
+  .bubble { max-width:80%; padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.5; word-wrap:break-word; white-space:pre-wrap; }
+  .bubble.client { background:#7c3aed; color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+  .bubble.ai { background:#1f2937; color:#e5e7eb; align-self:flex-start; border-bottom-left-radius:4px; border:1px solid rgba(255,255,255,0.06); }
+  .bubble .meta { font-size:10px; color:rgba(255,255,255,0.4); margin-top:4px; }
+  .bubble.ai .meta { color:#6b7280; }
+  .typing { align-self:flex-start; color:#6b7280; font-size:12px; font-style:italic; padding:6px 0; }
+  .input-bar { display:flex; gap:8px; padding:12px 16px; background:rgba(255,255,255,0.02); border-top:1px solid rgba(255,255,255,0.06); }
+  .input-bar input { flex:1; background:#1f2937; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px 14px; color:#e5e7eb; font-size:13px; outline:none; }
+  .input-bar input:focus { border-color:#7c3aed; }
+  .input-bar button { background:#7c3aed; color:#fff; border:none; border-radius:8px; padding:10px 20px; font-size:13px; font-weight:600; cursor:pointer; }
+  .input-bar button:hover { background:#6d28d9; }
+  .input-bar button:disabled { opacity:0.5; cursor:not-allowed; }
+
+  /* RIGHT: AI Actions */
+  .actions-side { width:420px; display:flex; flex-direction:column; background:rgba(255,255,255,0.01); }
+  .actions-title { padding:10px 16px; font-size:13px; font-weight:600; color:#34d399; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02); display:flex; align-items:center; justify-content:space-between; }
+  .actions-area { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .action-card { background:#1f2937; border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px; font-size:12px; }
+  .action-card .fn-name { color:#f59e0b; font-weight:700; font-size:13px; margin-bottom:6px; }
+  .action-card pre { background:#111827; padding:8px; border-radius:4px; overflow-x:auto; font-size:11px; color:#9ca3af; white-space:pre-wrap; max-height:300px; overflow-y:auto; }
+  .action-card .tag-ok { display:inline-block; background:#065f46; color:#34d399; padding:1px 6px; border-radius:3px; font-size:10px; margin-left:6px; }
+  .action-card .tag-warn { display:inline-block; background:#78350f; color:#fbbf24; padding:1px 6px; border-radius:3px; font-size:10px; margin-left:6px; }
+  .delete-conv-btn { background:transparent; border:1px solid rgba(255,255,255,0.1); color:#9ca3af; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; }
+  .delete-conv-btn:hover { border-color:#ef4444; color:#ef4444; }
+  .empty-state { color:#4b5563; font-size:13px; text-align:center; padding:40px 20px; line-height:1.8; }
+</style>
+</head>
+<body>
+<div class="header">
+  <span style="font-size:24px">🧪</span>
+  <h1>Test Client Simulator</h1>
+  <span class="tag">SANDBOX</span>
+  <span class="status" id="statusText">Gata de test</span>
+</div>
+<div class="tabs-bar" id="tabsBar">
+  <button class="tab-new" onclick="newConversation()" title="Conversație nouă">＋</button>
+</div>
+<div class="main">
+  <div class="chat-side">
+    <div class="chat-title">💬 Tu (simulezi clientul)</div>
+    <div class="chat-area" id="chatArea">
+      <div class="empty-state">Apasă <b>＋</b> sus pentru a începe o conversație nouă.<br>Poți avea mai multe conversații în paralel.</div>
+    </div>
+    <div class="input-bar">
+      <input type="text" id="msgInput" placeholder="Scrie ca un client... (ex: Bună, vreau animație cu Elsa)" autofocus>
+      <button id="sendBtn" onclick="sendMessage()">Trimite</button>
+    </div>
+  </div>
+  <div class="actions-side">
+    <div class="actions-title">
+      <span>🤖 Ce face AI-ul (tool calls, acțiuni)</span>
+      <button class="delete-conv-btn" onclick="deleteCurrentConv()">🗑 Șterge conversația</button>
+    </div>
+    <div class="actions-area" id="actionsArea"></div>
+  </div>
+</div>
+
+<script>
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+let GEMINI_KEY = '';
+let SYSTEM_PROMPT = '';
+
+// ============ MULTI-CONVERSATION STATE ============
+let conversations = [];  // [{id, name, history[], events[], eventCounter, chatHTML, actionsHTML}]
+let activeConvId = null;
+let convIdCounter = 0;
+
+async function loadConfig() {
+  GEMINI_KEY = 'AIzaSyDUB3Qet6gNUl9Bc_kU-JyqrOmJM1QxhBc';
+  
+  try {
+    const r = await fetch('/api/vertex/config?key=system_prompt');
+    const data = await r.json();
+    if (data && data.value) SYSTEM_PROMPT = data.value;
+  } catch(e) { /* ignore */ }
+
+  if (!SYSTEM_PROMPT) {
+    try {
+      const SUPA_URL = 'https://yvfhqadfmjgbzetanfxs.supabase.co';
+      const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2ZmhxYWRmbWpnYnpldGFuZnhzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzY2ODg2MywiZXhwIjoyMDg5MjQ0ODYzfQ.b99azJ4MhjLD7c7MXBdABhCIKVp3JWFSyrNSdpE5hZk';
+      const r = await fetch(SUPA_URL + '/rest/v1/vertex_config?config_key=eq.system_prompt&select=config_value', {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+      });
+      const data = await r.json();
+      if (data && data[0]) SYSTEM_PROMPT = data[0].config_value;
+    } catch(e) { /* ignore */ }
+  }
+
+  if (!SYSTEM_PROMPT) {
+    SYSTEM_PROMPT = 'Ești asistentul virtual Superparty, o companie de organizare petreceri pentru copii din România.';
+  }
+  
+  document.getElementById('statusText').textContent = '✅ Prompt încărcat (' + SYSTEM_PROMPT.length + ' chars)';
+}
+
+const TEST_PROMPT_SUPPLEMENT = `
+
+═══════════════════════════════════
+MOD FUNCȚIONARE CU TOOL-URI:
+═══════════════════════════════════
+IMPORTANT: Ai la dispoziție funcții (tools) pe care TREBUIE să le apelezi:
+
+1. Când ai TOATE detaliile necesare pentru o petrecere → APELEAZĂ funcția noteaza_petrecere cu toate datele.
+   - Nu doar spune "am notat" — APELEAZĂ FUNCȚIA!
+   - Dacă clientul cere mai multe servicii (animație + ursitoare + vată), fă câte un apel noteaza_petrecere pentru FIECARE serviciu.
+
+2. Când clientul vrea modificări → APELEAZĂ cauta_petreceri (fără parametri, se caută automat) apoi actualizeaza_petrecere.
+
+3. Când clientul vrea anulare → APELEAZĂ cauta_petreceri apoi anuleaza_petrecere.
+
+4. Când clientul vrea reactivare → APELEAZĂ cauta_petreceri apoi restaureaza_petrecere.
+
+REGULA DE AUR: Dacă poți apela o funcție, APELEAZ-O. Nu descrie acțiunea în text fără să apelezi funcția.
+Telefonul clientului de test este: 0700000000 (folosește-l automat la cauta_petreceri).
+`;
+
+const TOOLS = [{
+  functionDeclarations: [
+    {
+      name: 'noteaza_petrecere',
+      description: 'Notează/salvează o petrecere nouă cu toate detaliile. APELEAZĂ această funcție de fiecare dată când ai suficiente date pentru un serviciu. Apeleaz-o separat pentru fiecare serviciu (animație, ursitoare, vată, etc).',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          client_phone: { type: 'STRING', description: 'Telefonul clientului (foloseste 0700000000 pentru test)' },
+          role_title: { type: 'STRING', description: 'Tipul serviciului: Animatie, Ursitoare, Vata de Zahar, Popcorn, Tort de Dulciuri, etc.' },
+          event_details: { type: 'OBJECT', properties: {
+            'data_evenimentului': { type: 'STRING' },
+            'ora_inceput': { type: 'STRING' },
+            'locatia': { type: 'STRING' },
+            'personaj_dorit': { type: 'STRING' },
+            'numar_copii': { type: 'STRING' },
+            'durata_ore': { type: 'STRING' },
+            'nume_sarbatorit': { type: 'STRING' },
+            'varsta_sarbatorit': { type: 'STRING' },
+            'varianta_ursitoare': { type: 'STRING', description: '3 bune sau 3 bune + 1 rea' },
+            'mod_servire': { type: 'STRING', description: 'simultan sau consecutiv (pentru vata/popcorn)' }
+          }},
+          total_amount: { type: 'NUMBER', description: 'Suma totala in RON daca e cunoscuta, altfel 0' },
+          notes: { type: 'STRING', description: 'Observatii suplimentare' }
+        },
+        required: ['role_title']
+      }
+    },
+    {
+      name: 'cauta_petreceri',
+      description: 'Cauta petrecerile existente ale clientului curent. Apeleaza MEREU inainte de actualizeaza_petrecere sau anuleaza_petrecere.',
+      parameters: { type: 'OBJECT', properties: {
+        phone: { type: 'STRING', description: 'Telefonul clientului (foloseste 0700000000 pentru test)' },
+        status_filter: { type: 'STRING', description: 'Filtru: active, cancelled, all. Default: active' }
+      }}
+    },
+    {
+      name: 'actualizeaza_petrecere',
+      description: 'Actualizeaza detaliile unei petreceri existente.',
+      parameters: { type: 'OBJECT', properties: {
+        event_id: { type: 'STRING', description: 'ID-ul petrecerii de actualizat (obtinut din cauta_petreceri)' },
+        updated_fields: { type: 'OBJECT', properties: {}, description: 'Campurile de actualizat' },
+        notes: { type: 'STRING' }
+      }, required: ['event_id'] }
+    },
+    {
+      name: 'anuleaza_petrecere',
+      description: 'Anuleaza o petrecere existenta.',
+      parameters: { type: 'OBJECT', properties: {
+        event_id: { type: 'STRING', description: 'ID-ul petrecerii de anulat (obtinut din cauta_petreceri)' },
+        motiv_anulare: { type: 'STRING' }
+      }, required: ['event_id'] }
+    },
+    {
+      name: 'restaureaza_petrecere',
+      description: 'Reactiveaza o petrecere anulata anterior.',
+      parameters: { type: 'OBJECT', properties: {
+        event_id: { type: 'STRING', description: 'ID-ul petrecerii de restaurat' }
+      }, required: ['event_id'] }
+    }
+  ]
+}];
+
+// ============ CONVERSATION MANAGEMENT ============
+
+function getActiveConv() {
+  return conversations.find(c => c.id === activeConvId);
+}
+
+function newConversation() {
+  // Save current conversation state
+  saveCurrentConvDOM();
+  
+  convIdCounter++;
+  const conv = {
+    id: convIdCounter,
+    name: 'Test #' + convIdCounter,
+    history: [],
+    events: [],
+    eventCounter: 0,
+    chatHTML: '',
+    actionsHTML: ''
+  };
+  conversations.push(conv);
+  switchToConv(conv.id);
+  renderTabs();
+  document.getElementById('msgInput').focus();
+}
+
+function saveCurrentConvDOM() {
+  const conv = getActiveConv();
+  if (!conv) return;
+  conv.chatHTML = document.getElementById('chatArea').innerHTML;
+  conv.actionsHTML = document.getElementById('actionsArea').innerHTML;
+}
+
+function switchToConv(id) {
+  // Save current before switching
+  if (activeConvId !== null && activeConvId !== id) {
+    saveCurrentConvDOM();
+  }
+  
+  activeConvId = id;
+  const conv = getActiveConv();
+  if (!conv) return;
+  
+  // Restore DOM
+  document.getElementById('chatArea').innerHTML = conv.chatHTML;
+  document.getElementById('actionsArea').innerHTML = conv.actionsHTML;
+  document.getElementById('chatArea').scrollTop = document.getElementById('chatArea').scrollHeight;
+  
+  const msgCount = conv.history.filter(h => h.role === 'user').length;
+  document.getElementById('statusText').textContent = '✅ ' + conv.name + ' — ' + msgCount + ' mesaje';
+  
+  renderTabs();
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tabsBar');
+  // Keep only the + button
+  bar.innerHTML = '';
+  
+  conversations.forEach(conv => {
+    const msgCount = conv.history.filter(h => h.role === 'user').length;
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (conv.id === activeConvId ? ' active' : '');
+    tab.innerHTML = '💬 ' + esc(conv.name) 
+      + ' <span class="msg-count">' + msgCount + '</span>'
+      + ' <span class="tab-close" onclick="event.stopPropagation(); deleteConv(' + conv.id + ')">✕</span>';
+    tab.onclick = () => switchToConv(conv.id);
+    bar.appendChild(tab);
+  });
+  
+  const addBtn = document.createElement('button');
+  addBtn.className = 'tab-new';
+  addBtn.onclick = newConversation;
+  addBtn.title = 'Conversație nouă';
+  addBtn.textContent = '＋';
+  bar.appendChild(addBtn);
+}
+
+function deleteConv(id) {
+  const idx = conversations.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  conversations.splice(idx, 1);
+  
+  if (activeConvId === id) {
+    if (conversations.length > 0) {
+      switchToConv(conversations[Math.max(0, idx - 1)].id);
+    } else {
+      activeConvId = null;
+      document.getElementById('chatArea').innerHTML = '<div class="empty-state">Apasă <b>＋</b> sus pentru a începe o conversație nouă.</div>';
+      document.getElementById('actionsArea').innerHTML = '';
+      document.getElementById('statusText').textContent = '✅ Prompt încărcat (' + SYSTEM_PROMPT.length + ' chars)';
+    }
+  }
+  renderTabs();
+}
+
+function deleteCurrentConv() {
+  if (activeConvId !== null) deleteConv(activeConvId);
+}
+
+// ============ CHAT FUNCTIONS ============
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function addBubble(text, isClient) {
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'bubble ' + (isClient ? 'client' : 'ai');
+  const ts = new Date().toLocaleTimeString('ro-RO', {hour:'2-digit', minute:'2-digit'});
+  div.innerHTML = esc(text) + '<div class="meta">' + ts + '</div>';
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function addAction(fnName, args) {
+  const area = document.getElementById('actionsArea');
+  const div = document.createElement('div');
+  div.className = 'action-card';
+  
+  let tagHtml = '';
+  if (fnName === 'noteaza_petrecere') tagHtml = '<span class="tag-ok">📝 CREAT</span>';
+  else if (fnName === 'cauta_petreceri') tagHtml = '<span class="tag-warn">🔍 CAUTĂ</span>';
+  else if (fnName === 'actualizeaza_petrecere') tagHtml = '<span class="tag-ok">✏️ ACTUALIZAT</span>';
+  else if (fnName === 'anuleaza_petrecere') tagHtml = '<span class="tag-warn">❌ ANULAT</span>';
+  else if (fnName === 'restaureaza_petrecere') tagHtml = '<span class="tag-ok">♻️ RESTAURAT</span>';
+  
+  const ts = new Date().toLocaleTimeString('ro-RO', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  div.innerHTML = '<div class="fn-name">⚡ ' + fnName + tagHtml + ' <span style="font-weight:400;color:#6b7280;font-size:10px">' + ts + '</span></div>'
+    + '<pre>' + JSON.stringify(args, null, 2) + '</pre>';
+  area.prepend(div);
+}
+
+function showTyping() {
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'typing';
+  div.id = 'typingIndicator';
+  div.textContent = '⏳ AI scrie...';
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+function simulateToolResponse(conv, fnName, args) {
+  if (fnName === 'noteaza_petrecere') {
+    conv.eventCounter++;
+    const eventId = 'TEST-' + String(conv.eventCounter).padStart(3, '0');
+    const ev = { event_id: eventId, role_title: args.role_title || 'Necunoscut', status: 'active', ...args };
+    conv.events.push(ev);
+    return { success: true, event_id: eventId, message: 'Petrecere creata cu ID: ' + eventId };
+  }
+  if (fnName === 'cauta_petreceri') {
+    const filter = args.status_filter || 'active';
+    const filtered = conv.events.filter(e => filter === 'all' || e.status === filter);
+    return { success: true, events: filtered, total: filtered.length };
+  }
+  if (fnName === 'actualizeaza_petrecere') {
+    const ev = conv.events.find(e => e.event_id === args.event_id);
+    if (ev && args.updated_fields) Object.assign(ev, args.updated_fields);
+    return { success: true, message: 'Petrecere ' + (args.event_id || '') + ' actualizata.' };
+  }
+  if (fnName === 'anuleaza_petrecere') {
+    const ev = conv.events.find(e => e.event_id === args.event_id);
+    if (ev) ev.status = 'cancelled';
+    return { success: true, message: 'Petrecere ' + (args.event_id || '') + ' anulata.' };
+  }
+  if (fnName === 'restaureaza_petrecere') {
+    const ev = conv.events.find(e => e.event_id === args.event_id);
+    if (ev) ev.status = 'active';
+    return { success: true, message: 'Petrecere ' + (args.event_id || '') + ' restaurata.' };
+  }
+  return { success: true, message: 'OK' };
+}
+
+// ============ SEND MESSAGE ============
+
+async function sendMessage() {
+  const conv = getActiveConv();
+  if (!conv) { newConversation(); return sendMessage(); }
+  
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  input.value = '';
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('statusText').textContent = '⏳ ' + conv.name + ' — procesez...';
+  
+  addBubble(text, true);
+  conv.history.push({ role: 'user', parts: [{ text }] });
+  
+  // Auto-name conversation from first message
+  if (conv.history.filter(h => h.role === 'user').length === 1) {
+    conv.name = text.length > 30 ? text.substring(0, 30) + '…' : text;
+    renderTabs();
+  }
+  
+  showTyping();
+  
+  try {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + GEMINI_KEY;
+    const makeBody = () => ({
+      contents: conv.history,
+      systemInstruction: { role: 'system', parts: [{ text: SYSTEM_PROMPT + TEST_PROMPT_SUPPLEMENT }] },
+      tools: TOOLS,
+      toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 }
+    });
+    
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(makeBody())
+    });
+    
+    const data = await resp.json();
+    hideTyping();
+    
+    if (data.error) {
+      addBubble('❌ Eroare API: ' + data.error.message, false);
+      document.getElementById('statusText').textContent = '❌ Eroare API';
+      return;
+    }
+    
+    const candidate = data.candidates && data.candidates[0];
+    if (!candidate || !candidate.content || !candidate.content.parts) {
+      addBubble('❌ Răspuns gol de la AI', false);
+      return;
+    }
+    
+    const parts = candidate.content.parts;
+    let hasText = false;
+    let hasFunctionCall = false;
+    
+    for (const part of parts) {
+      if (part.text) {
+        addBubble(part.text, false);
+        hasText = true;
+      }
+      if (part.functionCall) {
+        hasFunctionCall = true;
+        addAction(part.functionCall.name, part.functionCall.args);
+        const toolResponse = simulateToolResponse(conv, part.functionCall.name, part.functionCall.args);
+        conv.history.push({ role: 'model', parts: [{ functionCall: part.functionCall }] });
+        conv.history.push({ role: 'user', parts: [{ functionResponse: { name: part.functionCall.name, response: toolResponse } }] });
+      }
+    }
+    
+    // If only function calls, get text response
+    if (hasFunctionCall && !hasText) {
+      showTyping();
+      const resp2 = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(makeBody())
+      });
+      const data2 = await resp2.json();
+      hideTyping();
+      const c2 = data2.candidates && data2.candidates[0];
+      if (c2 && c2.content && c2.content.parts) {
+        for (const p of c2.content.parts) {
+          if (p.text) {
+            addBubble(p.text, false);
+            conv.history.push({ role: 'model', parts: [{ text: p.text }] });
+          }
+          if (p.functionCall) {
+            addAction(p.functionCall.name, p.functionCall.args);
+            const tr = simulateToolResponse(conv, p.functionCall.name, p.functionCall.args);
+            conv.history.push({ role: 'model', parts: [{ functionCall: p.functionCall }] });
+            conv.history.push({ role: 'user', parts: [{ functionResponse: { name: p.functionCall.name, response: tr } }] });
+          }
+        }
+      }
+    } else if (hasText) {
+      conv.history.push({ role: 'model', parts: parts.filter(p => p.text).map(p => ({ text: p.text })) });
+    }
+    
+    // Save DOM state
+    saveCurrentConvDOM();
+    
+    const msgCount = conv.history.filter(h => h.role === 'user').length;
+    document.getElementById('statusText').textContent = '✅ ' + conv.name + ' — ' + msgCount + ' mesaje';
+    renderTabs();
+    
+  } catch(e) {
+    hideTyping();
+    addBubble('❌ Eroare: ' + e.message, false);
+    document.getElementById('statusText').textContent = '❌ Eroare conexiune';
+  } finally {
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('msgInput').focus();
+  }
+}
+
+// Enter to send
+document.getElementById('msgInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// Auto-create first conversation after config loads
+loadConfig().then(() => {
+  newConversation();
+});
+</script>
+</body>
+</html>

@@ -24,8 +24,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.GlobalScope
 
 class MainActivity : ComponentActivity() {
+
+    // Expected SHA-256 of the signing certificate
+    // Update this when switching to release signing key!
+    private val EXPECTED_SIGNING_HASH = "9DBB82076709399D666F4C05B58C5FB8E5819BC958E9122B573E79E8AE2225109"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ── Integrity Check: Verify APK signature ──
+        val signatureValid = verifyAppSignature()
+        if (!signatureValid && !BuildConfig.DEBUG) {
+            // Only block in RELEASE builds — debug uses different signing
+            Log.e("SECURITY", "⛔ APP SIGNATURE INVALID — possible tampered APK!")
+            android.widget.Toast.makeText(this, "Aplicație neautorizată!", android.widget.Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
 
         com.superpartybyai.core.AppConfig.SUPABASE_URL = BuildConfig.SUPABASE_URL
         com.superpartybyai.core.AppConfig.SUPABASE_ANON_KEY = BuildConfig.SUPABASE_ANON_KEY
@@ -152,5 +167,51 @@ private suspend fun checkKycStatus(): String {
     } catch (e: Exception) {
         Log.e("KYC", "Error checking KYC status", e)
         "onboarding" // Default to onboarding if error
+    }
+}
+
+    /**
+     * Verify the APK is signed with the expected certificate.
+     * If someone decompiles, modifies, and re-signs the APK — this will detect it.
+     */
+    @Suppress("DEPRECATION")
+    private fun verifyAppSignature(): Boolean {
+        return try {
+            val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+            } else {
+                packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+            }
+
+            val signatures = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                packageInfo.signingInfo?.apkContentsSigners
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.signatures
+            }
+
+            if (signatures.isNullOrEmpty()) {
+                Log.e("SECURITY", "No signatures found!")
+                return false
+            }
+
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            val digest = md.digest(signatures[0].toByteArray())
+            val hash = digest.joinToString("") { "%02X".format(it) }
+
+            Log.d("SECURITY", "APK signing hash: $hash")
+
+            // Compare with expected hash
+            val isValid = hash == EXPECTED_SIGNING_HASH
+            if (isValid) {
+                Log.d("SECURITY", "✅ Signature verification PASSED")
+            } else {
+                Log.e("SECURITY", "⛔ Signature mismatch! Expected: $EXPECTED_SIGNING_HASH, Got: $hash")
+            }
+            isValid
+        } catch (e: Exception) {
+            Log.e("SECURITY", "Signature verification error", e)
+            false
+        }
     }
 }

@@ -17,11 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.face.FaceDetection
-import com.google.mlkit.vision.face.FaceDetectorOptions
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 @Composable
 fun FaceMatchScreen(
@@ -32,75 +28,17 @@ fun FaceMatchScreen(
     onRetry: () -> Unit
 ) {
     var isProcessing by remember { mutableStateOf(true) }
-    var matchScore by remember { mutableStateOf<Float?>(null) }
-    var errorMsg by remember { mutableStateOf<String?>(null) }
-    var idFaceCount by remember { mutableStateOf(0) }
-    var selfieFaceCount by remember { mutableStateOf(0) }
+    var result by remember { mutableStateOf<FaceVerifier.VerificationResult?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Run face detection on both images
+    // Run REAL face verification
     LaunchedEffect(Unit) {
         coroutineScope.launch {
-            try {
-                val options = FaceDetectorOptions.Builder()
-                    .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-                    .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-                    .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-                    .setMinFaceSize(0.1f)
-                    .build()
-
-                val detector = FaceDetection.getClient(options)
-
-                // Detect face in ID card
-                val idImage = InputImage.fromBitmap(idCardBitmap, 0)
-                val idFaces = detector.process(idImage).await()
-                idFaceCount = idFaces.size
-
-                // Detect face in selfie
-                val selfieImage = InputImage.fromBitmap(selfieBitmap, 0)
-                val selfieFaces = detector.process(selfieImage).await()
-                selfieFaceCount = selfieFaces.size
-
-                if (idFaces.isEmpty()) {
-                    errorMsg = "❌ Nu am detectat o față pe buletin.\nAsigură-te că poza e clară și iluminată."
-                    isProcessing = false
-                    return@launch
-                }
-                if (selfieFaces.isEmpty()) {
-                    errorMsg = "❌ Nu am detectat fața ta în selfie.\nÎncearcă din nou cu lumină bună."
-                    isProcessing = false
-                    return@launch
-                }
-
-                // Compare face proportions (basic geometric comparison)
-                // ML Kit doesn't do face embedding comparison natively,
-                // but we can compare: head rotation, face proportions, etc.
-                val idFace = idFaces[0]
-                val selfieFace = selfieFaces[0]
-
-                // Calculate similarity based on face proportions
-                val idRatio = idFace.boundingBox.width().toFloat() / idFace.boundingBox.height()
-                val selfieRatio = selfieFace.boundingBox.width().toFloat() / selfieFace.boundingBox.height()
-                val ratioSimilarity = 1f - kotlin.math.abs(idRatio - selfieRatio).coerceAtMost(1f)
-
-                // Both images have a detectable face = basic pass
-                // Since ML Kit doesn't do face recognition (only detection),
-                // we use a combined score: face detected + proportions match
-                val score = if (idFaces.isNotEmpty() && selfieFaces.isNotEmpty()) {
-                    0.5f + (ratioSimilarity * 0.5f)
-                } else {
-                    0f
-                }
-
-                matchScore = score
-                isProcessing = false
-
-                Log.d("FaceMatch", "ID faces: ${idFaces.size}, Selfie faces: ${selfieFaces.size}, Score: $score")
-            } catch (e: Exception) {
-                Log.e("FaceMatch", "Face detection error", e)
-                errorMsg = "Eroare la procesarea imaginilor: ${e.message}"
-                isProcessing = false
-            }
+            val verifyResult = FaceVerifier.verifyFaces(idCardBitmap, selfieBitmap)
+            result = verifyResult
+            isProcessing = false
+            Log.d("FaceMatch", "Verification result: score=${verifyResult.score}, " +
+                    "idFace=${verifyResult.idFaceDetected}, selfieFace=${verifyResult.selfieFaceDetected}")
         }
     }
 
@@ -205,52 +143,64 @@ fun FaceMatchScreen(
                 CircularProgressIndicator(modifier = Modifier.size(48.dp))
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    "Analizăm imaginile...\nDetecție facială în curs",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else if (errorMsg != null) {
-                Text(
-                    errorMsg!!,
-                    color = MaterialTheme.colorScheme.error,
+                    "Analizăm și comparăm fețele...\nDetecție + Verificare identitate",
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {
-                val score = matchScore ?: 0f
-                val isPass = score >= 0.6f
+                val r = result!!
+                if (r.errorMessage != null) {
+                    Text(
+                        "❌ ${r.errorMessage}",
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    val isPass = r.score >= 0.55f
 
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isPass)
-                            Color(0xFF1B5E20).copy(alpha = 0.15f)
-                        else
-                            Color(0xFFB71C1C).copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isPass)
+                                Color(0xFF1B5E20).copy(alpha = 0.15f)
+                            else
+                                Color(0xFFB71C1C).copy(alpha = 0.15f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            if (isPass) "✅ Verificare reușită!" else "❌ Verificare eșuată",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isPass) Color(0xFF4CAF50) else Color(0xFFF44336)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Scor potrivire: ${(score * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "Fața buletin: ${if (idFaceCount > 0) "✅ detectată" else "❌ nedetectată"}\n" +
-                                    "Fața selfie: ${if (selfieFaceCount > 0) "✅ detectată" else "❌ nedetectată"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                if (isPass) "✅ Verificare reușită!" else "❌ Persoane diferite detectate!",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isPass) Color(0xFF4CAF50) else Color(0xFFF44336)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Scor similaritate: ${(r.score * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            if (!isPass) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "⚠️ Fața din buletin NU corespunde cu selfie-ul.\nTrebuie să fie aceeași persoană!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFFF44336).copy(alpha = 0.8f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Fața buletin: ${if (r.idFaceDetected) "✅ detectată" else "❌ nedetectată"}\n" +
+                                        "Fața selfie: ${if (r.selfieFaceDetected) "✅ detectată" else "❌ nedetectată"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -261,10 +211,24 @@ fun FaceMatchScreen(
             color = MaterialTheme.colorScheme.surface,
             shadowElevation = 8.dp
         ) {
-            if (!isProcessing && matchScore != null) {
-                if (matchScore!! >= 0.6f) {
+            val r = result
+            if (!isProcessing && r != null) {
+                if (r.errorMessage != null || r.score < 0.55f) {
+                    // Fail — retry
                     Button(
-                        onClick = { onMatchSuccess(matchScore!!) },
+                        onClick = onRetry,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("🔄 Refă pozele", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    // Pass — submit
+                    Button(
+                        onClick = { onMatchSuccess(r.score) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
@@ -276,28 +240,6 @@ fun FaceMatchScreen(
                     ) {
                         Text("✅ Trimite cererea", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
-                } else {
-                    Button(
-                        onClick = onRetry,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .height(50.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("🔄 Încearcă din nou", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            } else if (!isProcessing && errorMsg != null) {
-                Button(
-                    onClick = onRetry,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .height(50.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("🔄 Încearcă din nou", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

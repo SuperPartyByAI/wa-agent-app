@@ -7,9 +7,9 @@ dotenv.config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// Local LLM config — Ollama (self-hosted, zero external API cost)
-const LLM_BASE_URL = process.env.LOCAL_LLM_BASE_URL || 'http://localhost:11434';
-const LLM_MODEL = process.env.LOCAL_LLM_MODEL || 'qwen2.5:7b';
+// LLM config — Gemini 2.0 Flash Lite
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const LLM_MODEL = 'gemini-2.0-flash-lite';
 
 // Safety switch — AI auto-reply kill switch
 const AI_AUTOREPLY_ENABLED = process.env.AI_AUTOREPLY_ENABLED === 'true';
@@ -38,26 +38,26 @@ const SERVICE_KEYS = SERVICE_CATALOG.services.map(s => s.service_key);
 console.log(`[Service Catalog] Loaded ${SERVICE_CATALOG.services.length} services (v${SERVICE_CATALOG.version}): ${SERVICE_KEYS.join(', ')}`);
 
 /**
- * Calls the local Ollama server via the OpenAI-compatible /v1/chat/completions endpoint.
+ * Calls the Google Gemini API.
  */
 async function callLocalLLM(systemPrompt, userMessage) {
-    const url = `${LLM_BASE_URL}/v1/chat/completions`;
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${LLM_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 180000); // 3min for bigger prompt with catalog
+        const timeout = setTimeout(() => controller.abort(), 60000);
         
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: LLM_MODEL,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userMessage }
-                ],
-                temperature: 0.1,
-                response_format: { type: 'json_object' }
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json"
+                }
             }),
             signal: controller.signal
         });
@@ -65,17 +65,17 @@ async function callLocalLLM(systemPrompt, userMessage) {
         clearTimeout(timeout);
         
         if (!response.ok) {
-            throw new Error(`LLM HTTP ${response.status}: ${await response.text()}`);
+            throw new Error(`Gemini HTTP ${response.status}: ${await response.text()}`);
         }
         
         const data = await response.json();
-        const content = data.choices?.[0]?.message?.content;
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
         
-        if (!content) throw new Error('Empty LLM response');
+        if (!content) throw new Error('Empty Gemini response');
         
         return JSON.parse(content);
     } catch (err) {
-        console.error(`[AI Worker] Local LLM call failed:`, err.message);
+        console.error(`[AI Worker] Gemini call failed:`, err.message);
         return null;
     }
 }
@@ -258,6 +258,18 @@ function postProcessServices(analysis) {
 export async function processConversation(conversation_id, message_id = null, operator_prompt = null) {
     if (!conversation_id) return;
     
+    // Human takeover detection: skip if agent responded in last 15 min
+    try {
+        const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+        const { data: agentMsgs } = await supabase.from('messages')
+            .select('id').eq('conversation_id', conversation_id)
+            .eq('sender_type', 'agent').gte('created_at', cutoff).limit(1);
+        if (agentMsgs && agentMsgs.length > 0) {
+            console.log(`[AI Worker] SKIP - Human agent active in conv ${conversation_id} (last 15 min)`);
+            return;
+        }
+    } catch(e) { console.warn('[AI Worker] Takeover check error:', e.message); }
+
     console.log(`[AI Worker] Starting text-understanding pipeline for ${conversation_id}...`);
 
     try {

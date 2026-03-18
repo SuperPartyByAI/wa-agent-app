@@ -2,10 +2,7 @@ package com.superpartybyai.features.auth
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.ImageFormat
 import android.graphics.Matrix
-import android.graphics.Rect
-import android.graphics.YuvImage
 import android.util.Log
 import android.util.Size
 import androidx.camera.core.*
@@ -32,21 +29,24 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.concurrent.Executors
 
 private const val TAG = "LivenessCheck"
 
 enum class LivenessPhase {
     CENTER,     // Look straight at camera
+    CAPTURING_CENTER,
     TURN_LEFT,  // Turn head left
+    CAPTURING_LEFT,
     TURN_RIGHT, // Turn head right
+    CAPTURING_RIGHT,
     COMPLETED   // All checks passed
 }
 
 /**
  * Liveness verification screen that asks the user to turn their head left and right.
- * Uses ML Kit Face Detection's headEulerAngleY to detect head rotation.
- * Captures a photo at each phase for Gemini verification.
+ * Uses ML Kit for head pose detection and ImageCapture for high-quality photos.
  */
 @Composable
 fun LivenessCheckScreen(
@@ -65,15 +65,20 @@ fun LivenessCheckScreen(
     var statusText by remember { mutableStateOf("Poziționează fața în centru") }
     var holdTimer by remember { mutableIntStateOf(0) }
 
-    // Thresholds for head rotation
-    val centerThreshold = 10f     // Within ±10° = looking straight
-    val turnThreshold = 25f       // Must turn at least 25° for left/right
-    val holdRequired = 12         // Hold position for ~12 frames (~2.5 seconds) for camera to adjust
+    val centerThreshold = 10f
+    val turnThreshold = 25f
+    val holdRequired = 8  // ~1.5 seconds at ~5fps analysis rate
 
     val previewView = remember { PreviewView(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    // Face detector with head pose
+    // ImageCapture for high quality photos
+    val imageCapture = remember {
+        ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .build()
+    }
+
     val faceDetector = remember {
         val options = FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
@@ -81,6 +86,35 @@ fun LivenessCheckScreen(
             .setMinFaceSize(0.3f)
             .build()
         FaceDetection.getClient(options)
+    }
+
+    // Helper to take a proper photo using ImageCapture
+    fun takePicture(onPhotoTaken: (Bitmap) -> Unit) {
+        val photoFile = File(context.cacheDir, "liveness_${System.currentTimeMillis()}.jpg")
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(context),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+                    if (bitmap != null) {
+                        // Mirror for front camera
+                        val matrix = Matrix()
+                        matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+                        val mirrored = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                        Log.d(TAG, "✅ Photo captured: ${mirrored.width}x${mirrored.height}")
+                        onPhotoTaken(mirrored)
+                    }
+                    photoFile.delete()
+                }
+
+                override fun onError(e: ImageCaptureException) {
+                    Log.e(TAG, "❌ Photo capture failed", e)
+                }
+            }
+        )
     }
 
     // Camera setup
@@ -95,12 +129,16 @@ fun LivenessCheckScreen(
             }
 
             val imageAnalysis = ImageAnalysis.Builder()
-                .setTargetResolution(Size(1280, 720))
+                .setTargetResolution(Size(640, 480))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also { analysis ->
                     analysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                        if (phase == LivenessPhase.COMPLETED) {
+                        // Skip analysis during capture phases
+                        if (phase == LivenessPhase.COMPLETED ||
+                            phase == LivenessPhase.CAPTURING_CENTER ||
+                            phase == LivenessPhase.CAPTURING_LEFT ||
+                            phase == LivenessPhase.CAPTURING_RIGHT) {
                             imageProxy.close()
                             return@setAnalyzer
                         }
@@ -118,7 +156,7 @@ fun LivenessCheckScreen(
                                     if (faces.isNotEmpty()) {
                                         val face = faces[0]
                                         faceDetected = true
-                                        headAngleY = face.headEulerAngleY // Left/right angle
+                                        headAngleY = face.headEulerAngleY
 
                                         when (phase) {
                                             LivenessPhase.CENTER -> {
@@ -126,11 +164,15 @@ fun LivenessCheckScreen(
                                                     holdTimer++
                                                     statusText = "Bine! Stai drept... (${holdRequired - holdTimer})"
                                                     if (holdTimer >= holdRequired) {
-                                                        centerBitmap = imageProxyToBitmap(imageProxy)
-                                                        Log.d(TAG, "✅ CENTER captured, angle=$headAngleY")
-                                                        phase = LivenessPhase.TURN_LEFT
+                                                        phase = LivenessPhase.CAPTURING_CENTER
+                                                        statusText = "📸 Capturare..."
                                                         holdTimer = 0
-                                                        statusText = "⬅️ Întoarce capul la STÂNGA"
+                                                        takePicture { bmp ->
+                                                            centerBitmap = bmp
+                                                            Log.d(TAG, "✅ CENTER done")
+                                                            phase = LivenessPhase.TURN_LEFT
+                                                            statusText = "⬅️ Întoarce capul la STÂNGA"
+                                                        }
                                                     }
                                                 } else {
                                                     holdTimer = 0
@@ -142,11 +184,15 @@ fun LivenessCheckScreen(
                                                     holdTimer++
                                                     statusText = "Menține... (${holdRequired - holdTimer})"
                                                     if (holdTimer >= holdRequired) {
-                                                        leftBitmap = imageProxyToBitmap(imageProxy)
-                                                        Log.d(TAG, "✅ LEFT captured, angle=$headAngleY")
-                                                        phase = LivenessPhase.TURN_RIGHT
+                                                        phase = LivenessPhase.CAPTURING_LEFT
+                                                        statusText = "📸 Capturare..."
                                                         holdTimer = 0
-                                                        statusText = "➡️ Întoarce capul la DREAPTA"
+                                                        takePicture { bmp ->
+                                                            leftBitmap = bmp
+                                                            Log.d(TAG, "✅ LEFT done")
+                                                            phase = LivenessPhase.TURN_RIGHT
+                                                            statusText = "➡️ Întoarce capul la DREAPTA"
+                                                        }
                                                     }
                                                 } else {
                                                     holdTimer = 0
@@ -162,10 +208,15 @@ fun LivenessCheckScreen(
                                                     holdTimer++
                                                     statusText = "Menține... (${holdRequired - holdTimer})"
                                                     if (holdTimer >= holdRequired) {
-                                                        rightBitmap = imageProxyToBitmap(imageProxy)
-                                                        Log.d(TAG, "✅ RIGHT captured, angle=$headAngleY")
-                                                        phase = LivenessPhase.COMPLETED
-                                                        statusText = "✅ Verificare liveness completă!"
+                                                        phase = LivenessPhase.CAPTURING_RIGHT
+                                                        statusText = "📸 Capturare..."
+                                                        holdTimer = 0
+                                                        takePicture { bmp ->
+                                                            rightBitmap = bmp
+                                                            Log.d(TAG, "✅ RIGHT done")
+                                                            phase = LivenessPhase.COMPLETED
+                                                            statusText = "✅ Verificare completă!"
+                                                        }
                                                     }
                                                 } else {
                                                     holdTimer = 0
@@ -176,7 +227,7 @@ fun LivenessCheckScreen(
                                                     }
                                                 }
                                             }
-                                            LivenessPhase.COMPLETED -> {}
+                                            else -> {}
                                         }
                                     } else {
                                         faceDetected = false
@@ -201,7 +252,8 @@ fun LivenessCheckScreen(
                     lifecycleOwner,
                     CameraSelector.DEFAULT_FRONT_CAMERA,
                     preview,
-                    imageAnalysis
+                    imageAnalysis,
+                    imageCapture  // Also bind ImageCapture
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Camera bind failed", e)
@@ -212,7 +264,7 @@ fun LivenessCheckScreen(
     // Trigger callback when liveness is completed
     LaunchedEffect(phase) {
         if (phase == LivenessPhase.COMPLETED && centerBitmap != null && leftBitmap != null && rightBitmap != null) {
-            kotlinx.coroutines.delay(1000) // Brief pause to show success
+            kotlinx.coroutines.delay(1000)
             onLivenessComplete(centerBitmap!!, leftBitmap!!, rightBitmap!!)
         }
     }
@@ -236,16 +288,15 @@ fun LivenessCheckScreen(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                "Pasul 3.5 din 4 — Dovedește că ești o persoană reală",
+                "Pasul 3 din 4 — Dovedește că ești o persoană reală",
                 color = Color.White.copy(alpha = 0.8f),
                 fontSize = 13.sp
             )
-            // Progress
             Spacer(modifier = Modifier.height(8.dp))
             val progress = when (phase) {
-                LivenessPhase.CENTER -> 0.2f
-                LivenessPhase.TURN_LEFT -> 0.5f
-                LivenessPhase.TURN_RIGHT -> 0.8f
+                LivenessPhase.CENTER, LivenessPhase.CAPTURING_CENTER -> 0.2f
+                LivenessPhase.TURN_LEFT, LivenessPhase.CAPTURING_LEFT -> 0.5f
+                LivenessPhase.TURN_RIGHT, LivenessPhase.CAPTURING_RIGHT -> 0.8f
                 LivenessPhase.COMPLETED -> 1.0f
             }
             LinearProgressIndicator(
@@ -258,7 +309,6 @@ fun LivenessCheckScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Status text
         Text(
             statusText,
             color = Color.White,
@@ -270,7 +320,6 @@ fun LivenessCheckScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Head angle indicator
         if (faceDetected) {
             Text(
                 "Unghi cap: ${String.format("%.1f", headAngleY)}°",
@@ -294,7 +343,6 @@ fun LivenessCheckScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Phase indicators at top
             if (!faceDetected) {
                 Box(
                     modifier = Modifier
@@ -314,21 +362,20 @@ fun LivenessCheckScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(horizontal = 24.dp)
         ) {
-            StepIndicator("Centru", phase.ordinal >= 1 || (phase == LivenessPhase.CENTER && holdTimer > 0), phase.ordinal >= 1)
-            StepIndicator("Stânga", phase.ordinal >= 2, phase.ordinal >= 2)
-            StepIndicator("Dreapta", phase.ordinal >= 3, phase.ordinal >= 3)
+            StepIndicator("Centru", phase.ordinal >= 1, phase.ordinal >= 3)
+            StepIndicator("Stânga", phase.ordinal >= 3, phase.ordinal >= 5)
+            StepIndicator("Dreapta", phase.ordinal >= 5, phase.ordinal >= 6)
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Cancel button
         TextButton(
             onClick = onCancel,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            Text("↩ Înapoi la selfie", color = Color.Gray, fontSize = 14.sp)
+            Text("↩ Înapoi", color = Color.Gray, fontSize = 14.sp)
         }
     }
 }
@@ -358,64 +405,4 @@ private fun StepIndicator(label: String, active: Boolean, completed: Boolean) {
         Spacer(modifier = Modifier.height(4.dp))
         Text(label, color = if (active || completed) Color.White else Color.Gray, fontSize = 12.sp)
     }
-}
-
-/**
- * Convert ImageProxy (YUV_420_888) to Bitmap correctly handling row stride.
- */
-private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
-    val width = imageProxy.width
-    val height = imageProxy.height
-
-    val yPlane = imageProxy.planes[0]
-    val uPlane = imageProxy.planes[1]
-    val vPlane = imageProxy.planes[2]
-
-    val yBuffer = yPlane.buffer
-    val uBuffer = uPlane.buffer
-    val vBuffer = vPlane.buffer
-
-    yBuffer.rewind()
-    uBuffer.rewind()
-    vBuffer.rewind()
-
-    val yRowStride = yPlane.rowStride
-    val uvRowStride = uPlane.rowStride
-    val uvPixelStride = uPlane.pixelStride
-
-    // Build NV21 byte array properly
-    val nv21 = ByteArray(width * height * 3 / 2)
-
-    // Copy Y plane row by row (handles padding/stride)
-    var pos = 0
-    for (row in 0 until height) {
-        yBuffer.position(row * yRowStride)
-        yBuffer.get(nv21, pos, width)
-        pos += width
-    }
-
-    // Copy UV planes interleaved (NV21 = VUVU...)
-    val uvHeight = height / 2
-    for (row in 0 until uvHeight) {
-        for (col in 0 until width / 2) {
-            val uvIndex = row * uvRowStride + col * uvPixelStride
-            vBuffer.position(uvIndex)
-            nv21[pos++] = vBuffer.get()
-            uBuffer.position(uvIndex)
-            nv21[pos++] = uBuffer.get()
-        }
-    }
-
-    val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
-    val out = ByteArrayOutputStream()
-    yuvImage.compressToJpeg(Rect(0, 0, width, height), 85, out)
-    val bytes = out.toByteArray()
-    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-
-    // Mirror for front camera + apply rotation
-    val matrix = Matrix()
-    matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
-    matrix.postScale(-1f, 1f) // Mirror front camera
-
-    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 }

@@ -45,8 +45,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:storage-kt:2.2.3")
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.2.3")
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.2.3")
-    // Credentials
-    implementation("androidx.credentials:credentials:1.2.1")
-    implementation("androidx.credentials:credentials-play-services-auth:1.2.1")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
+    // Google Sign-In (legacy API - better device compatibility)
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
 }

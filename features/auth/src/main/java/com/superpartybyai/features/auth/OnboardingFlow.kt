@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import kotlin.time.Duration.Companion.seconds
 
-enum class OnboardingStep { CONTRACT, ID_CARD, SELFIE, FACE_MATCH, UPLOADING, PENDING }
+enum class OnboardingStep { CONTRACT, ID_CARD, SELFIE, LIVENESS, FACE_MATCH, UPLOADING, PENDING }
 
 @Composable
 fun OnboardingFlow(onComplete: () -> Unit) {
@@ -28,6 +28,9 @@ fun OnboardingFlow(onComplete: () -> Unit) {
     var contractBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var idCardBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var selfieBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var livenessCenterBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var livenessLeftBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var livenessRightBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     when (step) {
@@ -53,8 +56,20 @@ fun OnboardingFlow(onComplete: () -> Unit) {
             SelfieCaptureScreen(
                 onSelfieCaptured = { bitmap ->
                     selfieBitmap = bitmap
-                    step = OnboardingStep.FACE_MATCH
+                    step = OnboardingStep.LIVENESS
                 }
+            )
+        }
+
+        OnboardingStep.LIVENESS -> {
+            LivenessCheckScreen(
+                onLivenessComplete = { center, left, right ->
+                    livenessCenterBitmap = center
+                    livenessLeftBitmap = left
+                    livenessRightBitmap = right
+                    step = OnboardingStep.FACE_MATCH
+                },
+                onCancel = { step = OnboardingStep.SELFIE }
             )
         }
 

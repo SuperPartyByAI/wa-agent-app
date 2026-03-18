@@ -304,7 +304,7 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
       return;
     }
 
-    const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', msgId).limit(1).maybeSingle();
+    const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', msgId).eq('session_id', sessionId).limit(1).maybeSingle();
     console.log(`[Diagnostic] Attempting to insert msg ${msgId} (Exist: ${!!existingMsg}) to conv ${convId}`);
     if (!existingMsg) {
       const msgTimestamp = msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : new Date();

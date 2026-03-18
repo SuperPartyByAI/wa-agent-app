@@ -42,7 +42,7 @@ app.use(express.json({
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 // Config WhatsApp transport
-const WHTSUP_API_URL = process.env.WHTSUP_API_URL || 'http://5.161.179.132:3000';
+const WHTSUP_API_URL = process.env.WHTSUP_API_URL || 'http://localhost:3002';
 const WHTSUP_API_KEY = process.env.WHTSUP_API_KEY || process.env.API_KEY;
 
 // ═══════════════════════════════════════════════════

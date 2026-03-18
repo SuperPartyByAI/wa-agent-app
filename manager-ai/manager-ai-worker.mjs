@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
+import { processWithVertexAI } from './src/vertex/vertexClient.mjs';
 dotenv.config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -309,138 +310,62 @@ export async function processConversation(conversation_id, message_id = null, op
 
         // Iterate over each individual unsimulated client message chronologically
         for (const msg of missingClientMessages) {
-            console.log(`[AI Worker] Simulating step for client message: "${msg.content.substring(0, 30)}..."`);
+            console.log(`[AI Worker Sync] Backfilling missed message into Vertex AI: "${msg.content.substring(0, 30)}..."`);
             
-            // 1. Add current client msg to shadow memory trace
+            // 1. Force insert missed client message into Shadow DB!
             const newShadow = {
                 conversation_id,
                 sender_type: 'client',
                 content: msg.content,
                 created_at: msg.created_at
             };
-            // ❌ REMOVED: Nu mai inserăm în ai_training_messages de aici pentru că webhook-ul o face deja!
-            currentShadow.push(newShadow);
+            const { error: insErr } = await supabase.from('ai_training_messages').insert(newShadow);
+            if (insErr) console.error("[AI Worker Sync] Failed to backfill real msg to shadow:", insErr.message);
 
-            // 2. Build the transcript up to this exact point
-            const transcript = currentShadow.map(m => 
-                `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'ai' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
-            ).join('\n');
-
-            let userMessage = `--- CONVERSATIE ---\n${transcript}`;
-            if (operator_prompt) {
-                userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
-            }
-
-            // 3. Call local LLM for this specific step in history
-            console.log(`[AI Worker] Calling local LLM (${LLM_MODEL}) for this step (${transcript.length} chars)...`);
+            // 2. Query REAL Vertex AI engine with the clean missing prompt
+            const convData = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
+            const clientData = await supabase.from('client_notebooks').select('phone_number').eq('client_id', convData?.data?.client_id).single();
+            const phoneE164 = clientData?.data?.phone_number || conversation_id;
             
-            let analysis = await callLocalLLM(SYSTEM_PROMPT, userMessage);
-            
-            if (!analysis) {
-                console.warn(`[AI Worker] Local LLM unreachable. Using mock fallback.`);
-                analysis = {
-                    client_memory: { priority_level: "normal", internal_notes_summary: "MOCK: Client interesat." },
-                    event_draft: { draft_type: "petrecere_standard", structured_data: { location: null, date: null, event_type: null }, missing_fields: [] },
-                    selected_services: [],
-                    service_requirements: {},
-                    missing_fields_per_service: {},
-                    cross_sell_opportunities: [],
-                    conversation_state: { current_intent: "MOCK", next_best_action: "Fallback" },
-                    suggested_reply: "Nu putem viziona in acest moment.",
-                    decision: { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: "lead" }
-                };
+            console.log(`[AI Worker Sync] Pinging Vertex processing array for ${phoneE164} on catch-up thread...`);
+            let vertexResult;
+            try {
+                vertexResult = await processWithVertexAI(phoneE164, msg.content);
+            } catch (err) {
+                 console.error("[AI Worker Sync] Vertex failed natively:", err.message);
+                 vertexResult = { reply: "Eroare temporară la sincronizarea retroactive." };
             }
-
-            // 4. Post-process services using catalog
-            const serviceData = postProcessServices(analysis);
             
-            const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
-            const suggestedReply = analysis.suggested_reply || analysis.conversation_state?.next_best_action || 'Nu am putut genera un raspuns.';
-            
-            const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: 'Nu s-a putut analiza.' };
-            const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: { location: null, date: null, event_type: null }, missing_fields: [] };
-            const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
+            const reply = vertexResult?.reply || "Eveniment sincronizat retrospectiv fără răspuns verbal.";
 
-            if (serviceData.should_force_review) {
-                decision.needs_human_review = true;
-                decision.can_auto_reply = false;
-            }
-
-            // 5. Upsert State into AI Core Tables for this step
-            const { data: conv } = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
-            const clientId = conv?.client_id;
-
-            if (clientId) {
-                const { error: err1 } = await supabase.from('ai_client_memory').upsert({
-                    client_id: clientId,
-                    priority_level: clientMemory.priority_level,
-                    internal_notes_summary: clientMemory.internal_notes_summary,
-                    updated_at: new Date().toISOString()
-                });
-                if (err1) console.error("[AI Worker] DB Error memory:", err1.message);
-            }
-
-            const { data: existingDraft } = await supabase.from('ai_event_drafts').select('id').eq('conversation_id', conversation_id).maybeSingle();
-            
-            if (existingDraft) {
-                 await supabase.from('ai_event_drafts').update({
-                    client_id: clientId, draft_type: eventDraft.draft_type, structured_data_json: eventDraft.structured_data, missing_fields_json: eventDraft.missing_fields, updated_at: new Date().toISOString()
-                }).eq('id', existingDraft.id);
-            } else {
-                 await supabase.from('ai_event_drafts').insert({
-                    conversation_id: conversation_id, client_id: clientId, draft_type: eventDraft.draft_type, structured_data_json: eventDraft.structured_data, missing_fields_json: eventDraft.missing_fields, updated_at: new Date().toISOString()
-                });
-            }
-
-            const statePayload = {
-                conversation_id: conversation_id, current_intent: convState.current_intent, next_best_action: convState.next_best_action, updated_at: new Date().toISOString()
-            };
-            if (message_id) statePayload.last_processed_message_id = message_id;
-            await supabase.from('ai_conversation_state').upsert(statePayload);
-
-            // 6. Save AI reply decision (audit trail)
-            let replyStatus = 'pending';
-            let sentBy = 'pending';
-            let sentAt = null;
-
-            // Only auto-reply on the FINAL missing message if real-time
-            const isLastMsgInBatch = msg.id === missingClientMessages[missingClientMessages.length - 1].id;
-            
-            if (isLastMsgInBatch && AI_AUTOREPLY_ENABLED && decision.can_auto_reply && !decision.needs_human_review && decision.confidence_score >= 75) {
-                console.log(`[AI Worker] Auto-reply conditions met. Sending...`);
-                const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
-                if (sent) { replyStatus = 'sent'; sentBy = 'ai'; sentAt = new Date().toISOString(); }
-            }
-
-            const { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
-                conversation_id: conversation_id,
-                suggested_reply: suggestedReply,
-                can_auto_reply: decision.can_auto_reply,
-                needs_human_review: decision.needs_human_review,
-                escalation_reason: decision.escalation_reason || null,
-                confidence_score: decision.confidence_score,
-                conversation_stage: decision.conversation_stage,
-                reply_status: replyStatus,
-                sent_by: sentBy,
-                sent_at: sentAt,
-                operator_prompt: operator_prompt || null
-            });
-            if (errDecision) console.error("[AI Worker] DB Error reply_decisions:", errDecision.message);
-
-            // 7. Append AI response to shadow memory so the NEXT step sees it!
-            const aiRecordTime = new Date(new Date(msg.created_at).getTime() + 1000).toISOString();
-            const aiShadowMsg = {
-                conversation_id: conversation_id,
-                sender_type: 'ai',
-                content: suggestedReply,
-                created_at: aiRecordTime
-            };
-            // ❌ REMOVED: Do not save generated legacy text to ai_training_messages! Vertex Webhook handles the pure simulation now.
-            currentShadow.push({
-                ...aiShadowMsg,
+            // 3. Immediately insert Decision Metadata so UI binds securely (Col 3 works)
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: reply,
+                can_auto_reply: false,
+                needs_human_review: true,
+                confidence_score: 99,
+                conversation_stage: 'vertex-background-sync',
+                reply_status: 'shadow_sync',
+                sent_by: 'ai_worker_sync',
                 created_at: new Date().toISOString()
             });
+
+            // 4. Force AI output into Simulator history so it renders!
+            const aiRecordTime = new Date(new Date(msg.created_at).getTime() + 1000).toISOString();
+            const aiShadowMsg = {
+                conversation_id,
+                sender_type: 'ai',
+                content: reply,
+                created_at: aiRecordTime
+            };
+            await supabase.from('ai_training_messages').insert(aiShadowMsg);
+
+            console.log(`[AI Worker Sync] Successfully healed drift for interaction: ${msg.id}`);
         }
+        
+        // We bypass the entirety of the archaic legacy local processing loop below!
+        return;
 
         // 6. Generate service-aware dynamic layout JSON for Android
         const escalationBadge = decision.escalation_reason ? `Escaladare: ${decision.escalation_reason}` : null;

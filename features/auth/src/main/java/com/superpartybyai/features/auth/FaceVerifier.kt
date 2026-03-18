@@ -45,8 +45,7 @@ object FaceVerifier {
                 Log.d(TAG, "ID card base64 size: ${idCardBase64.length}, Selfie base64 size: ${selfieBase64.length}")
 
                 // Call server API
-                val backendUrl = AppConfig.BACKEND_URL.trimEnd('/')
-                val apiUrl = "$backendUrl/api/admin/verify-face"
+                val apiUrl = "https://admin.superparty.ro/api/admin/verify-face"
                 
                 Log.d(TAG, "Calling API: $apiUrl")
 

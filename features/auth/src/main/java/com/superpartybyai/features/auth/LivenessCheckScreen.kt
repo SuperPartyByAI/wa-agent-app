@@ -361,25 +361,54 @@ private fun StepIndicator(label: String, active: Boolean, completed: Boolean) {
 }
 
 /**
- * Convert ImageProxy (YUV) to Bitmap.
+ * Convert ImageProxy (YUV_420_888) to Bitmap correctly handling row stride.
  */
 private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
-    val yBuffer = imageProxy.planes[0].buffer
-    val uBuffer = imageProxy.planes[1].buffer
-    val vBuffer = imageProxy.planes[2].buffer
+    val width = imageProxy.width
+    val height = imageProxy.height
 
-    val ySize = yBuffer.remaining()
-    val uSize = uBuffer.remaining()
-    val vSize = vBuffer.remaining()
+    val yPlane = imageProxy.planes[0]
+    val uPlane = imageProxy.planes[1]
+    val vPlane = imageProxy.planes[2]
 
-    val nv21 = ByteArray(ySize + uSize + vSize)
-    yBuffer.get(nv21, 0, ySize)
-    vBuffer.get(nv21, ySize, vSize)
-    uBuffer.get(nv21, ySize + vSize, uSize)
+    val yBuffer = yPlane.buffer
+    val uBuffer = uPlane.buffer
+    val vBuffer = vPlane.buffer
 
-    val yuvImage = YuvImage(nv21, ImageFormat.NV21, imageProxy.width, imageProxy.height, null)
+    yBuffer.rewind()
+    uBuffer.rewind()
+    vBuffer.rewind()
+
+    val yRowStride = yPlane.rowStride
+    val uvRowStride = uPlane.rowStride
+    val uvPixelStride = uPlane.pixelStride
+
+    // Build NV21 byte array properly
+    val nv21 = ByteArray(width * height * 3 / 2)
+
+    // Copy Y plane row by row (handles padding/stride)
+    var pos = 0
+    for (row in 0 until height) {
+        yBuffer.position(row * yRowStride)
+        yBuffer.get(nv21, pos, width)
+        pos += width
+    }
+
+    // Copy UV planes interleaved (NV21 = VUVU...)
+    val uvHeight = height / 2
+    for (row in 0 until uvHeight) {
+        for (col in 0 until width / 2) {
+            val uvIndex = row * uvRowStride + col * uvPixelStride
+            vBuffer.position(uvIndex)
+            nv21[pos++] = vBuffer.get()
+            uBuffer.position(uvIndex)
+            nv21[pos++] = uBuffer.get()
+        }
+    }
+
+    val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
     val out = ByteArrayOutputStream()
-    yuvImage.compressToJpeg(Rect(0, 0, imageProxy.width, imageProxy.height), 80, out)
+    yuvImage.compressToJpeg(Rect(0, 0, width, height), 85, out)
     val bytes = out.toByteArray()
     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 

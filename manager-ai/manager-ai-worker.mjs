@@ -524,7 +524,7 @@ async function startSyncDaemon() {
 }
 
 // Instantiate the loop if the script is run natively by PM2
-import { fileURLToPath } from 'url';
+// fileURLToPath is already imported at the top of the file
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     startSyncDaemon();
 }

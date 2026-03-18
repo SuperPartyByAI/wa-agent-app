@@ -7,7 +7,7 @@ async function sendWebhookToManagerAi(payload, attempt = 1) {
   const maxRetries = 3;
   const webhookSecret = process.env.MANAGER_AI_WEBHOOK_SECRET || 'dev-secret-123';
   const url1 = process.env.MANAGER_AI_WEBHOOK_URL || 'http://localhost:3000/api/whatsapp';
-  const url2 = 'http://localhost:3005/api/ai/webhook';
+  const url2 = process.env.VERTEX_AI_WEBHOOK_URL || 'http://localhost:3001/webhook/whts-up';
   
   const bodyString = JSON.stringify(payload);
   const signature = crypto.createHmac('sha256', webhookSecret).update(bodyString).digest('hex');

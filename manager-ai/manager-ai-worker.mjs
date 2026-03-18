@@ -318,8 +318,7 @@ export async function processConversation(conversation_id, message_id = null, op
                 content: msg.content,
                 created_at: msg.created_at
             };
-            const { error: insErr } = await supabase.from('ai_training_messages').insert(newShadow);
-            if (insErr) console.error("[AI Worker] Failed to copy real msg to shadow:", insErr.message);
+            // ❌ REMOVED: Nu mai inserăm în ai_training_messages de aici pentru că webhook-ul o face deja!
             currentShadow.push(newShadow);
 
             // 2. Build the transcript up to this exact point
@@ -436,9 +435,7 @@ export async function processConversation(conversation_id, message_id = null, op
                 content: suggestedReply,
                 created_at: aiRecordTime
             };
-            const { error: shadowAiErr } = await supabase.from('ai_training_messages').insert(aiShadowMsg);
-            if (shadowAiErr) console.error("[AI Worker] DB Error shadow ai msg:", shadowAiErr.message);
-            
+            // ❌ REMOVED: Do not save generated legacy text to ai_training_messages! Vertex Webhook handles the pure simulation now.
             currentShadow.push({
                 ...aiShadowMsg,
                 created_at: new Date().toISOString()

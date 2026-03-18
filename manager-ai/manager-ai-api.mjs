@@ -134,6 +134,20 @@ app.post('/webhook/whts-up', async (req, res) => {
                         }
                     ]);
                     
+                    // Legăm simularea de Dashboard UI (Coloana 3) salvând decizia AI-ului direct!
+                    // Astfel rezolvăm problema "simulatorului neconectat / toate răspunsurile sunt la fel".
+                    await supabase.from('ai_reply_decisions').insert({
+                        conversation_id: entry.conversation_id,
+                        suggested_reply: result.reply,
+                        can_auto_reply: isAiLive,
+                        needs_human_review: !isAiLive,
+                        confidence_score: 95, // Vertex AI standard confidence
+                        conversation_stage: "vertex-agent",
+                        reply_status: isAiLive ? "sent" : "shadow_mode",
+                        sent_by: isAiLive ? "vertex" : "pending",
+                        created_at: new Date().toISOString()
+                    });
+                    
                     if (isAiLive) {
                         // AI-ul este ON -> Trimite și clientului pe WhatsApp
                         console.log(`[Pipeline] 🟢 AI Activ. Trimit pe WhatsApp.`);

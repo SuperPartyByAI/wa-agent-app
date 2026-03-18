@@ -42,8 +42,10 @@ class MainActivity : ComponentActivity() {
                             AuthScreen(
                                 onLoginSuccess = {
                                     // After login, check KYC status
-                                    GlobalScope.launch {
-                                        val destination = checkKycStatus()
+                                    GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                        val destination = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            checkKycStatus()
+                                        }
                                         navController.navigate(destination) {
                                             popUpTo("login") { inclusive = true }
                                         }

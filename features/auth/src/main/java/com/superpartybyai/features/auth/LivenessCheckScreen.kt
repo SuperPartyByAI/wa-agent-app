@@ -68,7 +68,7 @@ fun LivenessCheckScreen(
     // Thresholds for head rotation
     val centerThreshold = 10f     // Within ±10° = looking straight
     val turnThreshold = 25f       // Must turn at least 25° for left/right
-    val holdRequired = 5          // Hold position for ~5 frames (~1 second)
+    val holdRequired = 12         // Hold position for ~12 frames (~2.5 seconds) for camera to adjust
 
     val previewView = remember { PreviewView(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
@@ -95,7 +95,7 @@ fun LivenessCheckScreen(
             }
 
             val imageAnalysis = ImageAnalysis.Builder()
-                .setTargetResolution(Size(640, 480))
+                .setTargetResolution(Size(1280, 720))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also { analysis ->

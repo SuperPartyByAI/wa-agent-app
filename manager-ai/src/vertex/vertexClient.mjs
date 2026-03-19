@@ -19,7 +19,7 @@ dotenv.config();
 const VERTEX_API_KEY = process.env.VERTEX_AI_API_KEY;
 const VERTEX_PROJECT = process.env.VERTEX_AI_PROJECT || 'superparty-vertex-ai';
 const VERTEX_LOCATION = process.env.VERTEX_AI_LOCATION || 'us-central1';
-const VERTEX_MODEL = process.env.VERTEX_AI_MODEL || 'gemini-2.5-flash-lite';
+const VERTEX_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 // Supabase dedicat pt Vertex AI
 const VERTEX_SUPABASE_URL = process.env.VERTEX_SUPABASE_URL;
@@ -29,33 +29,35 @@ const vertexDb = VERTEX_SUPABASE_URL && VERTEX_SUPABASE_KEY
     ? createClient(VERTEX_SUPABASE_URL, VERTEX_SUPABASE_KEY)
     : null;
 
-// Supabase Principal (CRM)
-const MAIN_SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const MAIN_SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const mainDb = MAIN_SUPABASE_URL && MAIN_SUPABASE_KEY
-    ? createClient(MAIN_SUPABASE_URL, MAIN_SUPABASE_KEY)
-    : null;
-
 // ─── Tool Definitions (Function Calling) ───
 const VERTEX_TOOLS = [
     {
         functionDeclarations: [
             {
                 name: 'noteaza_petrecere',
-                description: 'Creează un eveniment/petrecere nouă. REGULĂ CRITICĂ: Dacă clientul cere MAI MULTE personaje (ex: Rumi și Jinu, Mickey și Minnie), **ESTE STRICT INTERZIS** să le grupezi în același apel! TREBUIE SĂ APELEZI ACEASTĂ FUNCȚIE DE MAI MULTE ORI SIMULTAN (câte un apel INDEPENDENT pentru FIECARE personaj în parte).',
+                description: 'Creează un eveniment/petrecere nouă pentru client. Folosește când clientul vrea să rezerve o petrecere.',
                 parameters: {
                     type: 'OBJECT',
                     properties: {
-                        role_title: { type: 'STRING', description: 'Numele EXACT al rolului ales (ex: Animație, Ursitoare). Dacă nu e clar, pune "Necunoscut".' },
-                        event_details_string: {
-                            type: 'STRING',
-                            description: 'Bypass de sistem: Scrie aici un TEXT care să conțină un JSON VALID cu ABSOLUT TOATE "Detaliile Obligatorii" ca și chei. Ex: "{\\"Locația\\": \\"Necunoscut\\", \\"Data\\": \\"15 Mai\\"}". Dacă ceva lipsește, pune valoarea "Necunoscut".'
+                        role_title: { type: 'STRING', description: 'Tipul serviciului: Animație, Candy Bar, Decorațiuni, Fotograf, DJ, Videograf, Trupa Cover, Sonorizare, Moderator, Închiriere echipamente' },
+                        event_details: {
+                            type: 'OBJECT',
+                            description: 'Detaliile evenimentului ca perechi cheie-valoare',
+                            properties: {
+                                'Data Evenimentului': { type: 'STRING', description: 'Data (format liber, ex: 20 Martie 2026)' },
+                                'Ora de Început': { type: 'STRING', description: 'Ora (ex: 17:00)' },
+                                'Locația': { type: 'STRING', description: 'Locul evenimentului' },
+                                'Personajul Dorit': { type: 'STRING', description: 'Personaj animație (Elsa, Spider-Man etc)' },
+                                'Număr Copii': { type: 'STRING', description: 'Câți copii participă' },
+                                'Durata (ore)': { type: 'STRING', description: 'Câte ore durează' },
+                                'Nume Sărbătorit': { type: 'STRING', description: 'Numele copilului/persoanei sărbătorite' },
+                                'Vârstă Sărbătorit': { type: 'STRING', description: 'Câți ani face' }
+                            }
                         },
                         total_amount: { type: 'NUMBER', description: 'Prețul total dacă s-a stabilit' },
                         notes: { type: 'STRING', description: 'Note suplimentare' }
                     },
-                    required: ['role_title', 'event_details_string']
+                    required: ['role_title']
                 }
             },
             {
@@ -122,13 +124,12 @@ const VERTEX_TOOLS = [
 
 // ─── Load System Prompt from Supabase Config ───
 let cachedSystemPrompt = null;
-let cachedActiveRoles = "";
 let configLastLoaded = 0;
 const CONFIG_CACHE_MS = 60_000; // re-load din DB la fiecare 60s
 
 async function loadSystemPrompt() {
     if (cachedSystemPrompt && Date.now() - configLastLoaded < CONFIG_CACHE_MS) {
-        return cachedSystemPrompt + cachedActiveRoles;
+        return cachedSystemPrompt;
     }
     if (!vertexDb) {
         console.warn('[VertexAI] No Vertex Supabase configured, using default prompt');
@@ -139,29 +140,12 @@ async function loadSystemPrompt() {
             .select('config_value')
             .eq('config_key', 'system_prompt')
             .single();
-            
-        // 🚀 FETCH DYNAMIC ROLES (vertex_sources where category='rol')
-        const { data: rolesData } = await vertexDb.from('vertex_sources')
-            .select('title, content')
-            .eq('category', 'rol')
-            .eq('is_active', true);
-            
-        let rolesText = "";
-        if (rolesData && rolesData.length > 0) {
-            rolesText = "\n\n=== ROLURI / SERVICII DISPONIBILE ===\n" + 
-                "Mai jos ai lista cu serviciile noastre și 'Detaliile Obligatorii' pe care trebuie să le extragi pentru fiecare (folosind noteaza_petrecere).\n" + 
-                "Dacă clientul cere un serviciu de mai jos, NU cere detalii inutile (ex. nu cere personaj la Candy Bar). Cere DOAR detaliile din definiția acelui rol.\n\n" +
-                rolesData.map(r => `[ROL: ${r.title}]\n${r.content}`).join("\n\n");
-        }
-        
         cachedSystemPrompt = data?.config_value || 'Ești asistentul virtual Superparty.';
-        cachedActiveRoles = rolesText;
         configLastLoaded = Date.now();
-        
-        return cachedSystemPrompt + cachedActiveRoles;
+        return cachedSystemPrompt;
     } catch (e) {
         console.error('[VertexAI] Failed to load config:', e.message);
-        return (cachedSystemPrompt || 'Ești asistentul virtual Superparty.') + cachedActiveRoles;
+        return cachedSystemPrompt || 'Ești asistentul virtual Superparty.';
     }
 }
 
@@ -202,7 +186,6 @@ async function callVertexAI(sessionMessages, options = {}) {
 
 
     // Use Vertex AI endpoint (enterprise) with API key
-    console.log(`[VertexAI] 🔥 SE EXECUTĂ CEREREA SPRE MODELUL: ${VERTEX_MODEL}`);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${VERTEX_MODEL}:generateContent?key=${VERTEX_API_KEY}`;
 
     const controller = new AbortController();
@@ -232,14 +215,12 @@ async function callVertexAI(sessionMessages, options = {}) {
 
         // Check for function calls
         const parts = candidate.content?.parts || [];
-        const functionCalls = parts.filter(p => p.functionCall).map(p => p.functionCall);
+        const functionCall = parts.find(p => p.functionCall);
         const textPart = parts.find(p => p.text);
 
         return {
             text: textPart?.text || null,
-            functionCalls: functionCalls.length > 0 ? functionCalls : null,
-            // Keep the single accessor for backwards compatibility with single-call logic
-            functionCall: functionCalls.length > 0 ? functionCalls[0] : null,
+            functionCall: functionCall?.functionCall || null,
             finishReason: candidate.finishReason,
             usageMetadata: data.usageMetadata || null
         };
@@ -250,7 +231,7 @@ async function callVertexAI(sessionMessages, options = {}) {
 }
 
 // ─── Execute Function (Tool) Calls ───
-async function executeFunctionCall(functionCall, sessionId, phoneE164, options = {}) {
+async function executeFunctionCall(functionCall, sessionId, phoneE164) {
     const { name, args } = functionCall;
     console.log(`[VertexAI] Executing function: ${name}`, args);
 
@@ -259,98 +240,34 @@ async function executeFunctionCall(functionCall, sessionId, phoneE164, options =
     try {
         switch (name) {
             case 'noteaza_petrecere': {
-                if (!mainDb) { result = { error: 'No CRM database configured' }; break; }
-
-                let parsedEventDetails = {};
-                try { 
-                    if (args.event_details_string) parsedEventDetails = JSON.parse(args.event_details_string); 
-                } catch (e) { console.error("Parse error on event_details_string", e); }
-
-                // SIMULARE CONTINUĂ: Replicăm intenția logică în `ai_event_drafts` pentru Vizualizarea în Dashboard
-                try {
-                    const { data: convData } = await mainDb.from('conversations')
-                         .select('id').eq('client_id', (await mainDb.from('clients').select('id').eq('real_phone_e164', phoneE164).single())?.data?.id).maybeSingle();
-                    if (convData) {
-                         const rType = args.role_title || 'noteaza_petrecere';
-                         let parsedEventDetails = {};
-                         try { if (args.event_details_string) parsedEventDetails = JSON.parse(args.event_details_string); } catch(e){}
-                         
-                         const personajDorit = parsedEventDetails['Personajul Dorit'] || parsedEventDetails.personaj_dorit || '';
-                         
-                         const { data: existingDrafts } = await mainDb.from('ai_event_drafts')
-                              .select('id, structured_data_json')
-                              .eq('conversation_id', convData.id)
-                              .eq('draft_type', rType);
-                              
-                         let existingDraft = (existingDrafts || []).find(d => {
-                             const p = d.structured_data_json?.['Personajul Dorit'] || d.structured_data_json?.personaj_dorit || '';
-                             return p === personajDorit;
-                         });
-                         
-                         // Fallback: If no exact character match, see if there's an empty character draft we can claim
-                         if (!existingDraft && personajDorit !== '') {
-                             existingDraft = (existingDrafts || []).find(d => {
-                                 const p = d.structured_data_json?.['Personajul Dorit'] || d.structured_data_json?.personaj_dorit || '';
-                                 return p === '';
-                             });
-                         }
-
-                         const payload = {
-                             draft_type: rType,
-                             structured_data_json: parsedEventDetails,
-                             missing_fields_json: [],
-                             updated_at: new Date().toISOString()
-                         };
-                         if (existingDraft) {
-                             await mainDb.from('ai_event_drafts').update(payload).eq('id', existingDraft.id);
-                         } else {
-                             await mainDb.from('ai_event_drafts').insert({ conversation_id: convData.id, ...payload });
-                         }
-                    }
-                } catch(e) { console.error('[VertexAI] Draft sync error:', e.message); }
-
-                // BARIERĂ FIZICĂ DE PROTECȚIE: Bypassează scrierea în CRM dacă funcția a fost oprită manual din Matrix
-                if (!options.isCrmLive) {
-                    result = { success: true, simulated: true, event_id: "simulat-123", message: `[SIMULARE] Funcția de creare CRM a fost rulată în modul SIMULARE. Baza de date a rămas 100% curată.` };
-                    break;
-                }
-
-                let data = null, error = null;
-                try {
-                    const res = await mainDb.from('ai_client_events').insert({
-                        client_phone: phoneE164,
-                        role_title: args.role_title || 'Animație',
-                        event_details: parsedEventDetails || {},
-                        total_amount: args.total_amount || 0,
-                        notes: args.notes || '',
-                        status: 'active',
-                        event_status: 'new'
-                    }).select().single();
-                    data = res.data;
-                    error = res.error;
-                } catch (e) { console.error("Legacy CRM Insert Bypassed", e.message); }
+                if (!vertexDb) { result = { error: 'No database configured' }; break; }
+                const { data, error } = await vertexDb.from('client_events').insert({
+                    client_phone: phoneE164,
+                    role_title: args.role_title || 'Animație',
+                    event_details: args.event_details || {},
+                    total_amount: args.total_amount || 0,
+                    notes: args.notes || '',
+                    status: 'active',
+                    event_status: 'new'
+                }).select().single();
                 
                 if (error) throw error;
                 result = { success: true, event_id: data.id, message: `Eveniment creat cu succes` };
                 break;
             }
             case 'actualizeaza_petrecere': {
-                if (!mainDb) { result = { error: 'No CRM database configured' }; break; }
-                if (!options.isCrmLive) { 
-                    result = { success: true, simulated: true, message: `[SIMULARE] Funcția de actualizare a fost rulată în modul SIMULARE. Baza de date a rămas protejată.` };
-                    break;
-                }
+                if (!vertexDb) { result = { error: 'No database configured' }; break; }
                 const update = { updated_at: new Date().toISOString() };
                 if (args.event_details) {
                     // Merge with existing details
-                    const { data: existing } = await mainDb.from('ai_client_events')
+                    const { data: existing } = await vertexDb.from('client_events')
                         .select('event_details').eq('id', args.event_id).single();
                     update.event_details = { ...(existing?.event_details || {}), ...args.event_details };
                 }
                 if (args.total_amount !== undefined) update.total_amount = args.total_amount;
                 if (args.notes !== undefined) update.notes = args.notes;
                 
-                const { error } = await mainDb.from('ai_client_events')
+                const { error } = await vertexDb.from('client_events')
                     .update(update)
                     .eq('id', args.event_id);
                 
@@ -359,12 +276,8 @@ async function executeFunctionCall(functionCall, sessionId, phoneE164, options =
                 break;
             }
             case 'anuleaza_petrecere': {
-                if (!mainDb) { result = { error: 'No CRM database configured' }; break; }
-                if (!options.isCrmLive) { 
-                    result = { success: true, simulated: true, message: `[SIMULARE] Oprită manual.` };
-                    break;
-                }
-                const { error } = await mainDb.from('ai_client_events')
+                if (!vertexDb) { result = { error: 'No database configured' }; break; }
+                const { error } = await vertexDb.from('client_events')
                     .update({ status: 'cancelled', notes: args.motiv ? `ANULAT: ${args.motiv}` : 'ANULAT', updated_at: new Date().toISOString() })
                     .eq('id', args.event_id);
                 
@@ -373,12 +286,8 @@ async function executeFunctionCall(functionCall, sessionId, phoneE164, options =
                 break;
             }
             case 'restaureaza_petrecere': {
-                if (!mainDb) { result = { error: 'No CRM database configured' }; break; }
-                if (!options.isCrmLive) { 
-                    result = { success: true, simulated: true, message: `[SIMULARE] Oprită manual.` };
-                    break;
-                }
-                const { error } = await mainDb.from('ai_client_events')
+                if (!vertexDb) { result = { error: 'No database configured' }; break; }
+                const { error } = await vertexDb.from('client_events')
                     .update({ status: 'active', updated_at: new Date().toISOString() })
                     .eq('id', args.event_id);
                 
@@ -387,8 +296,8 @@ async function executeFunctionCall(functionCall, sessionId, phoneE164, options =
                 break;
             }
             case 'cauta_petreceri': {
-                if (!mainDb) { result = { error: 'No CRM database configured' }; break; }
-                let query = mainDb.from('ai_client_events')
+                if (!vertexDb) { result = { error: 'No database configured' }; break; }
+                let query = vertexDb.from('client_events')
                     .select('id, role_title, event_details, total_amount, notes, status, created_at')
                     .eq('client_phone', phoneE164);
                 
@@ -470,16 +379,16 @@ async function getOrCreateSession(phoneE164) {
     return { ...newSession, isNew: true };
 }
 
-async function loadSessionHistory(sessionId, limit = 150) {
+async function loadSessionHistory(sessionId, limit = 20) {
     if (!vertexDb || !sessionId) return [];
 
     const { data } = await vertexDb.from('vertex_messages')
         .select('role, content, function_name, function_args, function_result')
         .eq('session_id', sessionId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
         .limit(limit);
 
-    return (data || []).reverse().map(m => ({
+    return (data || []).map(m => ({
         role: m.role === 'model' ? 'model' : 'user',
         content: m.content || `[Function: ${m.function_name}]`
     }));
@@ -513,7 +422,7 @@ async function saveMessage(sessionId, role, content, extras = {}) {
 }
 
 // ─── Main Pipeline: Process a message through Vertex AI ───
-export async function processWithVertexAI(phoneE164, userMessageText, options = {}) {
+export async function processWithVertexAI(phoneE164, userMessageText) {
     const t0 = Date.now();
     console.log(`[VertexAI] Processing message from ${phoneE164}: "${userMessageText.substring(0, 50)}..."`);
 
@@ -595,13 +504,13 @@ export async function processWithVertexAI(phoneE164, userMessageText, options = 
             // Intent detection — force tools if AI didn't call one but should have
             if (isFirstCall && !response.functionCall) {
                 const msg = userMessageText.toLowerCase();
-                const wantsService = msg.includes('vreau') || msg.includes('doresc') || msg.includes('petrecer') || msg.includes('animat') || msg.includes('ursitoar') || msg.includes('cabina') || msg.includes('mascot') || msg.includes('popcorn') || msg.includes('vata');
-                const hasEventDetails = msg.includes('eveniment') || msg.includes('botez') || msg.includes('nunta');
+                const hasEventDetails = (msg.includes('petrecere') || msg.includes('animati') || msg.includes('eveniment') || msg.includes('botez') || msg.includes('nunta'))
+                    && (msg.match(/\d{1,2}\s*(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie|\.\d{1,2})/i) || msg.match(/\d{4}/));
                 const wantsChange = msg.includes('schimb') || msg.includes('modific') || msg.includes('anulez') || msg.includes('renunt') || msg.includes('reactivez') || msg.includes('restaur');
                 const wantsNameChange = msg.includes('numes') || msg.includes('nu matei') || msg.includes('nu alexandru') || msg.includes('nu se numest') || msg.includes('face') || msg.includes('ani');
 
-                if (wantsService || hasEventDetails || wantsChange || wantsNameChange) {
-                    console.log(`[VertexAI] Intent detected (aggressive logic) — retrying with forced tools`);
+                if (hasEventDetails || wantsChange || wantsNameChange) {
+                    console.log(`[VertexAI] Intent detected — retrying with forced tools`);
                     response = await callWithRetry(currentMessages, { tools: true, phoneE164, forceTools: true });
                 }
             }
@@ -628,37 +537,24 @@ export async function processWithVertexAI(phoneE164, userMessageText, options = 
             break;
         }
 
-        // Execute the function call(s)
-        const callsToExecute = response.functionCalls || [];
-        if (response.functionCall && callsToExecute.length === 0) callsToExecute.push(response.functionCall);
+        // Execute the function call
+        const { name, args } = response.functionCall;
+        console.log(`[VertexAI] Tool call #${i + 1}: ${name}`);
+        console.log(`[VertexAI] Executing function: ${name}`, JSON.stringify(args).substring(0, 200));
+        const fnResult = await executeFunctionCall(response.functionCall, session.id, phoneE164);
+        
+        lastFunctionCall = response.functionCall;
+        lastFunctionResult = fnResult;
+        toolCalls.push({ name, args, result: fnResult });
 
-        let fnResults = [];
-        let functionResponseMessages = [];
-
-        for (const fn of callsToExecute) {
-            const { name, args } = fn;
-            console.log(`[VertexAI] Tool call #${i + 1}: ${name}`);
-            console.log(`[VertexAI] Executing function: ${name}`, JSON.stringify(args).substring(0, 200));
-            const fnResult = await executeFunctionCall(fn, session.id, phoneE164, options);
-            
-            fnResults.push(fnResult);
-            toolCalls.push({ name, args, result: fnResult });
-            
-            lastFunctionCall = fn;
-            lastFunctionResult = fnResult;
-            
-            // Save to DB
-            await saveMessage(session.id, 'function_call', null, { functionName: name, functionArgs: args });
-            await saveMessage(session.id, 'function_response', JSON.stringify(fnResult), { functionName: name, functionResult: fnResult });
-            
-            functionResponseMessages.push({ role: 'model', content: `[Funcția ${name} executată. Rezultat: ${JSON.stringify(fnResult)}]` });
-        }
+        // Save to DB
+        await saveMessage(session.id, 'function_call', null, { functionName: name, functionArgs: args });
+        await saveMessage(session.id, 'function_response', JSON.stringify(fnResult), { functionName: name, functionResult: fnResult });
 
         // Feed result back to AI — smart continuation based on context
         let continuationPrompt;
-        const lastName = lastFunctionCall?.name;
-        if (lastName === 'cauta_petreceri' && lastFunctionResult?.events?.length > 0) {
-            const eventId = lastFunctionResult.events[0].id;
+        if (name === 'cauta_petreceri' && fnResult.events?.length > 0) {
+            const eventId = fnResult.events[0].id;
             const msg = userMessageText.toLowerCase();
             if (msg.includes('anulez') || msg.includes('renunt')) {
                 continuationPrompt = `IMPORTANT: Clientul vrea să ANULEZE. Apelează ACUM anuleaza_petrecere cu event_id="${eventId}". NU confirma verbal, execută tool-ul.`;
@@ -670,10 +566,9 @@ export async function processWithVertexAI(phoneE164, userMessageText, options = 
         } else {
             continuationPrompt = 'Continuă. Dacă trebuie altă acțiune, fă-o acum cu tool-ul corespunzător. Dacă ai terminat, confirmă clientului.';
         }
-        
         currentMessages = [
             ...currentMessages,
-            ...functionResponseMessages,
+            { role: 'model', content: `[Funcția ${name} executată. Rezultat: ${JSON.stringify(fnResult)}]` },
             { role: 'user', content: continuationPrompt }
         ];
     }

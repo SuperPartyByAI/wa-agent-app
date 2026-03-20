@@ -424,16 +424,16 @@ export async function processConversation(conversation_id, message_id = null, op
                             process.env.VERTEX_SUPABASE_URL, process.env.VERTEX_SUPABASE_SERVICE_ROLE_KEY
                         );
                         const roleTitle = svc.role_title || 'Animație';
-                        const eventDetails = {
-                            data_evenimentului: svc.data || null,
-                            ora_evenimentului: svc.ora_start || null,
-                            localitate: svc.locatie || null,
-                            personaj_dorit: svc.personaj || null,
-                            durata_ore: svc.durata || null,
-                            numar_copii: svc.nr_copii || null,
-                            nume_sarbatorit: svc.nume_sarbatorit || null,
-                            varsta: svc.varsta || null,
-                        };
+                        // Use EXACT Romanian key names expected by Vertex dashboard
+                        const eventDetails = {};
+                        if (svc.data) eventDetails['Data Evenimentului'] = svc.data;
+                        if (svc.ora_start) eventDetails['Ora de Început'] = svc.ora_start;
+                        if (svc.locatie) eventDetails['Locația'] = svc.locatie;
+                        if (svc.durata) eventDetails['Durata (ore)'] = svc.durata;
+                        if (svc.personaj) eventDetails['Personajul Dorit'] = svc.personaj;
+                        if (svc.nr_copii) eventDetails['Număr Copii'] = svc.nr_copii;
+                        if (svc.varsta) eventDetails['Vârstă Sărbătorit'] = svc.varsta;
+                        if (svc.nume_sarbatorit) eventDetails['Nume Sărbătorit'] = svc.nume_sarbatorit;
                         const { data: exEv } = await vtxSupa.from('client_events')
                             .select('id, event_details').eq('client_phone', phoneE164)
                             .eq('role_title', roleTitle).eq('status', 'active').maybeSingle();

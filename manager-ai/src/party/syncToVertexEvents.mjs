@@ -30,18 +30,21 @@ export async function syncPartyToVertexEvents(partyDraft, clientPhone) {
     const detalii = partyDraft.detalii_servicii?.[svc] || {};
     const comercial = partyDraft.comercial || {};
 
+    // Use EXACT Romanian key names expected by the Vertex dashboard display
+    const loc = dg.localitate || dg.locatie_eveniment || dg.adresa_completa || null;
+    const judet = dg.judet ? `, ${dg.judet}` : '';
     const eventDetails = {
-        data_evenimentului: dg.data_evenimentului || null,
-        ora_evenimentului: dg.ora_evenimentului || detalii.ora_evenimentului || null,
-        localitate: dg.localitate || dg.locatie_eveniment || null,
-        judet: dg.judet || null,
-        adresa_completa: dg.adresa_completa || null,
-        numar_copii: dg.numar_copii || detalii.numar_copii || null,
-        personaj_dorit: detalii.personaj_dorit || null,
-        durata_ore: detalii.durata_ore || null,
-        interior_sau_exterior: dg.interior_sau_exterior || null,
-        gata_pentru_oferta: comercial.gata_pentru_oferta || false,
+        'Data Evenimentului': dg.data_evenimentului || null,
+        'Ora de Început': dg.ora_evenimentului || detalii.ora_evenimentului || null,
+        'Locația': loc ? `${loc}${judet}` : null,
+        'Durata (ore)': detalii.durata_ore || null,
+        'Personajul Dorit': detalii.personaj_dorit || detalii.personaj || null,
+        'Număr Copii': dg.numar_copii || detalii.numar_copii || null,
+        'Vârstă Sărbătorit': dg.varsta_copil || detalii.varsta || null,
+        'Tip Locație': dg.interior_sau_exterior || null,
     };
+    // Remove null values to keep event_details clean
+    Object.keys(eventDetails).forEach(k => { if (eventDetails[k] === null) delete eventDetails[k]; });
 
     try {
         // Upsert: one entry per (client_phone, role_title) combination

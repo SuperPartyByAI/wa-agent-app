@@ -369,10 +369,14 @@ export async function processConversation(conversation_id, message_id = null, op
                 if (!clientId) return;
 
                 const { data: existingEvents } = await supabase
-                    .from('ai_client_events').select('id').eq('client_id', clientId).limit(1);
+                    .from('ai_client_events')
+                    .select('id, data_eveniment')
+                    .eq('client_id', clientId)
+                    .limit(1);
 
-                if (existingEvents && existingEvents.length > 0) {
-                    // Already has events → truly nothing to do
+                // Skip only if events exist WITH a confirmed date (fully populated)
+                const hasCompleteEvent = existingEvents?.some(e => e.data_eveniment);
+                if (existingEvents && existingEvents.length > 0 && hasCompleteEvent) {
                     return;
                 }
 
@@ -411,6 +415,52 @@ export async function processConversation(conversation_id, message_id = null, op
                 if (!phoneE164) {
                     console.log(`[AI Worker Retro] No phone for client ${clientId}. Skipping.`);
                     return;
+                }
+
+                // ── Direct DB Update: fill in structured fields from LLM extraction ──
+                for (const svc of extraction.servicii) {
+                    try {
+                        const vtxSupa = (await import('@supabase/supabase-js')).createClient(
+                            process.env.VERTEX_SUPABASE_URL, process.env.VERTEX_SUPABASE_SERVICE_ROLE_KEY
+                        );
+                        const roleTitle = svc.role_title || 'Animație';
+                        const eventDetails = {
+                            data_evenimentului: svc.data || null,
+                            ora_evenimentului: svc.ora_start || null,
+                            localitate: svc.locatie || null,
+                            personaj_dorit: svc.personaj || null,
+                            durata_ore: svc.durata || null,
+                            numar_copii: svc.nr_copii || null,
+                            nume_sarbatorit: svc.nume_sarbatorit || null,
+                            varsta: svc.varsta || null,
+                        };
+                        const { data: exEv } = await vtxSupa.from('client_events')
+                            .select('id, event_details').eq('client_phone', phoneE164)
+                            .eq('role_title', roleTitle).eq('status', 'active').maybeSingle();
+                        if (exEv) {
+                            const merged = { ...(exEv.event_details || {}) };
+                            for (const [k, v] of Object.entries(eventDetails)) {
+                                if (v !== null && v !== undefined) merged[k] = v;
+                            }
+                            await vtxSupa.from('client_events').update({ event_details: merged }).eq('id', exEv.id);
+                        } else {
+                            await vtxSupa.from('client_events').insert({
+                                client_phone: phoneE164, role_title: roleTitle,
+                                event_details: eventDetails, total_amount: 0, notes: '', status: 'active'
+                            });
+                        }
+                        console.log(`[AI Worker Retro] ✅ Synced ${roleTitle} to Vertex for ${phoneE164}`);
+                    } catch(vtxErr) {
+                        console.warn(`[AI Worker Retro] Vertex sync failed:`, vtxErr.message);
+                    }
+                }
+
+                // Also update ai_client_events data fields if first service has data
+                const firstSvc = extraction.servicii[0];
+                if (firstSvc?.data) {
+                    await supabase.from('ai_client_events')
+                        .update({ data_eveniment: firstSvc.data, locatie: firstSvc.locatie, ora_eveniment: firstSvc.ora_start })
+                        .eq('client_id', clientId);
                 }
 
                 console.log(`[AI Worker Retro] Injecting synthetic: "${syntheticMsg.substring(0, 120)}"`);

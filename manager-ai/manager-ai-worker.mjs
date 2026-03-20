@@ -162,30 +162,84 @@ REGULI PENTRU "decision":
 // ─────────────────────────────────────────
 // RETROACTIVE EXTRACTION — prompt & helper
 // ─────────────────────────────────────────
-const RETROACTIVE_EXTRACT_PROMPT = `Esti un extractor de date pentru Superparty — companie animatii si petreceri copii.
-Analizezi o conversatie WhatsApp si extragi detaliile evenimentului cerut de client.
-Nu inventa NIMIC. Extrage DOAR informatii explicit mentionate in conversatie.
+// Role sources cache
+let _roleSourcesCache = null;
+let _roleSourcesLastLoad = 0;
 
-Returneaza JSON strict in formatul urmator:
+async function loadRoleSources() {
+    const now = Date.now();
+    if (_roleSourcesCache && now - _roleSourcesLastLoad < 5 * 60 * 1000) return _roleSourcesCache;
+    try {
+        const r = await fetch('http://localhost:3005/api/vertex/sources?brand=GLOBAL');
+        const d = await r.json();
+        _roleSourcesCache = (d.sources || []).map(src => {
+            const lines = (src.content || '').split('\n');
+            let serviciu = '', taguri = [], detalii = [];
+            for (const l of lines) {
+                const ll = l.toLowerCase();
+                if (ll.startsWith('serviciu:')) serviciu = l.split(':').slice(1).join(':').trim();
+                else if (ll.startsWith('tag-uri:')) taguri = l.split(':').slice(1).join(':').trim().split(',').map(t => t.trim().toLowerCase());
+                else if (ll.includes('obligatorii')) detalii = l.split(':').slice(1).join(':').trim().split(',').map(ff => ff.trim()).filter(Boolean);
+            }
+            return { serviciu, taguri, detalii };
+        }).filter(s => s.serviciu);
+        _roleSourcesLastLoad = now;
+        console.log(`[Worker] Loaded ${_roleSourcesCache.length} role sources`);
+    } catch(e) { console.warn('[Worker] Could not load role sources:', e.message); }
+    return _roleSourcesCache || [];
+}
+
+function getMandatoryFields(sources, roleTitle) {
+    const lower = (roleTitle || '').toLowerCase();
+    const match = sources.find(s =>
+        s.serviciu.toLowerCase().includes(lower) ||
+        s.taguri.some(t => lower.includes(t) || t.includes(lower))
+    );
+    return match ? match.detalii : [];
+}
+
+async function buildExtractionPrompt() {
+    const sources = await loadRoleSources();
+    // Build comprehensive field list from all roles
+    const allFields = new Set([
+        'Data Evenimentului', 'Ora de Inceput', 'Locatia', 'Personajul Dorit',
+        'Numar Copii', 'Durata (ore)', 'Nume Sarbatorit', 'Varsta Sarbatorit',
+        'Data Nasterii Sarbatorit', 'Metoda de Plata (Cash/Card)', 'Situatie Incasare',
+        'Numar Invitati', 'Culori Baloane', 'Dimensiune Arcada', 'Tip Locatie', 'Ocazie'
+    ]);
+    for (const src of sources) {
+        for (const ff of src.detalii) allFields.add(ff);
+    }
+    const roleNames = [...new Set(sources.map(s => s.serviciu.split('(')[0].trim()))].join(', ');
+    const fieldsJson = [...allFields].map(ff => `      "${ff}": "valoarea din conversatie sau null"`).join(',\n');
+    return `Esti un extractor de date pentru Superparty.
+Analizezi o conversatie WhatsApp si extragi detaliile evenimentului cerut.
+Nu inventa NIMIC. Extrage DOAR ce e explicit mentionat.
+
+Roluri posibile: ${roleNames}
+
+Returneaza JSON:
 {
   "has_event": true,
   "servicii": [
     {
-      "role_title": "Animatie|Candy Bar|Decoratiuni|Fotograf|DJ|Videograf|Trupa Cover|Sonorizare|Moderator|Inchiriere echipamente",
-      "personaj": "numele personajului sau null",
-      "data": "data evenimentului (ex: 29 martie 2025) sau null",
-      "ora_start": "ora de inceput (ex: 18:00) sau null",
-      "locatie": "restaurantul/sala sau null",
-      "durata": "durata in ore (ex: 2) sau null",
-      "nr_copii": "numarul de copii sau null",
-      "nume_sarbatorit": "numele copilului serbat sau null",
-      "varsta": "varsta copilului sau null",
-      "notes": "alte detalii relevante sau null"
+      "role_title": "numele rolului cerut (ex: Animatie, Popcorn, Ursitoare)",
+${fieldsJson}
     }
   ]
 }
-Daca nu exista niciun eveniment concret in conversatie, returneaza {"has_event": false, "servicii": []}.
-Daca sunt mai multe servicii cerute pentru acelasi eveniment, listeaza-le separat in array-ul servicii.`;
+Daca nu e niciun eveniment concret, returneaza {"has_event": false, "servicii": []}.
+Daca sunt mai multe servicii, listeaza-le separat.`;
+}
+
+// Will be loaded dynamically on first use
+let RETROACTIVE_EXTRACT_PROMPT_DYNAMIC = null;
+async function getExtractionPrompt() {
+    if (!RETROACTIVE_EXTRACT_PROMPT_DYNAMIC) {
+        RETROACTIVE_EXTRACT_PROMPT_DYNAMIC = await buildExtractionPrompt();
+    }
+    return RETROACTIVE_EXTRACT_PROMPT_DYNAMIC;
+}
 
 /**
  * Builds a synthetic message from LLM-extracted service data
@@ -197,15 +251,31 @@ function buildSyntheticMessage(extraction) {
     const parts = extraction.servicii.map(s => {
         const tokens = [];
         if (s.role_title) tokens.push(s.role_title);
-        if (s.personaj)   tokens.push(`cu ${s.personaj}`);
-        if (s.data)       tokens.push(`pe ${s.data}`);
-        if (s.ora_start)  tokens.push(`la ora ${s.ora_start}`);
-        if (s.locatie)    tokens.push(`la ${s.locatie}`);
-        if (s.durata)     tokens.push(`${s.durata} ore`);
-        if (s.nr_copii)   tokens.push(`${s.nr_copii} copii`);
-        if (s.nume_sarbatorit) tokens.push(`sarbatorit: ${s.nume_sarbatorit}`);
-        if (s.varsta)     tokens.push(`varsta ${s.varsta} ani`);
-        if (s.notes)      tokens.push(s.notes);
+        // Support both old English keys and new Romanian keys
+        const personaj = s['Personajul Dorit'] || s.personaj;
+        const data = s['Data Evenimentului'] || s.data;
+        const ora = s['Ora de Inceput'] || s['Ora de Început'] || s.ora_start;
+        const loc = s['Locatia'] || s['Locația'] || s.locatie;
+        const durata = s['Durata (ore)'] || s.durata;
+        const copii = s['Numar Copii'] || s['Număr Copii'] || s.nr_copii;
+        const numeSarb = s['Nume Sarbatorit'] || s['Nume Sărbătorit'] || s.nume_sarbatorit;
+        const varsta = s['Varsta Sarbatorit'] || s['Vârsta Sărbătorit'] || s.varsta;
+        if (personaj) tokens.push(`cu ${personaj}`);
+        if (data) tokens.push(`pe ${data}`);
+        if (ora) tokens.push(`la ora ${ora}`);
+        if (loc) tokens.push(`la ${loc}`);
+        if (durata) tokens.push(`${durata} ore`);
+        if (copii) tokens.push(`${copii} copii`);
+        if (numeSarb) tokens.push(`sarbatorit: ${numeSarb}`);
+        if (varsta) tokens.push(`varsta ${varsta} ani`);
+        // Include any other non-null Romanian fields as notes
+        const extraFields = Object.entries(s).filter(([k,v]) => 
+            !['role_title','personaj','data','ora_start','locatie','durata','nr_copii','nume_sarbatorit','varsta','notes',
+              'Personajul Dorit','Data Evenimentului','Ora de Inceput','Ora de Inceput','Locatia','Locatia',
+              'Durata (ore)','Numar Copii','Numar Copii','Nume Sarbatorit','Nume Sarbatorit','Varsta Sarbatorit','Varsta Sarbatorit'
+            ].includes(k) && v && v !== 'null'
+        );
+        for (const [k,v] of extraFields) tokens.push(`${k}: ${v}`);
         return tokens.join(', ');
     }).filter(Boolean);
     
@@ -397,7 +467,7 @@ export async function processConversation(conversation_id, message_id = null, op
                     return `${who}: ${m.content}`;
                 }).join('\n');
 
-                const extraction = await callLocalLLM(RETROACTIVE_EXTRACT_PROMPT, convText);
+                const extraction = await callLocalLLM(await getExtractionPrompt(), convText);
                 if (!extraction || !extraction.has_event || !extraction.servicii?.length) {
                     console.log(`[AI Worker Retro] No event found in conv ${conversation_id}. Skipping.`);
                     return;
@@ -423,17 +493,22 @@ export async function processConversation(conversation_id, message_id = null, op
                         const vtxSupa = (await import('@supabase/supabase-js')).createClient(
                             process.env.VERTEX_SUPABASE_URL, process.env.VERTEX_SUPABASE_SERVICE_ROLE_KEY
                         );
-                        const roleTitle = svc.role_title || 'Animație';
-                        // Use EXACT Romanian key names expected by Vertex dashboard
+                        const roleTitle = svc.role_title || 'Animatie';
+                        // Dynamic: use ALL fields from LLM extraction as event_details keys
+                        // The dynamic prompt returns Romanian field names directly from vertex_sources
+                        const SKIP = new Set(['role_title', 'has_event']);
+                        const ENGLISH_TO_RO = {
+                            'data': 'Data Evenimentului', 'ora_start': 'Ora de Inceput',
+                            'locatie': 'Locatia', 'durata': 'Durata (ore)', 'personaj': 'Personajul Dorit',
+                            'nr_copii': 'Numar Copii', 'varsta': 'Varsta Sarbatorit',
+                            'nume_sarbatorit': 'Nume Sarbatorit', 'notes': 'Note'
+                        };
                         const eventDetails = {};
-                        if (svc.data) eventDetails['Data Evenimentului'] = svc.data;
-                        if (svc.ora_start) eventDetails['Ora de Început'] = svc.ora_start;
-                        if (svc.locatie) eventDetails['Locația'] = svc.locatie;
-                        if (svc.durata) eventDetails['Durata (ore)'] = svc.durata;
-                        if (svc.personaj) eventDetails['Personajul Dorit'] = svc.personaj;
-                        if (svc.nr_copii) eventDetails['Număr Copii'] = svc.nr_copii;
-                        if (svc.varsta) eventDetails['Vârstă Sărbătorit'] = svc.varsta;
-                        if (svc.nume_sarbatorit) eventDetails['Nume Sărbătorit'] = svc.nume_sarbatorit;
+                        for (const [k, v] of Object.entries(svc)) {
+                            if (SKIP.has(k) || !v || v === 'null') continue;
+                            const key = ENGLISH_TO_RO[k] || k;
+                            eventDetails[key] = v;
+                        }
                         const { data: exEv } = await vtxSupa.from('client_events')
                             .select('id, event_details').eq('client_phone', phoneE164)
                             .eq('role_title', roleTitle).eq('status', 'active').maybeSingle();

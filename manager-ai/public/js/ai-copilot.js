@@ -128,8 +128,8 @@ function updateChatUI(messages) {
         return;
     }
 
-    // Messages come sorted descending (newest first). Let's render oldest first.
-    const sorted = [...messages].reverse();
+    // Messages sorted ascending (oldest first) - API returns chronological order
+    const sorted = [...messages];
 
     if (sorted.length !== lastMessageCount) {
         chatMessages.innerHTML = '';

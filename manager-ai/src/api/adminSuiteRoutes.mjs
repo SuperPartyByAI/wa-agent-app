@@ -69,33 +69,56 @@ router.get('/crm/clients/:id', async (req, res) => {
         const id = req.params.id;
 
         const [clientR, memoryR, convsR, plansR, quotesR] = await Promise.all([
-            supabase.from('ai_client_profiles').select('*').eq('client_id', id).single(),
+            supabase.from('ai_client_profiles').select('*').eq('client_id', id).maybeSingle(),
             supabase.from('ai_client_memory_summary').select('*').eq('client_id', id).maybeSingle(),
-            supabase.from('conversations').select('id, session_id, status, created_at, updated_at').eq('client_id', id).order('created_at', { ascending: false }).limit(20),
-            supabase.from('ai_client_events').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(20),
+            supabase.from('conversations').select('id, session_id, status, created_at, updated_at').eq('client_id', id).order('created_at', { ascending: false }).limit(200),
+            supabase.from('ai_client_events').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(50),
             supabase.from('ai_quotes').select('id, status, grand_total, line_items, valid_until, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(10)
         ]);
 
         if (clientR.error) throw clientR.error;
 
-        // Latest messages across conversations
-        const convIds = convsR.data?.map(c => c.id) || [];
+        // Cross-client_id: un client poate trimite din multiple QR-uri/numere
+        // → cauta telefonul direct din clients (ai_client_profiles poate fi goala!)
+        const { data: clientRow } = await supabase.from('clients').select('real_phone_e164').eq('id', id).maybeSingle();
+        const clientPhone = clientRow?.real_phone_e164 || clientR.data?.telefon_e164;
+        let allConvClientIds = [id];
+        if (clientPhone) {
+            const { data: samePhoneClients } = await supabase
+                .from('clients')
+                .select('id')
+                .eq('real_phone_e164', clientPhone);
+            if (samePhoneClients?.length > 1) {
+                allConvClientIds = samePhoneClients.map(c => c.id);
+            }
+        }
+
+        // Conversații din TOȚI client_id-urile (nu doar cel din profil)
+        const { data: allConvs } = await supabase
+            .from('conversations')
+            .select('id, session_id, status, created_at, updated_at, client_id')
+            .in('client_id', allConvClientIds)
+            .order('created_at', { ascending: true })
+            .limit(500);
+        
+        // Latest messages across ALL conversations (tot istoricul)
+        const convIds = allConvs?.map(c => c.id) || [];
         let latestMessages = [];
         if (convIds.length > 0) {
             const { data: msgs } = await supabase.from('messages')
                 .select('id, conversation_id, content, sender_type, created_at')
-                .in('conversation_id', convIds.slice(0, 5))
-                .order('created_at', { ascending: false })
-                .limit(30);
+                .in('conversation_id', convIds)  // toate conversatiile, nu slice(0,5)
+                .order('created_at', { ascending: true })  // cronologic pt chat
+                .limit(500);  // tot istoricul (era 30)
             latestMessages = msgs || [];
         }
 
         // Decision history
         const { data: decisions } = await supabase.from('ai_reply_decisions')
             .select('suggested_reply, operator_edited_reply, tool_action_suggested, safety_class, reply_status, operator_verdict, confidence_score, created_at, id, conversation_id')
-            .in('conversation_id', convIds.slice(0, 5))
+            .in('conversation_id', convIds)  // toate conversatiile
             .order('created_at', { ascending: false })
-            .limit(20);
+            .limit(200);
 
         // Map decisions to messages
         const decisionsMap = new Map();
@@ -152,7 +175,8 @@ router.get('/crm/clients/:id', async (req, res) => {
             occasion: p.nume_sarbatorit,
             event_date: p.data_evenimentului,
             location: p.localitate,
-            requested_services: p.servicii_principale || []
+            requested_services: p.servicii_principale || [],
+            servicii_cerute: p.servicii_cerute || {}
         }));
 
         res.json({
@@ -237,7 +261,8 @@ router.get('/memory/:client_id', async (req, res) => {
             occasion: p.nume_sarbatorit,
             event_date: p.data_evenimentului,
             location: p.localitate,
-            requested_services: p.servicii_principale || []
+            requested_services: p.servicii_principale || [],
+            servicii_cerute: p.servicii_cerute || {}
         }));
 
         // Audit trail for memory edits

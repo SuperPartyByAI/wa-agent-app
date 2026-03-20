@@ -445,6 +445,7 @@ export async function processConversation(conversation_id, message_id = null, op
         // ── AUTONOMOUS COMMERCIAL AGENT: Phase 3 Party Builder ──
         const { loadPartyDraft } = await import('../party/loadPartyDraft.mjs');
         const { savePartyDraft } = await import('../party/savePartyDraft.mjs');
+        const { syncPartyToVertexEvents } = await import('../party/syncToVertexEvents.mjs');
         const { updatePartyDraftFromMessage } = await import('../party/updatePartyDraftFromMessage.mjs');
         const { computeMissingPartyFields } = await import('../party/partyMissingFieldsEngine.mjs');
 
@@ -489,6 +490,13 @@ export async function processConversation(conversation_id, message_id = null, op
                     console.warn('[Phase0] Skeleton draft save failed:', e.message)
                 );
                 console.log(`[Phase0] Created skeleton party draft for service: ${runtimeState.primary_service}`);
+                // Sync skeleton to Vertex too (shows service in right panel immediately)
+                const clientPhoneP0 = contextPack?.client_context?.client?.real_phone_e164 || null;
+                if (clientPhoneP0) {
+                    await syncPartyToVertexEvents(partyDraft, clientPhoneP0).catch(e =>
+                        console.warn('[Phase0] Vertex sync failed:', e.message)
+                    );
+                }
             } catch (e) {
                 console.warn(`[Phase0] Skeleton draft error: ${e.message}`);
             }
@@ -1056,6 +1064,13 @@ export async function processConversation(conversation_id, message_id = null, op
                 const saveSuccess = await savePartyDraft(partyDraft);
                 if (saveSuccess) {
                     console.log(`[Phase3 PartyBuilder] Synced Party Draft. Missing booking fields: ${p3Eval.missingForBooking.length}. Ready for quote: ${p3Eval.isReadyForQuote}`);
+                    // Sync to Vertex Supabase client_events (populates right panel in dashboard)
+                    const clientPhone = contextPack?.client_context?.client?.real_phone_e164 || null;
+                    if (clientPhone) {
+                        await syncPartyToVertexEvents(partyDraft, clientPhone).catch(e => 
+                            console.warn('[Phase3] Vertex sync failed:', e.message)
+                        );
+                    }
                 }
             } catch (e) {
                 console.error(`[Phase3 PartyBuilder] Sync exception: ${e.message}`);

@@ -10,7 +10,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 // LLM config — Gemini 2.5 Flash
 const GEMINI_API_KEY = process.env.VERTEX_AI_API_KEY || process.env.GEMINI_API_KEY;
-let LLM_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+let LLM_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17';
 
 // Removed strict model check to allow newer models to run seamlessly.
 
@@ -159,6 +159,60 @@ REGULI PENTRU "decision":
 - "needs_human_review" = true daca: negociere pret, cerere om, situatie ambigua, confidence < 60
 - "escalation_reason" se completeaza cand: nemultumire, conflict, aspect juridic/financiar sensibil`;
 
+// ─────────────────────────────────────────
+// RETROACTIVE EXTRACTION — prompt & helper
+// ─────────────────────────────────────────
+const RETROACTIVE_EXTRACT_PROMPT = `Esti un extractor de date pentru Superparty — companie animatii si petreceri copii.
+Analizezi o conversatie WhatsApp si extragi detaliile evenimentului cerut de client.
+Nu inventa NIMIC. Extrage DOAR informatii explicit mentionate in conversatie.
+
+Returneaza JSON strict in formatul urmator:
+{
+  "has_event": true,
+  "servicii": [
+    {
+      "role_title": "Animatie|Candy Bar|Decoratiuni|Fotograf|DJ|Videograf|Trupa Cover|Sonorizare|Moderator|Inchiriere echipamente",
+      "personaj": "numele personajului sau null",
+      "data": "data evenimentului (ex: 29 martie 2025) sau null",
+      "ora_start": "ora de inceput (ex: 18:00) sau null",
+      "locatie": "restaurantul/sala sau null",
+      "durata": "durata in ore (ex: 2) sau null",
+      "nr_copii": "numarul de copii sau null",
+      "nume_sarbatorit": "numele copilului serbat sau null",
+      "varsta": "varsta copilului sau null",
+      "notes": "alte detalii relevante sau null"
+    }
+  ]
+}
+Daca nu exista niciun eveniment concret in conversatie, returneaza {"has_event": false, "servicii": []}.
+Daca sunt mai multe servicii cerute pentru acelasi eveniment, listeaza-le separat in array-ul servicii.`;
+
+/**
+ * Builds a synthetic message from LLM-extracted service data
+ * so that processWithVertexAI can call noteaza_petrecere with correct fields.
+ */
+function buildSyntheticMessage(extraction) {
+    if (!extraction?.servicii?.length) return null;
+    
+    const parts = extraction.servicii.map(s => {
+        const tokens = [];
+        if (s.role_title) tokens.push(s.role_title);
+        if (s.personaj)   tokens.push(`cu ${s.personaj}`);
+        if (s.data)       tokens.push(`pe ${s.data}`);
+        if (s.ora_start)  tokens.push(`la ora ${s.ora_start}`);
+        if (s.locatie)    tokens.push(`la ${s.locatie}`);
+        if (s.durata)     tokens.push(`${s.durata} ore`);
+        if (s.nr_copii)   tokens.push(`${s.nr_copii} copii`);
+        if (s.nume_sarbatorit) tokens.push(`sarbatorit: ${s.nume_sarbatorit}`);
+        if (s.varsta)     tokens.push(`varsta ${s.varsta} ani`);
+        if (s.notes)      tokens.push(s.notes);
+        return tokens.join(', ');
+    }).filter(Boolean);
+    
+    if (!parts.length) return null;
+    return `Buna ziua, vreau sa rezerv: ${parts.join(' | ')}`;
+}
+
 /**
  * Send a message to WhatsApp via the whts-up transport API.
  */
@@ -302,7 +356,70 @@ export async function processConversation(conversation_id, message_id = null, op
         const missingClientMessages = realClientCount > shadowClientCount ? realMessages.slice(shadowClientCount) : [];
         
         if (missingClientMessages.length === 0) {
-            console.log(`[AI Worker] No unsimulated real client messages found for ${conversation_id}.`);
+            console.log(`[AI Worker] No unsimulated real client messages found for ${conversation_id}. Checking for missing events...`);
+            
+            // ── PIPELINE 2: Retroactive extraction ──────────────────────────────
+            // Shadow is up-to-date but we may still have 0 events in ai_client_events.
+            // In that case, run LLM on full conversation and call Vertex with a
+            // synthetic message so noteaza_petrecere saves the events.
+            try {
+                const { data: convMeta } = await supabase
+                    .from('conversations').select('client_id').eq('id', conversation_id).single();
+                const clientId = convMeta?.client_id;
+                if (!clientId) return;
+
+                const { data: existingEvents } = await supabase
+                    .from('ai_client_events').select('id').eq('client_id', clientId).limit(1);
+
+                if (existingEvents && existingEvents.length > 0) {
+                    // Already has events → truly nothing to do
+                    return;
+                }
+
+                console.log(`[AI Worker Retro] Client ${clientId} has 0 events. Running retroactive extraction for conv ${conversation_id}...`);
+
+                // Fetch full conversation (client + operator) for context
+                const { data: allMsgs } = await supabase
+                    .from('messages')
+                    .select('content, sender_type, created_at')
+                    .eq('conversation_id', conversation_id)
+                    .order('created_at', { ascending: true })
+                    .limit(60);
+
+                if (!allMsgs || allMsgs.length < 2) return;
+
+                const convText = allMsgs.map(m => {
+                    const who = m.sender_type === 'client' ? 'CLIENT' : 'OPERATOR';
+                    return `${who}: ${m.content}`;
+                }).join('\n');
+
+                const extraction = await callLocalLLM(RETROACTIVE_EXTRACT_PROMPT, convText);
+                if (!extraction || !extraction.has_event || !extraction.servicii?.length) {
+                    console.log(`[AI Worker Retro] No event found in conv ${conversation_id}. Skipping.`);
+                    return;
+                }
+
+                const syntheticMsg = buildSyntheticMessage(extraction);
+                if (!syntheticMsg) {
+                    console.log(`[AI Worker Retro] Could not build synthetic message for conv ${conversation_id}.`);
+                    return;
+                }
+
+                const { data: clientData } = await supabase
+                    .from('clients').select('real_phone_e164').eq('id', clientId).single();
+                const phoneE164 = clientData?.real_phone_e164;
+                if (!phoneE164) {
+                    console.log(`[AI Worker Retro] No phone for client ${clientId}. Skipping.`);
+                    return;
+                }
+
+                console.log(`[AI Worker Retro] Injecting synthetic: "${syntheticMsg.substring(0, 120)}"`);
+                await processWithVertexAI(phoneE164, syntheticMsg);
+                console.log(`[AI Worker Retro] ✅ Retroactive extraction done for conv ${conversation_id} (client ${clientId})`);
+
+            } catch (retroErr) {
+                console.error(`[AI Worker Retro] Retroactive extraction failed for ${conversation_id}:`, retroErr.message);
+            }
             return;
         }
 
@@ -324,8 +441,8 @@ export async function processConversation(conversation_id, message_id = null, op
 
             // 2. Query REAL Vertex AI engine with the clean missing prompt
             const convData = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
-            const clientData = await supabase.from('client_notebooks').select('phone_number').eq('client_id', convData?.data?.client_id).single();
-            const phoneE164 = clientData?.data?.phone_number || conversation_id;
+            const clientData = await supabase.from('clients').select('real_phone_e164').eq('id', convData?.data?.client_id).single();
+            const phoneE164 = clientData?.data?.real_phone_e164 || conversation_id;
             
             console.log(`[AI Worker Sync] Pinging Vertex processing array for ${phoneE164} on catch-up thread...`);
             let vertexResult;
@@ -500,16 +617,20 @@ async function startSyncDaemon() {
     console.log("[AI Worker Sync] Starting infinite Vertex AI Sandbox backfill loop...");
     while (true) {
         try {
-            // Scan the 50 most recently active conversations
+            // Scan only the 30 most recently ACTIVE conversations (updated in last 24h)
+            // to keep egress low. Older conversations are already fully processed.
+            const activeCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
             const { data: convs, error: listErr } = await supabase
                 .from('conversations')
                 .select('id')
+                .gte('updated_at', activeCutoff)
                 .order('updated_at', { ascending: false })
-                .limit(500);
+                .limit(30);
                 
             if (listErr) {
                 console.error("[AI Worker Sync] Failed to scan conversations table:", listErr.message);
             } else if (convs) {
+                console.log(`[AI Worker Sync] Scanning ${convs.length} active conversations...`);
                 for (const c of convs) {
                     await processConversation(c.id);
                 }
@@ -518,8 +639,8 @@ async function startSyncDaemon() {
             console.error("[AI Worker Sync] Global daemon error:", e.message);
         }
         
-        // Rest for 10 seconds before the next sweep
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        // Rest for 60 seconds before the next sweep (reduces API calls by 6x vs 10s)
+        await new Promise(resolve => setTimeout(resolve, 60000));
     }
 }
 

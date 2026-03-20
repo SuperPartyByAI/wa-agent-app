@@ -247,23 +247,58 @@ async function viewClient(id){
     if(p.status === 'draft') stColor = 'purple';
     if((p.status||'').includes('operator')) stColor = 'orange';
     if(p.status === 'rezervat') stColor = 'green';
-    
     let comColor = 'blue';
     if(p.status_comercial === 'handoff_operator') comColor = 'orange';
     if(p.status_comercial === 'confirmat') comColor = 'green';
-    
-    return `<div class="card" style="margin-bottom:8px; border-left: 4px solid var(--${stColor});">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <b>${p.event_type||'Eveniment'} ${p.event_date||''}</b>
+
+    // Build grouped service slots from servicii_cerute (01A, 01B, 01C...)
+    const slots = p.servicii_cerute || {};
+    const sortedKeys = Object.keys(slots).sort();
+    // Extract event number prefix (e.g. "01" from "01A")
+    const numPrefix = sortedKeys.length > 0 ? (sortedKeys[0].match(/^(\d+)/)||['',''])[1] : '';
+    // Derive header date/location from first slot
+    const firstSlot = sortedKeys.length > 0 ? slots[sortedKeys[0]] : {};
+    const headerDate = firstSlot['Data Evenimentului'] || p.event_date || '—';
+    const headerLoc  = firstSlot['Locația'] || p.location || '—';
+    const headerSarb = firstSlot['Nume Sărbătorit'] || p.occasion || '';
+
+    let slotsHtml = '';
+    if(sortedKeys.length > 0){
+      for(const key of sortedKeys){
+        const s = slots[key];
+        const role = s['role_title'] || s['Rol'] || '—';
+        const personaj = s['Personajul Dorit'] || '';
+        const ora = s['Ora de Început'] || '';
+        const dur = s['Durata (ore)'] || '';
+        const label = [personaj, ora ? `⏰ ${ora}` : '', dur ? `⌛ ${dur}h` : ''].filter(Boolean).join('  |  ');
+        slotsHtml += `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-family:monospace;font-size:11px;background:var(--accent-glow);color:var(--accent);padding:2px 7px;border-radius:4px;white-space:nowrap">${key}</span>
+          <span style="font-size:13px;font-weight:600">${role}</span>
+          ${label ? `<span style="font-size:12px;color:var(--dim)">${label}</span>` : ''}
+        </div>`;
+      }
+    } else {
+      slotsHtml = `<div style="font-size:12px;color:var(--dim)">Servicii: ${(p.requested_services||[]).join(', ')||'Nespecificat'}</div>`;
+    }
+
+    return `<div class="card" style="margin-bottom:10px;border-left:4px solid var(--${stColor});padding:14px 16px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
       <div>
-        <span class="tag tag-${stColor}">${(p.status||'NECUNOSCUT').toUpperCase()}</span> 
-        <span class="tag tag-${comColor}">${(p.status_comercial||'—').replace('_', ' ').toUpperCase()}</span>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          ${numPrefix ? `<span style="font-family:monospace;font-size:15px;font-weight:700;background:var(--surface2);padding:3px 10px;border-radius:6px;color:var(--text)">📋 ${numPrefix}</span>` : ''}
+          <b style="font-size:14px">${headerDate}</b>
+        </div>
+        <div style="font-size:12px;color:var(--dim)">📍 ${headerLoc}${headerSarb ? `  ·  🎂 ${headerSarb}` : ''}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <span class="tag tag-${stColor}">${(p.status||'DRAFT').toUpperCase()}</span>
+        <span class="tag tag-${comColor}">${(p.status_comercial||'—').replace('_',' ').toUpperCase()}</span>
       </div>
     </div>
-    <div style="font-size:12px;color:var(--dim)">Servicii: ${(p.requested_services||[]).join(', ') || 'Nespecificat'}</div>
-    <div style="margin-top:12px;display:flex;gap:8px">
-      <button class="btn btn-sm btn-outline" style="color:var(--orange);border-color:var(--orange)" onclick="if(confirm('Preiei conversația de la AI? Agentul nu va mai trimite mesaje automate acestui client.')) setEventStatus('${c.id}','${p.id}','handoff_operator', event)">🙋 Handoff Operator</button>
-      <button class="btn btn-sm btn-outline" style="color:var(--green);border-color:var(--green)" onclick="if(confirm('Confirmi rezervarea ferma pentru acest eveniment?')) setEventStatus('${c.id}','${p.id}','confirmat', event)">✅ Marchează Rezervat</button>
+    <div style="margin-bottom:10px">${slotsHtml}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm btn-outline" style="color:var(--orange);border-color:var(--orange)" onclick="if(confirm('Preiei conversația de la AI?')) setEventStatus('${c.id}','${p.id}','handoff_operator', event)">🙋 Handoff Operator</button>
+      <button class="btn btn-sm btn-outline" style="color:var(--green);border-color:var(--green)" onclick="if(confirm('Confirmi rezervarea?')) setEventStatus('${c.id}','${p.id}','confirmat', event)">✅ Marchează Rezervat</button>
     </div>
   </div>`;
 }).join('')||'<i style="color:var(--dim)">Niciun eveniment activ.</i>';

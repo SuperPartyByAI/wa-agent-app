@@ -1,6 +1,6 @@
 {
-  "version": "v1773754133385",
-  "loaded_at": "2026-03-17T13:28:53.385Z",
+  "version": "v1773975335148",
+  "loaded_at": "2026-03-20T02:55:35.148Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -593,6 +593,340 @@
       "policy_config": null
     },
     {
+      "id": "5ecbeded-9240-4933-a399-0451415d117e",
+      "knowledge_key": "animator_packages",
+      "category": "packages",
+      "service_tags": [
+        "animator"
+      ],
+      "question_patterns": [
+        "pachete animatie",
+        "animator copii",
+        "animatie petrecere",
+        "ce aveti pentru petrecere",
+        "animator",
+        "animatie",
+        "ce pachete aveti",
+        "ce variante aveti",
+        "pachete animator",
+        "ce include pachetul",
+        "ce include",
+        "ce contine pachetul",
+        "pachetul de 490",
+        "pachetul de 540",
+        "pachetul de 590",
+        "pachetul de 840",
+        "pachetul de 1290",
+        "490 lei",
+        "540 lei",
+        "590 lei",
+        "840 lei",
+        "1290 lei",
+        "include la animator",
+        "aveti cu popcorn",
+        "aveti cu vata",
+        "aveti cu confetti",
+        "aveti cu ursitoare",
+        "aveti cu tort",
+        "super 3",
+        "super 5"
+      ],
+      "answer_template": "Avem mai multe variante de animație, de la 490 lei până la 1290 lei 🎉\n\nDe exemplu:\n• 1 personaj · 2 ore — 490 lei\n• Super 3: 2 personaje · 2 ore + confetti — 840 lei\n• 1 personaj · 2 ore + vată + popcorn — 840 lei\n• 1 animator · 3 ore + 4 ursitoare — 1290 lei\n\nToate includ transport gratuit în București.\nDacă vrei, îți recomand imediat varianta potrivită în funcție de vârsta copilului, numărul de invitați și data evenimentului! 😊",
+      "metadata": {
+        "currency": "RON",
+        "packages": [
+          {
+            "tags": [
+              "basic",
+              "entry"
+            ],
+            "price": 490,
+            "title": "1 Personaj · 2 ore",
+            "includes": [
+              "Jocuri & concursuri interactive",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri & coregrafii",
+              "Tatuaje temporare",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_1p_2h",
+            "weekday_only": false,
+            "duration_text": "2 ore",
+            "character_count": 1
+          },
+          {
+            "tags": [
+              "basic",
+              "weekday"
+            ],
+            "price": 490,
+            "title": "2 Personaje · 1 oră (L–V)",
+            "includes": [
+              "Jocuri & concursuri interactive",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri & coregrafii",
+              "Tatuaje temporare",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_2p_1h_weekday",
+            "weekday_only": true,
+            "duration_text": "1 oră",
+            "character_count": 2
+          },
+          {
+            "tags": [
+              "premium",
+              "confetti",
+              "named"
+            ],
+            "price": 840,
+            "title": "Super 3",
+            "includes": [
+              "Jocuri & concursuri interactive",
+              "Confetti party",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri & coregrafii",
+              "Tatuaje temporare",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": "2 Personaje · 2 ore + Confetti",
+            "package_code": "super_3_confetti",
+            "weekday_only": false,
+            "duration_text": "2 ore",
+            "character_count": 2
+          },
+          {
+            "tags": [
+              "combo",
+              "tort"
+            ],
+            "price": 590,
+            "title": "1 Personaj · 1 oră + Tort dulciuri",
+            "includes": [
+              "Tort din dulciuri (22–24 copii)",
+              "Jocuri & concursuri",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_tort_dulciuri",
+            "weekday_only": false,
+            "duration_text": "1 oră",
+            "character_count": 1
+          },
+          {
+            "tags": [
+              "combo",
+              "popcorn",
+              "vata"
+            ],
+            "price": 840,
+            "title": "1 Pers. · 2 ore + 1h Vată + 1h Popcorn",
+            "includes": [
+              "Mașină vată de zahăr + popcorn",
+              "Jocuri & concursuri",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_vata_popcorn",
+            "weekday_only": false,
+            "duration_text": "2 ore animator + 1h vată + 1h popcorn",
+            "character_count": 1
+          },
+          {
+            "tags": [
+              "premium",
+              "confetti",
+              "banner",
+              "named"
+            ],
+            "price": 540,
+            "title": "Super 5",
+            "includes": [
+              "Banner personalizat + Tun confetti",
+              "Jocuri & concursuri",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": "1 Animator · 2 ore + Banner + Confetti",
+            "package_code": "super_5_banner_confetti",
+            "weekday_only": false,
+            "duration_text": "2 ore",
+            "character_count": 1
+          },
+          {
+            "tags": [
+              "premium",
+              "ursitoare",
+              "botez"
+            ],
+            "price": 1290,
+            "title": "1 Animator · 3 ore + 4 Ursitoare",
+            "includes": [
+              "Spectacol 4 ursitoare botez",
+              "Jocuri & concursuri",
+              "Baloane modelate",
+              "Pictură pe față",
+              "Dansuri",
+              "Diplome magnetice",
+              "Boxă portabilă",
+              "Transport gratuit București"
+            ],
+            "subtitle": null,
+            "package_code": "animator_3h_4_ursitoare",
+            "weekday_only": false,
+            "duration_text": "3 ore",
+            "character_count": 1
+          }
+        ],
+        "price_range": {
+          "max": 1290,
+          "min": 490
+        },
+        "transport_notes": "Transport gratuit în București"
+      },
+      "required_context": [
+        "event_type",
+        "child_count",
+        "event_date",
+        "location"
+      ],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": "system_seed",
+      "valid_from": "2026-03-12T23:57:12.971968+00:00",
+      "valid_until": null,
+      "times_used": 1071,
+      "created_at": "2026-03-12T23:57:12.971968+00:00",
+      "updated_at": "2026-03-17T18:13:02.823+00:00",
+      "policy_config": null
+    },
+    {
+      "id": "499c6cad-2094-44cd-88cc-fd7c53aff926",
+      "knowledge_key": "role_animatie",
+      "category": "services",
+      "service_tags": [
+        "animatie",
+        "animatori",
+        "mascote"
+      ],
+      "question_patterns": [
+        "animatie",
+        "animatori",
+        "animatori",
+        "mascote",
+        "mascotă",
+        "personaj",
+        "personaje",
+        "spiderman",
+        "printesa",
+        "prințesă",
+        "petrecere copii",
+        "pachet de animatie",
+        "ore de animatie"
+      ],
+      "answer_template": "",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:08.760045+00:00",
+      "valid_until": null,
+      "times_used": 43,
+      "created_at": "2026-03-14T16:50:08.760045+00:00",
+      "updated_at": "2026-03-17T18:17:03.051+00:00",
+      "policy_config": {
+        "label": "Animație",
+        "active": true,
+        "priority": 120,
+        "role_key": "role_animatie",
+        "triggers": {
+          "keywords": [
+            "animatie",
+            "animatori",
+            "animatori",
+            "mascote",
+            "mascotă",
+            "personaj",
+            "personaje",
+            "spiderman",
+            "printesa",
+            "prințesă",
+            "petrecere copii",
+            "pachet de animatie",
+            "ore de animatie"
+          ],
+          "service_tags": [
+            "animatie",
+            "animatori",
+            "mascote"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Avem disponibil serviciul de animație pentru petreceri de copii, cu personaje și activități interactive.",
+          "upsell": "Se combină foarte bine cu popcorn, vată de zahăr sau baloane modelabile.",
+          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți animația?"
+        },
+        "service_key": "animatie",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 480,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 180,
+          "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
+    },
+    {
       "id": "cf1228e4-3c40-4ecb-91a0-e604cf752f89",
       "knowledge_key": "booking_info_required",
       "category": "faq",
@@ -630,10 +964,89 @@
       "verified_by": "system_seed",
       "valid_from": "2026-03-12T23:57:12.971968+00:00",
       "valid_until": null,
-      "times_used": 444,
+      "times_used": 562,
       "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-16T16:12:53.567+00:00",
+      "updated_at": "2026-03-18T12:19:03.493+00:00",
       "policy_config": null
+    },
+    {
+      "id": "e8541896-a358-4164-a6d1-64d75fd7f356",
+      "knowledge_key": "role_parfumerie",
+      "category": "services",
+      "service_tags": [
+        "parfumerie",
+        "parfum",
+        "atelier_parfum"
+      ],
+      "question_patterns": [
+        "parfumerie",
+        "atelier parfum",
+        "parfum personalizat",
+        "parfumuri"
+      ],
+      "answer_template": "",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.529712+00:00",
+      "valid_until": null,
+      "times_used": 0,
+      "created_at": "2026-03-14T16:50:09.529712+00:00",
+      "updated_at": "2026-03-14T20:55:28.494+00:00",
+      "policy_config": {
+        "label": "Parfumerie",
+        "active": true,
+        "priority": 105,
+        "role_key": "role_parfumerie",
+        "triggers": {
+          "keywords": [
+            "parfumerie",
+            "atelier parfum",
+            "parfum personalizat",
+            "parfumuri"
+          ],
+          "service_tags": [
+            "parfumerie",
+            "parfum",
+            "atelier_parfum"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Avem atelier de parfumerie pentru evenimente, unde invitații pot descoperi și crea arome speciale.",
+          "upsell": "Se potrivește foarte bine pentru evenimente premium, corporate sau aniversări speciale.",
+          "closing_question": "Ne spui data, locația și numărul estimativ de participanți?"
+        },
+        "service_key": "parfumerie",
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 500,
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 150,
+          "included_duration_hours": 2
+        },
+        "approval_status": "approved"
+      }
     },
     {
       "id": "80d18ad5-a0ad-48d4-8227-b49a1843e61f",
@@ -715,85 +1128,6 @@
             "outside_if": "manual_quote"
           },
           "extra_hour_price": 170,
-          "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
-      "id": "e8541896-a358-4164-a6d1-64d75fd7f356",
-      "knowledge_key": "role_parfumerie",
-      "category": "services",
-      "service_tags": [
-        "parfumerie",
-        "parfum",
-        "atelier_parfum"
-      ],
-      "question_patterns": [
-        "parfumerie",
-        "atelier parfum",
-        "parfum personalizat",
-        "parfumuri"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.529712+00:00",
-      "valid_until": null,
-      "times_used": 0,
-      "created_at": "2026-03-14T16:50:09.529712+00:00",
-      "updated_at": "2026-03-14T20:55:28.494+00:00",
-      "policy_config": {
-        "label": "Parfumerie",
-        "active": true,
-        "priority": 105,
-        "role_key": "role_parfumerie",
-        "triggers": {
-          "keywords": [
-            "parfumerie",
-            "atelier parfum",
-            "parfum personalizat",
-            "parfumuri"
-          ],
-          "service_tags": [
-            "parfumerie",
-            "parfum",
-            "atelier_parfum"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Avem atelier de parfumerie pentru evenimente, unde invitații pot descoperi și crea arome speciale.",
-          "upsell": "Se potrivește foarte bine pentru evenimente premium, corporate sau aniversări speciale.",
-          "closing_question": "Ne spui data, locația și numărul estimativ de participanți?"
-        },
-        "service_key": "parfumerie",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 500,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 150,
           "included_duration_hours": 2
         },
         "approval_status": "approved"
@@ -1599,103 +1933,6 @@
       }
     },
     {
-      "id": "499c6cad-2094-44cd-88cc-fd7c53aff926",
-      "knowledge_key": "role_animatie",
-      "category": "services",
-      "service_tags": [
-        "animatie",
-        "animatori",
-        "mascote"
-      ],
-      "question_patterns": [
-        "animatie",
-        "animatori",
-        "animatori",
-        "mascote",
-        "mascotă",
-        "personaj",
-        "personaje",
-        "spiderman",
-        "printesa",
-        "prințesă",
-        "petrecere copii",
-        "pachet de animatie",
-        "ore de animatie"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:08.760045+00:00",
-      "valid_until": null,
-      "times_used": 41,
-      "created_at": "2026-03-14T16:50:08.760045+00:00",
-      "updated_at": "2026-03-16T16:07:42.967+00:00",
-      "policy_config": {
-        "label": "Animație",
-        "active": true,
-        "priority": 120,
-        "role_key": "role_animatie",
-        "triggers": {
-          "keywords": [
-            "animatie",
-            "animatori",
-            "animatori",
-            "mascote",
-            "mascotă",
-            "personaj",
-            "personaje",
-            "spiderman",
-            "printesa",
-            "prințesă",
-            "petrecere copii",
-            "pachet de animatie",
-            "ore de animatie"
-          ],
-          "service_tags": [
-            "animatie",
-            "animatori",
-            "mascote"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Avem disponibil serviciul de animație pentru petreceri de copii, cu personaje și activități interactive.",
-          "upsell": "Se combină foarte bine cu popcorn, vată de zahăr sau baloane modelabile.",
-          "closing_question": "Pe ce dată, în ce locație și pentru câte ore doriți animația?"
-        },
-        "service_key": "animatie",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 480,
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 180,
-          "included_duration_hours": 2
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
       "id": "66a85482-3c62-4b83-814e-f4b77eb57722",
       "knowledge_key": "role_arcada_pe_suport",
       "category": "services",
@@ -1778,244 +2015,7 @@
         },
         "approval_status": "approved"
       }
-    },
-    {
-      "id": "5ecbeded-9240-4933-a399-0451415d117e",
-      "knowledge_key": "animator_packages",
-      "category": "packages",
-      "service_tags": [
-        "animator"
-      ],
-      "question_patterns": [
-        "pachete animatie",
-        "animator copii",
-        "animatie petrecere",
-        "ce aveti pentru petrecere",
-        "animator",
-        "animatie",
-        "ce pachete aveti",
-        "ce variante aveti",
-        "pachete animator",
-        "ce include pachetul",
-        "ce include",
-        "ce contine pachetul",
-        "pachetul de 490",
-        "pachetul de 540",
-        "pachetul de 590",
-        "pachetul de 840",
-        "pachetul de 1290",
-        "490 lei",
-        "540 lei",
-        "590 lei",
-        "840 lei",
-        "1290 lei",
-        "include la animator",
-        "aveti cu popcorn",
-        "aveti cu vata",
-        "aveti cu confetti",
-        "aveti cu ursitoare",
-        "aveti cu tort",
-        "super 3",
-        "super 5"
-      ],
-      "answer_template": "Avem mai multe variante de animație, de la 490 lei până la 1290 lei 🎉\n\nDe exemplu:\n• 1 personaj · 2 ore — 490 lei\n• Super 3: 2 personaje · 2 ore + confetti — 840 lei\n• 1 personaj · 2 ore + vată + popcorn — 840 lei\n• 1 animator · 3 ore + 4 ursitoare — 1290 lei\n\nToate includ transport gratuit în București.\nDacă vrei, îți recomand imediat varianta potrivită în funcție de vârsta copilului, numărul de invitați și data evenimentului! 😊",
-      "metadata": {
-        "currency": "RON",
-        "packages": [
-          {
-            "tags": [
-              "basic",
-              "entry"
-            ],
-            "price": 490,
-            "title": "1 Personaj · 2 ore",
-            "includes": [
-              "Jocuri & concursuri interactive",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri & coregrafii",
-              "Tatuaje temporare",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_1p_2h",
-            "weekday_only": false,
-            "duration_text": "2 ore",
-            "character_count": 1
-          },
-          {
-            "tags": [
-              "basic",
-              "weekday"
-            ],
-            "price": 490,
-            "title": "2 Personaje · 1 oră (L–V)",
-            "includes": [
-              "Jocuri & concursuri interactive",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri & coregrafii",
-              "Tatuaje temporare",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_2p_1h_weekday",
-            "weekday_only": true,
-            "duration_text": "1 oră",
-            "character_count": 2
-          },
-          {
-            "tags": [
-              "premium",
-              "confetti",
-              "named"
-            ],
-            "price": 840,
-            "title": "Super 3",
-            "includes": [
-              "Jocuri & concursuri interactive",
-              "Confetti party",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri & coregrafii",
-              "Tatuaje temporare",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": "2 Personaje · 2 ore + Confetti",
-            "package_code": "super_3_confetti",
-            "weekday_only": false,
-            "duration_text": "2 ore",
-            "character_count": 2
-          },
-          {
-            "tags": [
-              "combo",
-              "tort"
-            ],
-            "price": 590,
-            "title": "1 Personaj · 1 oră + Tort dulciuri",
-            "includes": [
-              "Tort din dulciuri (22–24 copii)",
-              "Jocuri & concursuri",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_tort_dulciuri",
-            "weekday_only": false,
-            "duration_text": "1 oră",
-            "character_count": 1
-          },
-          {
-            "tags": [
-              "combo",
-              "popcorn",
-              "vata"
-            ],
-            "price": 840,
-            "title": "1 Pers. · 2 ore + 1h Vată + 1h Popcorn",
-            "includes": [
-              "Mașină vată de zahăr + popcorn",
-              "Jocuri & concursuri",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_vata_popcorn",
-            "weekday_only": false,
-            "duration_text": "2 ore animator + 1h vată + 1h popcorn",
-            "character_count": 1
-          },
-          {
-            "tags": [
-              "premium",
-              "confetti",
-              "banner",
-              "named"
-            ],
-            "price": 540,
-            "title": "Super 5",
-            "includes": [
-              "Banner personalizat + Tun confetti",
-              "Jocuri & concursuri",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": "1 Animator · 2 ore + Banner + Confetti",
-            "package_code": "super_5_banner_confetti",
-            "weekday_only": false,
-            "duration_text": "2 ore",
-            "character_count": 1
-          },
-          {
-            "tags": [
-              "premium",
-              "ursitoare",
-              "botez"
-            ],
-            "price": 1290,
-            "title": "1 Animator · 3 ore + 4 Ursitoare",
-            "includes": [
-              "Spectacol 4 ursitoare botez",
-              "Jocuri & concursuri",
-              "Baloane modelate",
-              "Pictură pe față",
-              "Dansuri",
-              "Diplome magnetice",
-              "Boxă portabilă",
-              "Transport gratuit București"
-            ],
-            "subtitle": null,
-            "package_code": "animator_3h_4_ursitoare",
-            "weekday_only": false,
-            "duration_text": "3 ore",
-            "character_count": 1
-          }
-        ],
-        "price_range": {
-          "max": 1290,
-          "min": 490
-        },
-        "transport_notes": "Transport gratuit în București"
-      },
-      "required_context": [
-        "event_type",
-        "child_count",
-        "event_date",
-        "location"
-      ],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": "system_seed",
-      "valid_from": "2026-03-12T23:57:12.971968+00:00",
-      "valid_until": null,
-      "times_used": 1003,
-      "created_at": "2026-03-12T23:57:12.971968+00:00",
-      "updated_at": "2026-03-17T11:37:33.909+00:00",
-      "policy_config": null
     }
   ],
-  "checksum": "ee3f4d553709ec8217ccc6accd2e0ecce6d31313cc75cad530e234c67d0a564d"
+  "checksum": "b8ff358753c1147d8e84e5a675d07f74894fc60b789bd1e072a4f7bae03628bd"
 }

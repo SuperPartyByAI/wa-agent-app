@@ -96,22 +96,45 @@ app.post('/webhook/whts-up', async (req, res) => {
             console.log(`[Pipeline] 🚀 Procesez ${entry.count} mesaj(e) de la ${phoneNumber}`);
             
             try {
+                // Verificăm state-ul din panoul UI (ai_enabled și crm_enabled)
+                let isAiLive = true;
+                let isCrmLive = false;
+                if (vertexDb) {
+                    const { data: cfgAi } = await vertexDb.from('vertex_config').select('config_value').eq('config_key', 'ai_enabled').maybeSingle();
+                    if (cfgAi && cfgAi.config_value === 'false') {
+                        isAiLive = false;
+                    }
+
+                    const { data: cfgCrm } = await vertexDb.from('vertex_config').select('config_value').eq('config_key', 'crm_enabled').maybeSingle();
+                    if (cfgCrm && cfgCrm.config_value === 'true') {
+                        isCrmLive = true;
+                    }
+                }
+
                 // === VERTEX AI: procesăm mesajul ===
-                const result = await processWithVertexAI(phoneNumber, combinedMessage);
+                const result = await processWithVertexAI(phoneNumber, combinedMessage, { isCrmLive });
                 
                 console.log(`[Pipeline] ✅ Răspuns generat în ${result.latencyMs}ms`);
                 if (result.functionCall) {
-                    console.log(`[Pipeline] 🔧 Funcție executată: ${result.functionCall.name}`);
+                    console.log(`[Pipeline] 🔧 Funcție executată: ${result.functionCall.name} (LIVE DB: ${isCrmLive})`);
                 }
-                
-                // Verificăm state-ul din panoul UI (ai_enabled)
-                let isAiLive = true;
-                if (vertexDb) {
-                    const { data: cfg } = await vertexDb.from('vertex_config').select('config_value').eq('config_key', 'ai_enabled').single();
-                    if (cfg && cfg.config_value === 'false') {
-                        isAiLive = false;
+
+                // --- BRIDGE TO LEGACY UI (Live Agent Extragere AI) ---
+                if (result.functionCalls && result.functionCalls.length > 0) {
+                    for (const fc of result.functionCalls) {
+                        if (fc.name === 'noteaza_petrecere' && fc.args) {
+                            try {
+                                await supabase.from('ai_event_drafts').insert({
+                                    conversation_id: entry.conversation_id,
+                                    draft_type: fc.args.role_title || 'Animație',
+                                    structured_data_json: fc.args.event_details || {}
+                                });
+                                console.log(`[Pipeline] 📝 Salvat draft în ai_event_drafts pentru Live Agent UI`);
+                            } catch(e) { console.error('[Pipeline] Draft bridge error:', e.message); }
+                        }
                     }
                 }
+                // -----------------------------------------------------
 
                 // Trimitem răspunsul pe WhatsApp sau în Simulator
                 if (result.reply) {

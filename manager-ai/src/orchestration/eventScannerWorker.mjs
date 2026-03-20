@@ -23,11 +23,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const VERTEX_SUPABASE_URL = process.env.VERTEX_SUPABASE_URL;
 const VERTEX_SUPABASE_KEY = process.env.VERTEX_SUPABASE_SERVICE_ROLE_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = 'gemini-2.0-flash-lite';
-if (GEMINI_MODEL !== 'gemini-2.0-flash-lite') {
-    console.error("CRITICAL ERROR: DOAR gemini-2.0-flash-lite ESTE PERMIS IN APLICATIE!");
-    process.exit(1);
-}
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const vertexDb = VERTEX_SUPABASE_URL && VERTEX_SUPABASE_KEY
@@ -35,8 +31,9 @@ const vertexDb = VERTEX_SUPABASE_URL && VERTEX_SUPABASE_KEY
     : null;
 
 const SCAN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
-const LOOKBACK_HOURS = 48;
-const MAX_CONVS_PER_SCAN = 50;
+const LOOKBACK_HOURS = 72;
+const MAX_CONVS_PER_SCAN = 100;
+const MAX_MSGS_PER_CLIENT = 300;
 
 const log = (msg) => console.log(`[EventScanner] ${msg}`);
 const logErr = (msg, err) => console.error(`[EventScanner] ${msg}`, err?.message || err);
@@ -281,7 +278,7 @@ async function saveEvent(phoneE164, args) {
         .select('id, event_details')
         .eq('client_phone', phoneE164)
         .eq('role_title', roleTitle)
-        .eq('status', 'active');
+        .eq('event_status', 'new');
     
     const { data: existing } = await query;
     
@@ -350,7 +347,6 @@ async function cancelEvent(eventId, phoneE164, args) {
     
     const { error } = await vertexDb.from('client_events').update({
         status: 'cancelled',
-        event_status: 'cancelled',
         notes: `ANULAT: ${args.motiv_anulare}${args.notes ? '\n' + args.notes : ''}`,
         updated_at: new Date().toISOString()
     }).eq('id', eventId);
@@ -377,8 +373,16 @@ async function scanConversations() {
     if (!recentConvs || recentConvs.length === 0) { log('Nicio conversație recentă.'); return; }
     log(`Găsite ${recentConvs.length} conversații recente.`);
     
-    // 2. Get client phones
-    const clientIds = [...new Set(recentConvs.map(c => c.client_id).filter(Boolean))];
+    // 2. Group conversations by client_id (process each client once, all their conversations together)
+    const convsByClient = {};
+    for (const conv of recentConvs) {
+        if (!conv.client_id) continue;
+        if (!convsByClient[conv.client_id]) convsByClient[conv.client_id] = [];
+        convsByClient[conv.client_id].push(conv);
+    }
+    
+    // 3. Get client phones
+    const clientIds = Object.keys(convsByClient);
     const { data: clients } = await supabase
         .from('clients')
         .select('id, real_phone_e164')
@@ -386,8 +390,20 @@ async function scanConversations() {
     const phoneMap = {};
     (clients || []).forEach(c => { phoneMap[c.id] = c.real_phone_e164; });
     
-    // 3. Get ALL events (active AND cancelled) for these phones
-    const knownPhones = Object.values(phoneMap).filter(Boolean);
+    // Grupăm conversațiile per TELEFON (nu per client_id) — un client poate avea
+    // multiple client_id-uri (de pe QR-uri/site-uri diferite) cu conversații separate.
+    // Un singur apel Gemini per telefon unic, cu TOATE conversațiile grupate.
+    const convsByPhone = {};   // phone -> [ conv, conv, ... ]
+    for (const [clientId, convList] of Object.entries(convsByClient)) {
+        const phone = phoneMap[clientId];
+        if (!phone) continue;
+        if (!convsByPhone[phone]) convsByPhone[phone] = [];
+        convsByPhone[phone].push(...convList);
+    }
+    log(`Grupare telefoane: ${Object.keys(convsByClient).length} client_id -> ${Object.keys(convsByPhone).length} telefoane unice`);
+    
+    // 4. Get ALL events for these phones from Vertex DB
+    const knownPhones = Object.keys(convsByPhone);
     const eventsByPhone = {};
     if (vertexDb && knownPhones.length > 0) {
         const { data: events } = await vertexDb.from('client_events')
@@ -402,35 +418,47 @@ async function scanConversations() {
     
     let stats = { scanned: 0, created: 0, updated: 0, cancelled: 0, noParty: 0, ok: 0, skipped: 0 };
     
-    for (const conv of recentConvs) {
-        const phone = phoneMap[conv.client_id];
-        if (!phone || isTestPhone(phone)) { stats.skipped++; continue; }
+    // 5. Process each PHONE once — merge all client_id conversations into one transcript
+    for (const [phone, convList] of Object.entries(convsByPhone)) {
+        if (isTestPhone(phone)) { stats.skipped++; continue; }
         
-        // Get ALL events for this phone (not just first active)
         const clientEvents = eventsByPhone[phone] || [];
         const activeEvents = clientEvents.filter(e => e.status === 'active');
         
-        // 4. Load messages
+        // Fetch messages from ALL conversations for this phone (toate client_id-urile sale)
+        const allConvIds = convList.map(c => c.id);
         const { data: msgs } = await supabase
             .from('messages')
-            .select('content, direction, sender_type, created_at')
-            .eq('conversation_id', conv.id)
+            .select('content, direction, sender_type, created_at, conversation_id')
+            .in('conversation_id', allConvIds)
             .order('created_at', { ascending: true })
-            .limit(60);
+            .limit(MAX_MSGS_PER_CLIENT);
         
         if (!msgs || msgs.length < 2) { stats.skipped++; continue; }
         
-        // Build transcript
-        const transcript = msgs.map(m => 
-            `[${m.sender_type === 'agent' ? 'Superparty' : 'Client'}]: ${m.content || ''}`
-        ).join('\n');
+        // Build unified transcript with timestamps and session break markers
+        let currentConvId = null;
+        const transcriptLines = [];
+        for (const m of msgs) {
+            // Add session break marker when conversation changes
+            if (m.conversation_id !== currentConvId) {
+                if (currentConvId !== null) transcriptLines.push('--- (sesiune nouă) ---');
+                currentConvId = m.conversation_id;
+            }
+            const ts = new Date(m.created_at).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const who = m.sender_type === 'agent' ? 'Superparty' : 'Client';
+            transcriptLines.push(`[${ts} ${who}]: ${m.content || ''}`);
+        }
+        const transcript = transcriptLines.join('\n');
         
-        // 5. Call Gemini
+        // 6. Call Gemini once per client with full unified transcript
         try {
             stats.scanned++;
             const hasEvents = activeEvents.length > 0 ? `(${activeEvents.length} roluri notate)` : '(fără evenimente)';
-            log(`Analizez conv ${conv.id.substring(0, 8)}... (${msgs.length} msg, ${phone.substring(0, 6)}*** ${hasEvents})`);
+            log(`Analizez client ${phone.substring(0, 6)}*** — ${convList.length} conv, ${msgs.length} msg ${hasEvents}`);
             
+            // Rate limit protection: Flash Lite has low rate limit — wait 3s between clients
+            await new Promise(r => setTimeout(r, 3000));
             const result = await callGeminiForScan(transcript, activeEvents.length > 0 ? activeEvents : null);
             
             if (!result) {
@@ -503,14 +531,14 @@ async function scanConversations() {
                     break;
             }
             
-            // Rate limit
-            await new Promise(r => setTimeout(r, 500));
+            // Rate limit — avoid hammering Gemini API
+            await new Promise(r => setTimeout(r, 600));
         } catch (err) {
-            logErr(`  → Eroare la conv ${conv.id.substring(0, 8)}`, err);
+            logErr(`  → Eroare la client ${phone.substring(0, 6)}***`, err);
         }
     }
     
-    log(`📊 Scanare completă: ${stats.scanned} analizate, ${stats.created} create, ${stats.updated} actualizate, ${stats.cancelled} anulate, ${stats.ok} OK, ${stats.noParty} non-petreceri, ${stats.skipped} skip`);
+    log(`📊 Scanare completă: ${stats.scanned} clienți analizați, ${stats.created} roluri create, ${stats.updated} actualizate, ${stats.cancelled} anulate, ${stats.ok} OK, ${stats.noParty} non-petreceri, ${stats.skipped} skip`);
 }
 
 // ─── Runner ───

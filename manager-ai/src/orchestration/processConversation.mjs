@@ -472,6 +472,27 @@ export async function processConversation(conversation_id, message_id = null, op
             // Fallback mapper for primary_service string -> role array
             rolesToEvaluate = [`role_${runtimeState.primary_service}`];
         }
+
+        // ── Phase 0: Proactive skeleton party draft ──
+        // Create a minimal draft as soon as we detect a service, even before any tool is called.
+        // This ensures the right panel shows the service immediately.
+        if (runtimeState.primary_service && partyDraft && !partyDraft.id) {
+            try {
+                partyDraft.serviciu_principal = runtimeState.primary_service;
+                if (!partyDraft.servicii_active || partyDraft.servicii_active.length === 0) {
+                    partyDraft.servicii_active = [runtimeState.primary_service];
+                }
+                if (activeRoleKeys.length > 0) {
+                    partyDraft.comercial.roluri_active = activeRoleKeys;
+                }
+                await savePartyDraft(partyDraft).catch(e =>
+                    console.warn('[Phase0] Skeleton draft save failed:', e.message)
+                );
+                console.log(`[Phase0] Created skeleton party draft for service: ${runtimeState.primary_service}`);
+            } catch (e) {
+                console.warn(`[Phase0] Skeleton draft error: ${e.message}`);
+            }
+        }
         
         const missingMetrics = computeMissingPartyFields(partyDraft, rolesToEvaluate);
 

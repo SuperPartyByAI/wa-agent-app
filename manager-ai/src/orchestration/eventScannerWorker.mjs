@@ -24,7 +24,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const VERTEX_SUPABASE_URL = process.env.VERTEX_SUPABASE_URL;
 const VERTEX_SUPABASE_KEY = process.env.VERTEX_SUPABASE_SERVICE_ROLE_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const vertexDb = VERTEX_SUPABASE_URL && VERTEX_SUPABASE_KEY

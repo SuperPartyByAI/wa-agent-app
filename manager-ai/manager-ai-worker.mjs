@@ -10,7 +10,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 // LLM config — Gemini 2.5 Flash
 const GEMINI_API_KEY = process.env.VERTEX_AI_API_KEY || process.env.GEMINI_API_KEY;
-let LLM_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17';
+let LLM_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 
 // Removed strict model check to allow newer models to run seamlessly.
 

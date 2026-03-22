@@ -182,7 +182,7 @@ export function buildMemorySection(summary) {
 const CLEAN_NOTEBOOK_MODEL = 'gemini-2.0-flash-lite';
 
 // Câmpuri comune prezente indiferent de rol
-const BASE_FIELDS = ['data_eveniment', 'ora_eveniment', 'locatie', 'pret_discutat', 'metoda_plata', 'observatii'];
+const BASE_FIELDS = ['rezumat_ai', 'data_eveniment', 'ora_eveniment', 'locatie', 'pret_discutat', 'metoda_plata', 'observatii'];
 
 // ─── Încarcă roleMap din DB: { role, keywords[], fields[] } ───
 async function loadRoleMap() {
@@ -225,16 +225,19 @@ async function callGeminiExtractJSON(prompt, fieldsToExtract, detectedRoleLabel)
         ? `Serviciu detectat: ${detectedRoleLabel}.`
         : 'Serviciu neidentificat — extrage câmpurile de bază.';
 
+    const systemPrompt = `Ești un sistem de extracție date pentru Superparty (firma de petreceri copii).
+${roleContext}
+Analizezi conversația și returnezi DOAR un JSON valid cu câmpurile găsite.
+PENTRU câmpul "rezumat_ai": Scrie o memorie analitică detaliată a discuției (stil RAG), eliminând complet zgomotul (salutări, chit-chat) și păstrând clar necesitățile, stadiul, obiecțiile și prețurile. Fii obiectiv și profesionist.
+NU inventa date care nu există în conversație.
+Returnează EXCLUSIV JSON, fără text suplimentar, fără markdown.
+Câmpuri de extras: ${fieldsToExtract.join(', ')}`;
+
     const body = {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         systemInstruction: {
             role: 'system',
-            parts: [{ text: `Ești un sistem de extracție date pentru Superparty (firma de petreceri copii).
-${roleContext}
-Analizezi conversația și returnezi DOAR un JSON valid cu câmpurile găsite.
-NU inventa date care nu există în conversație.
-Returnează EXCLUSIV JSON, fără text suplimentar, fără markdown.
-Câmpuri de extras: ${fieldsToExtract.join(', ')}` }]
+            parts: [{ text: systemPrompt }]
         },
         generationConfig: { temperature: 0.0, maxOutputTokens: 512, responseMimeType: 'application/json' }
     };

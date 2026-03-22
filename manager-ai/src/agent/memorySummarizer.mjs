@@ -21,7 +21,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // gemini-2.0-flash (flash-lite indisponibil pe chei noi — 2x cost, tot ieftin)
 const SUMMARY_MODEL = 'gemini-2.5-flash-lite';
-const SUMMARY_TRIGGER_MSGS = 30;
+const SUMMARY_TRIGGER_MSGS = 100;
 const SUMMARY_WINDOW_MSGS = 150;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);

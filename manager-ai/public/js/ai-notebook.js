@@ -101,12 +101,25 @@ async function loadNotebooks() {
         data.notebooks.forEach(n => {
             // Merge template schema with filled data to show checkmarks
             const tplProps = n.template?.json_schema?.proprietati_cerute || [];
-            const filledData = n.extracted_data || {};
+            
+            // Handle array or object from Gemini
+            let filledData = n.extracted_data || {};
+            if (Array.isArray(filledData) && filledData.length > 0) {
+                filledData = filledData[0];
+            } else if (Array.isArray(filledData)) {
+                filledData = {};
+            }
             
             let slotsHtml = '';
             tplProps.forEach(p => {
                 const isFilled = filledData.hasOwnProperty(p.nume) && filledData[p.nume] !== null && filledData[p.nume] !== '';
-                const val = isFilled ? filledData[p.nume] : '<span class="text-muted italic">Lipsă...</span>';
+                let val = isFilled ? filledData[p.nume] : '<span class="text-muted italic">Lipsă...</span>';
+                
+                // If value is somehow an object (e.g. nested budget), stringify it
+                if (typeof val === 'object' && val !== null && !val._is_html) {
+                    val = JSON.stringify(val);
+                }
+
                 const classBadge = isFilled ? 'slot-filled' : 'slot-empty';
                 const icon = isFilled ? 'fa-check-circle' : 'fa-circle-question';
                 

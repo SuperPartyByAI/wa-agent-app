@@ -27,7 +27,7 @@ const SESSION_MAP = {
     'wa_b46e5e75': 'WOWPARTY'
 };
 
-const EXTRACT_MODEL = 'gemini-2.0-flash-lite';
+const EXTRACT_MODEL = 'gemini-2.5-flash-lite';
 
 async function callGeminiExtractJSON(transcript) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${EXTRACT_MODEL}:generateContent?key=${GEMINI_API_KEY}`;

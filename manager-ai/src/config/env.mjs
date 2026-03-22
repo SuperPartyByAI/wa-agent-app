@@ -7,7 +7,7 @@ export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // ─── Gemini API (primary) ───
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 export const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
 export const GEMINI_TIMEOUT_MS = parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10);
 

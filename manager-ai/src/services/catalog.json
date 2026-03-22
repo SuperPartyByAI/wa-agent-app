@@ -17,7 +17,8 @@
       "cross_sell_services": ["vata_zahar", "popcorn", "arcada_baloane", "cifre_volumetrice"],
       "human_review_triggers": ["personaj specific neobisnuit", "solicitare limbi straine", "eveniment peste 50 copii"],
       "autonomy_allowed": true,
-      "tags": ["standard", "copii", "divertisment"]
+      "tags": ["standard", "copii", "divertisment"],
+      "keywords": ["animator", "animatoare", "spiderman", "batman", "elsa", "anna", "sofia", "printese", "mascote", "clovn", "minnie", "mickey", "sonic", "mario", "patrula", "chase", "marshall", "skye"]
     },
     {
       "service_key": "ursitoare",

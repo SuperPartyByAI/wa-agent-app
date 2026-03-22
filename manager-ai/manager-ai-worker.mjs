@@ -1,15 +1,23 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+// Enforce strictly gemini-2.5-flash-lite
+import './src/config/enforceModelLimit.mjs';
+
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import dotenv from 'dotenv';
+import { processWithVertexAI } from './src/vertex/vertexClient.mjs';
 dotenv.config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// Local LLM config — Ollama (self-hosted, zero external API cost)
-const LLM_BASE_URL = process.env.LOCAL_LLM_BASE_URL || 'http://localhost:11434';
-const LLM_MODEL = process.env.LOCAL_LLM_MODEL || 'qwen2.5:7b';
+// LLM config — Gemini 2.5 Flash
+const GEMINI_API_KEY = process.env.VERTEX_AI_API_KEY || process.env.GEMINI_API_KEY;
+let LLM_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+
+// Removed strict model check to allow newer models to run seamlessly.
 
 // Safety switch — AI auto-reply kill switch
 const AI_AUTOREPLY_ENABLED = process.env.AI_AUTOREPLY_ENABLED === 'true';
@@ -38,26 +46,26 @@ const SERVICE_KEYS = SERVICE_CATALOG.services.map(s => s.service_key);
 console.log(`[Service Catalog] Loaded ${SERVICE_CATALOG.services.length} services (v${SERVICE_CATALOG.version}): ${SERVICE_KEYS.join(', ')}`);
 
 /**
- * Calls the local Ollama server via the OpenAI-compatible /v1/chat/completions endpoint.
+ * Calls the Google Gemini API.
  */
 async function callLocalLLM(systemPrompt, userMessage) {
-    const url = `${LLM_BASE_URL}/v1/chat/completions`;
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${LLM_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 180000); // 3min for bigger prompt with catalog
+        const timeout = setTimeout(() => controller.abort(), 60000);
         
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: LLM_MODEL,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userMessage }
-                ],
-                temperature: 0.1,
-                response_format: { type: 'json_object' }
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json"
+                }
             }),
             signal: controller.signal
         });
@@ -65,17 +73,17 @@ async function callLocalLLM(systemPrompt, userMessage) {
         clearTimeout(timeout);
         
         if (!response.ok) {
-            throw new Error(`LLM HTTP ${response.status}: ${await response.text()}`);
+            throw new Error(`Gemini HTTP ${response.status}: ${await response.text()}`);
         }
         
         const data = await response.json();
-        const content = data.choices?.[0]?.message?.content;
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
         
-        if (!content) throw new Error('Empty LLM response');
+        if (!content) throw new Error('Empty Gemini response');
         
         return JSON.parse(content);
     } catch (err) {
-        console.error(`[AI Worker] Local LLM call failed:`, err.message);
+        console.error(`[AI Worker] Gemini call failed:`, err.message);
         return null;
     }
 }
@@ -155,6 +163,60 @@ REGULI PENTRU "decision":
 - "can_auto_reply" = true DOAR daca: mesajul este simplu, confidence >= 75, NU exista conflict
 - "needs_human_review" = true daca: negociere pret, cerere om, situatie ambigua, confidence < 60
 - "escalation_reason" se completeaza cand: nemultumire, conflict, aspect juridic/financiar sensibil`;
+
+// ─────────────────────────────────────────
+// RETROACTIVE EXTRACTION — prompt & helper
+// ─────────────────────────────────────────
+const RETROACTIVE_EXTRACT_PROMPT = `Esti un extractor de date pentru Superparty — companie animatii si petreceri copii.
+Analizezi o conversatie WhatsApp si extragi detaliile evenimentului cerut de client.
+Nu inventa NIMIC. Extrage DOAR informatii explicit mentionate in conversatie.
+
+Returneaza JSON strict in formatul urmator:
+{
+  "has_event": true,
+  "servicii": [
+    {
+      "role_title": "Animatie|Candy Bar|Decoratiuni|Fotograf|DJ|Videograf|Trupa Cover|Sonorizare|Moderator|Inchiriere echipamente",
+      "personaj": "numele personajului sau null",
+      "data": "data evenimentului (ex: 29 martie 2025) sau null",
+      "ora_start": "ora de inceput (ex: 18:00) sau null",
+      "locatie": "restaurantul/sala sau null",
+      "durata": "durata in ore (ex: 2) sau null",
+      "nr_copii": "numarul de copii sau null",
+      "nume_sarbatorit": "numele copilului serbat sau null",
+      "varsta": "varsta copilului sau null",
+      "notes": "alte detalii relevante sau null"
+    }
+  ]
+}
+Daca nu exista niciun eveniment concret in conversatie, returneaza {"has_event": false, "servicii": []}.
+Daca sunt mai multe servicii cerute pentru acelasi eveniment, listeaza-le separat in array-ul servicii.`;
+
+/**
+ * Builds a synthetic message from LLM-extracted service data
+ * so that processWithVertexAI can call noteaza_petrecere with correct fields.
+ */
+function buildSyntheticMessage(extraction) {
+    if (!extraction?.servicii?.length) return null;
+    
+    const parts = extraction.servicii.map(s => {
+        const tokens = [];
+        if (s.role_title) tokens.push(s.role_title);
+        if (s.personaj)   tokens.push(`cu ${s.personaj}`);
+        if (s.data)       tokens.push(`pe ${s.data}`);
+        if (s.ora_start)  tokens.push(`la ora ${s.ora_start}`);
+        if (s.locatie)    tokens.push(`la ${s.locatie}`);
+        if (s.durata)     tokens.push(`${s.durata} ore`);
+        if (s.nr_copii)   tokens.push(`${s.nr_copii} copii`);
+        if (s.nume_sarbatorit) tokens.push(`sarbatorit: ${s.nume_sarbatorit}`);
+        if (s.varsta)     tokens.push(`varsta ${s.varsta} ani`);
+        if (s.notes)      tokens.push(s.notes);
+        return tokens.join(', ');
+    }).filter(Boolean);
+    
+    if (!parts.length) return null;
+    return `Buna ziua, vreau sa rezerv: ${parts.join(' | ')}`;
+}
 
 /**
  * Send a message to WhatsApp via the whts-up transport API.
@@ -258,153 +320,111 @@ function postProcessServices(analysis) {
 export async function processConversation(conversation_id, message_id = null, operator_prompt = null) {
     if (!conversation_id) return;
     
+    // Human takeover detection: skip if agent responded in last 15 min
+    try {
+        const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+        const { data: agentMsgs } = await supabase.from('messages')
+            .select('id').eq('conversation_id', conversation_id)
+            .eq('sender_type', 'agent').gte('created_at', cutoff).limit(1);
+        if (agentMsgs && agentMsgs.length > 0) {
+            console.log(`[AI Worker] SKIP - Human agent active in conv ${conversation_id} (last 15 min)`);
+            return;
+        }
+    } catch(e) { console.warn('[AI Worker] Takeover check error:', e.message); }
+
     console.log(`[AI Worker] Starting text-understanding pipeline for ${conversation_id}...`);
 
     try {
-        // 1. Fetch conversation history
-        const { data: messages, error: msgErr } = await supabase
+        // 1. Fetch REAL client messages (chronological)
+        const { data: realMessages, error: realErr } = await supabase
             .from('messages')
             .select('content, direction, created_at, sender_type')
             .eq('conversation_id', conversation_id)
-            .order('created_at', { ascending: false })
-            .limit(50);
+            .eq('sender_type', 'client')
+            .order('created_at', { ascending: true });
 
-        if (msgErr) throw new Error(`Failed to fetch messages: ${msgErr.message}`);
-        if (!messages || messages.length === 0) return;
+        if (realErr) throw new Error(`Failed to fetch real client messages: ${realErr.message}`);
+        
+        // 2. Fetch SHADOW messages
+        const { data: shadowMessages, error: shadowErr } = await supabase
+            .from('ai_training_messages')
+            .select('content, sender_type, created_at')
+            .eq('conversation_id', conversation_id)
+            .order('created_at', { ascending: true });
 
-        const transcript = messages.reverse().map(m => 
-            `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
-        ).join('\n');
+        if (shadowErr) throw new Error(`Failed to fetch shadow messages: ${shadowErr.message}`);
 
-        // Build user message with optional operator prompt
-        let userMessage = `--- CONVERSATIE ---\n${transcript}`;
-        if (operator_prompt) {
-            userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
+        const shadowClientCount = shadowMessages ? shadowMessages.filter(m => m.sender_type === 'client').length : 0;
+        const realClientCount = realMessages ? realMessages.length : 0;
+        
+        let currentShadow = [...(shadowMessages || [])];
+        const missingClientMessages = realClientCount > shadowClientCount ? realMessages.slice(shadowClientCount) : [];
+        
+        if (missingClientMessages.length === 0) {
+            // console.log(`[AI Worker] No unsimulated real client messages found for ${conversation_id}.`);
+            return;
         }
 
-        // 2. Call local LLM
-        console.log(`[AI Worker] Calling local LLM (${LLM_MODEL}) with transcript (${transcript.length} chars)${operator_prompt ? ' + operator prompt' : ''}...`);
-        
-        let analysis = await callLocalLLM(SYSTEM_PROMPT, userMessage);
-        
-        if (!analysis) {
-            console.warn(`[AI Worker] Local LLM unreachable. Using mock fallback.`);
-            analysis = {
-                client_memory: { priority_level: "normal", internal_notes_summary: "MOCK: Client interesat de organizare eveniment." },
-                event_draft: { draft_type: "petrecere_standard", structured_data: { location: null, date: null, event_type: null }, missing_fields: ["toate detaliile"] },
-                selected_services: [],
-                service_requirements: {},
-                missing_fields_per_service: {},
-                cross_sell_opportunities: [],
-                conversation_state: { current_intent: "MOCK: solicita informatii", next_best_action: "Trimite pachetele disponibile." },
-                suggested_reply: "Buna! Multumim pentru interesul acordat! Va putem oferi mai multe detalii despre pachetele noastre. Ce tip de eveniment planificati?",
-                decision: { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: "lead" }
+        console.log(`[AI Worker] Found ${missingClientMessages.length} unsimulated messages. Starting step-by-step shadow iteration.`);
+
+        // Iterate over each individual unsimulated client message chronologically
+        for (const msg of missingClientMessages) {
+            console.log(`[AI Worker Sync] Backfilling missed message into Vertex AI: "${msg.content.substring(0, 30)}..."`);
+            
+            // 1. Force insert missed client message into Shadow DB!
+            const newShadow = {
+                conversation_id,
+                sender_type: 'client',
+                content: msg.content,
+                created_at: msg.created_at
             };
-        }
+            const { error: insErr } = await supabase.from('ai_training_messages').insert(newShadow);
+            if (insErr) console.error("[AI Worker Sync] Failed to backfill real msg to shadow:", insErr.message);
 
-        // 3. Post-process services using catalog
-        const serviceData = postProcessServices(analysis);
-        
-        const decision = analysis.decision || { can_auto_reply: false, needs_human_review: true, escalation_reason: null, confidence_score: 0, conversation_stage: 'lead' };
-        const suggestedReply = analysis.suggested_reply || analysis.conversation_state?.next_best_action || 'Nu am putut genera un raspuns.';
-        
-        // Ensure sub-objects exist with defaults
-        const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: 'Nu s-a putut analiza.' };
-        const eventDraft = analysis.event_draft || { draft_type: 'necunoscut', structured_data: { location: null, date: null, event_type: null }, missing_fields: [] };
-        const convState = analysis.conversation_state || { current_intent: 'necunoscut', next_best_action: 'necunoscut' };
-
-        // Force human review if catalog says so
-        if (serviceData.should_force_review) {
-            decision.needs_human_review = true;
-            decision.can_auto_reply = false;
-        }
-
-        console.log(`[AI Worker] Analysis complete. Services: [${serviceData.selected_services.join(', ')}], Missing per service: ${JSON.stringify(serviceData.missing_fields_per_service)}, Cross-sell: [${serviceData.cross_sell_opportunities.join(', ')}], Decision: auto=${decision.can_auto_reply}, review=${decision.needs_human_review}, confidence=${decision.confidence_score}, stage=${decision.conversation_stage}`);
-
-        // 4. Upsert State into AI Core Tables
-        const { data: conv } = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
-        const clientId = conv?.client_id;
-
-        if (clientId) {
-            const { error: err1 } = await supabase.from('ai_client_memory').upsert({
-                client_id: clientId,
-                priority_level: clientMemory.priority_level,
-                internal_notes_summary: clientMemory.internal_notes_summary,
-                updated_at: new Date().toISOString()
-            });
-            if (err1) console.error("[AI Worker] DB Error memory:", err1.message);
-        }
-
-        const { data: existingDraft } = await supabase.from('ai_event_drafts').select('id').eq('conversation_id', conversation_id).maybeSingle();
-        
-        let err2 = null;
-        if (existingDraft) {
-             const { error } = await supabase.from('ai_event_drafts').update({
-                client_id: clientId,
-                draft_type: eventDraft.draft_type,
-                structured_data_json: eventDraft.structured_data,
-                missing_fields_json: eventDraft.missing_fields,
-                updated_at: new Date().toISOString()
-            }).eq('id', existingDraft.id);
-            err2 = error;
-        } else {
-             const { error } = await supabase.from('ai_event_drafts').insert({
-                conversation_id: conversation_id,
-                client_id: clientId,
-                draft_type: eventDraft.draft_type,
-                structured_data_json: eventDraft.structured_data,
-                missing_fields_json: eventDraft.missing_fields,
-                updated_at: new Date().toISOString()
-            });
-            err2 = error;
-        }
-        if (err2) console.error("[AI Worker] DB Error drafts:", err2.message);
-
-        const statePayload = {
-            conversation_id: conversation_id,
-            current_intent: convState.current_intent,
-            next_best_action: convState.next_best_action,
-            updated_at: new Date().toISOString()
-        };
-        
-        if (message_id) {
-            statePayload.last_processed_message_id = message_id;
-        }
-
-        const { error: err3 } = await supabase.from('ai_conversation_state').upsert(statePayload);
-        if (err3) console.error("[AI Worker] DB Error state:", err3.message);
-
-        // 5. Save AI reply decision (audit trail)
-        let replyStatus = 'pending';
-        let sentBy = 'pending';
-        let sentAt = null;
-
-        if (AI_AUTOREPLY_ENABLED && decision.can_auto_reply && !decision.needs_human_review && decision.confidence_score >= 75) {
-            console.log(`[AI Worker] Auto-reply conditions met (confidence=${decision.confidence_score}). Sending...`);
-            const sent = await sendViaWhatsApp(conversation_id, suggestedReply);
-            if (sent) {
-                replyStatus = 'sent';
-                sentBy = 'ai';
-                sentAt = new Date().toISOString();
+            // 2. Query REAL Vertex AI engine with the clean missing prompt
+            const convData = await supabase.from('conversations').select('client_id').eq('id', conversation_id).single();
+            const clientData = await supabase.from('clients').select('real_phone_e164').eq('id', convData?.data?.client_id).single();
+            const phoneE164 = clientData?.data?.real_phone_e164 || conversation_id;
+            
+            console.log(`[AI Worker Sync] Pinging Vertex processing array for ${phoneE164} on catch-up thread...`);
+            let vertexResult;
+            try {
+                vertexResult = await processWithVertexAI(phoneE164, msg.content);
+            } catch (err) {
+                 console.error("[AI Worker Sync] Vertex failed natively:", err.message);
+                 vertexResult = { reply: "Eroare temporară la sincronizarea retroactive." };
             }
-        } else if (decision.escalation_reason) {
-            console.log(`[AI Worker] Escalation: ${decision.escalation_reason}`);
-        }
+            
+            const reply = vertexResult?.reply || "Eveniment sincronizat retrospectiv fără răspuns verbal.";
 
-        const { error: errDecision } = await supabase.from('ai_reply_decisions').insert({
-            conversation_id: conversation_id,
-            suggested_reply: suggestedReply,
-            can_auto_reply: decision.can_auto_reply,
-            needs_human_review: decision.needs_human_review,
-            escalation_reason: decision.escalation_reason || null,
-            confidence_score: decision.confidence_score,
-            conversation_stage: decision.conversation_stage,
-            reply_status: replyStatus,
-            sent_by: sentBy,
-            sent_at: sentAt,
-            operator_prompt: operator_prompt || null
-        });
-        if (errDecision) console.error("[AI Worker] DB Error reply_decisions:", errDecision.message);
+            // 3. Immediately insert Decision Metadata so UI binds securely (Col 3 works)
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: reply,
+                can_auto_reply: false,
+                needs_human_review: true,
+                confidence_score: 99,
+                conversation_stage: 'vertex-background-sync',
+                reply_status: 'shadow_sync',
+                sent_by: 'ai_worker_sync',
+                created_at: new Date().toISOString()
+            });
+
+            // 4. Force AI output into Simulator history so it renders!
+            const aiRecordTime = new Date(new Date(msg.created_at).getTime() + 1000).toISOString();
+            const aiShadowMsg = {
+                conversation_id,
+                sender_type: 'ai',
+                content: reply,
+                created_at: aiRecordTime
+            };
+            await supabase.from('ai_training_messages').insert(aiShadowMsg);
+
+            console.log(`[AI Worker Sync] Successfully healed drift for interaction: ${msg.id}`);
+        }
+        
+        // We bypass the entirety of the archaic legacy local processing loop below!
+        return;
 
         // 6. Generate service-aware dynamic layout JSON for Android
         const escalationBadge = decision.escalation_reason ? `Escaladare: ${decision.escalation_reason}` : null;
@@ -530,4 +550,44 @@ export async function processConversation(conversation_id, message_id = null, op
     } catch (error) {
         console.error(`[AI Worker] Critical failure:`, error);
     }
+}
+
+// ─────────────────────────────────────────
+// 🚀 PRODUCTION BACKGROUND DAEMON (10s Polling)
+// ─────────────────────────────────────────
+async function startSyncDaemon() {
+    console.log("[AI Worker Sync] Starting infinite Vertex AI Sandbox backfill loop...");
+    while (true) {
+        try {
+            // Scan only the 30 most recently ACTIVE conversations (updated in last 24h)
+            // to keep egress low. Older conversations are already fully processed.
+            const activeCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const { data: convs, error: listErr } = await supabase
+                .from('conversations')
+                .select('id')
+                .gte('updated_at', activeCutoff)
+                .order('updated_at', { ascending: false })
+                .limit(30);
+                
+            if (listErr) {
+                console.error("[AI Worker Sync] Failed to scan conversations table:", listErr.message);
+            } else if (convs) {
+                console.log(`[AI Worker Sync] Scanning ${convs.length} active conversations...`);
+                for (const c of convs) {
+                    await processConversation(c.id);
+                }
+            }
+        } catch (e) {
+            console.error("[AI Worker Sync] Global daemon error:", e.message);
+        }
+        
+        // Rest for 60 seconds before the next sweep (reduces API calls by 6x vs 10s)
+        await new Promise(resolve => setTimeout(resolve, 60000));
+    }
+}
+
+// Instantiate the loop if the script is run natively by PM2 or CLI
+const isMain = process.argv[1]?.endsWith('manager-ai-worker.mjs') || process.env.pm_id !== undefined;
+if (isMain) {
+    startSyncDaemon();
 }

@@ -34,10 +34,26 @@ android {
         buildConfigField("String", "API_KEY", "\"${localProps.getProperty("API_KEY", "SECRET_TOKEN_CHANGE_ME")}\"")
     }
 
+    signingConfigs {
+        create("release") {
+            val localProps = Properties()
+            val localPropsFile = project.rootProject.file("local.properties")
+            if (localPropsFile.exists()) {
+                localProps.load(FileInputStream(localPropsFile))
+            }
+            storeFile = file(localProps.getProperty("RELEASE_STORE_FILE", "release-keystore.jks"))
+            storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD", "")
+            keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS", "")
+            keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD", "")
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

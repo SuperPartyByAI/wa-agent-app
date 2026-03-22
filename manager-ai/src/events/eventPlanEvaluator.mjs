@@ -195,6 +195,17 @@ export function extractEventPlanUpdates(analysis, existingPlan) {
         if (!Number.isNaN(parsed)) updates.duration_hours = parsed;
     }
 
+    // ── Linear Meters ──
+    const linearMeters = mergedSource.linear_meters || mergedSource.metri;
+    if (linearMeters) {
+        const parsed = typeof linearMeters === 'number' ? linearMeters : Number.parseInt(String(linearMeters), 10);
+        if (!Number.isNaN(parsed)) updates.linear_meters = parsed;
+    }
+
+    // ── Model Choice ──
+    const modelChoice = mergedSource.model_choice || mergedSource.model || mergedSource.forma || mergedSource.culori;
+    if (modelChoice && modelChoice !== 'null') updates.model_choice = modelChoice;
+
     // ── Animator Count ──
     const animatorCount = mergedSource.nr_animatori || mergedSource.animator_count || mergedSource.personaje;
     if (animatorCount) {

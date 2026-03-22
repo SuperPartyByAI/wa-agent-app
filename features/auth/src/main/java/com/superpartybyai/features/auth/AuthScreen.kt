@@ -1,21 +1,20 @@
 package com.superpartybyai.features.auth
 
-import android.content.Context
+import android.app.Activity
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialException
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import androidx.compose.ui.unit.dp
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.Google
 import io.github.jan.supabase.gotrue.providers.builtin.IDToken
@@ -38,6 +37,55 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
         }
     }
 
+    // Legacy Google Sign-In client
+    val googleSignInClient: GoogleSignInClient = remember {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(WEB_CLIENT_ID)
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    // Activity result launcher for Google Sign-In
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account?.idToken
+                if (idToken != null) {
+                    Log.d("AuthScreen", "Google ID Token obtained, signing in with Supabase...")
+                    coroutineScope.launch {
+                        try {
+                            SupabaseClient.client.auth.signInWith(IDToken) {
+                                this.idToken = idToken
+                                provider = Google
+                            }
+                            Log.d("AuthScreen", "Supabase auth SUCCESS")
+                            onLoginSuccess()
+                        } catch (e: Exception) {
+                            errorMessage = "Supabase auth error: ${e.message}"
+                            Log.e("AuthScreen", "Supabase signIn error", e)
+                            isLoading = false
+                        }
+                    }
+                } else {
+                    errorMessage = "Nu am primit ID token de la Google"
+                    isLoading = false
+                }
+            } catch (e: ApiException) {
+                errorMessage = "Google Sign-In error: code=${e.statusCode} ${e.message}"
+                Log.e("AuthScreen", "GoogleSignIn ApiException: ${e.statusCode}", e)
+                isLoading = false
+            }
+        } else {
+            errorMessage = "Login anulat (resultCode=${result.resultCode})"
+            isLoading = false
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -45,7 +93,7 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
     ) {
         Text(text = "Agent Login", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Secure internal access via Google Workspace", style = MaterialTheme.typography.bodyMedium)
+        Text(text = "Autentificare internă securizată", style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.height(32.dp))
 
         if (errorMessage != null) {
@@ -53,71 +101,14 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        // Google Sign-In button
         Button(
             onClick = {
                 isLoading = true
                 errorMessage = null
-                coroutineScope.launch {
-                    try {
-                        Log.d("AuthScreen", "WEB_CLIENT_ID = $WEB_CLIENT_ID")
-                        Log.d("AuthScreen", "SUPABASE_URL = ${com.superpartybyai.core.AppConfig.SUPABASE_URL}")
-                        Log.d("AuthScreen", "SUPABASE_ANON_KEY = ${com.superpartybyai.core.AppConfig.SUPABASE_ANON_KEY}")
-                        val credentialManager = CredentialManager.create(context)
-                        
-                        val googleIdOption = GetGoogleIdOption.Builder()
-                            .setFilterByAuthorizedAccounts(false)
-                            .setServerClientId(WEB_CLIENT_ID)
-                            .setAutoSelectEnabled(true)
-                            .build()
-
-                        val request = GetCredentialRequest.Builder()
-                            .addCredentialOption(googleIdOption)
-                            .build()
-
-                        val result = credentialManager.getCredential(context, request)
-                        val credential = result.credential
-                        
-                        when {
-                            credential is CustomCredential &&
-                                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL -> {
-                                try {
-                                    val googleIdTokenCredential =
-                                        GoogleIdTokenCredential.createFrom(credential.data)
-
-                                    val idToken = googleIdTokenCredential.idToken
-
-                                    SupabaseClient.client.auth.signInWith(IDToken) {
-                                        this.idToken = idToken
-                                        provider = Google
-                                    }
-
-                                    onLoginSuccess()
-                                } catch (e: GoogleIdTokenParsingException) {
-                                    errorMessage = "Google token parsing failed: ${e.message}"
-                                    Log.e("AuthScreen", "Google token parsing failed", e)
-                                    isLoading = false
-                                }
-                            }
-
-                            else -> {
-                                errorMessage =
-                                    "Invalid credential type: ${credential::class.java.simpleName}"
-                                Log.e(
-                                    "AuthScreen",
-                                    "Unexpected credential type: ${credential::class.java.name}"
-                                )
-                                isLoading = false
-                            }
-                        }
-                    } catch (e: GetCredentialException) {
-                        errorMessage = "Google Login Failed: ${e.message}"
-                        Log.e("AuthScreen", "CredentialManager err: ${e.message}", e)
-                        isLoading = false
-                    } catch (e: Exception) {
-                        errorMessage = "Supabase Auth Error: ${e.message}"
-                        Log.e("AuthScreen", "Auth error: ${e.message}", e)
-                        isLoading = false
-                    }
+                googleSignInClient.signOut().addOnCompleteListener {
+                    val signInIntent = googleSignInClient.signInIntent
+                    googleSignInLauncher.launch(signInIntent)
                 }
             },
             modifier = Modifier.fillMaxWidth().height(50.dp),

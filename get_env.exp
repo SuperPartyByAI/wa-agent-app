@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no root@91.98.16.90 "cat /opt/wa-agent-app/manager-ai/.env"
+expect {
+    "password:" {
+        send "9vAxpqRLv7bF\r"
+        exp_continue
+    }
+    eof
+}

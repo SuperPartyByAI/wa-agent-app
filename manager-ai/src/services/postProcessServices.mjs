@@ -19,9 +19,10 @@ export const SERVICE_KEYS = SERVICE_CATALOG.services.map(s => s.service_key);
  * Build a concise catalog summary for injection into SYSTEM_PROMPT.
  */
 export function buildCatalogPromptBlock() {
-    return SERVICE_CATALOG.services.map(s =>
-        `- ${s.service_key} (${s.display_name}): ${s.description}\n  Campuri obligatorii: ${s.required_fields.join(', ')}\n  Campuri optionale: ${s.optional_fields.join(', ')}`
-    ).join('\n');
+    return SERVICE_CATALOG.services.map(s => {
+        const keywordStr = s.keywords?.length > 0 ? `\n  Cuvinte cheie / Sinonime de detectie: ${s.keywords.join(', ')}` : '';
+        return `- ${s.service_key} (${s.display_name}): ${s.description}${keywordStr}\n  Campuri obligatorii: ${s.required_fields.join(', ')}\n  Campuri optionale: ${s.optional_fields.join(', ')}`;
+    }).join('\n');
 }
 
 /**

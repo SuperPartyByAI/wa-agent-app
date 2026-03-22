@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Security Config:
+    - Only allow cleartext (HTTP) to our backend server
+    - All other connections must use HTTPS
+    - Pin Supabase intermediate CA for extra security
+-->
+<network-security-config>
+    <!-- Default: require HTTPS for all domains -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+
+    <!-- Exception: allow cleartext only for our backend server -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">89.167.115.150</domain>
+    </domain-config>
+</network-security-config>

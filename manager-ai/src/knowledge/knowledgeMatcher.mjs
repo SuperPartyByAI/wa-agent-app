@@ -14,6 +14,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '../config/env.mjs';
+import { legacyRoleEntryToConfig } from '../policy/roleConfigSchema.mjs';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -90,9 +91,18 @@ function scorePatternMatch(normMsg, patterns) {
         // Word overlap
         let hits = 0;
         for (const w of words) {
-            if (normMsg.includes(w)) hits++;
+            // Check boundaries so 'vata' doesn't match 'cravata'
+            const regex = new RegExp(`\\b${w}\\b`, 'i');
+            if (regex.test(normMsg)) hits++;
         }
-        best = Math.max(best, hits / words.length);
+        let overlap = hits / words.length;
+        
+        // Penalize partial matches for very short patterns (e.g., 'aveti cu vata')
+        if (overlap === 1.0 && words.length < 3) {
+            overlap = 0.85; // Capped to prevent false 100% on 2 words
+        }
+        
+        best = Math.max(best, overlap);
     }
     return best;
 }
@@ -122,7 +132,7 @@ function scoreCategoryMatch(normMsg, entryCategory) {
     const catKeywords = {
         pricing: ['pret', 'preturi', 'costa', 'tarif', 'oferta', 'cat costa'],
         services: ['animatie', 'animator', 'baloane', 'vata', 'popcorn', 'ursitoare'],
-        packages: ['pachete', 'pachet', 'aveti', 'oferiti', 'variante', 'include', 'contine', 'confetti', 'tort', 'banner'],
+        packages: ['pachete', 'pachet', 'variante', 'include', 'contine', 'confetti', 'tort', 'banner'],
         faq: ['zone', 'acoperiti', 'veniti', 'cum', 'unde', 'cand', 'rezerv'],
         policy: ['politica', 'reguli', 'conditii', 'anulare', 'rambursare']
     };
@@ -188,6 +198,11 @@ export async function matchKnowledge(clientMessage, context = {}) {
     let bestReason = '';
 
     for (const entry of entries) {
+        // Exclude role entries from being matched as a generic KB answer!
+        if (entry.category === 'roles' || (entry.knowledge_key && entry.knowledge_key.startsWith('role_'))) {
+            continue;
+        }
+
         // Category filter
         if (context.category && entry.category !== context.category) continue;
 
@@ -244,4 +259,65 @@ export async function matchKnowledge(clientMessage, context = {}) {
 export function invalidateKBCache() {
     kbCache = null;
     kbCacheAt = 0;
+}
+
+/**
+ * Extracts Answer Templates for AI roles that match the user's message or the current event plan.
+ * Used to dynamically inject role logic into the System Prompt.
+ * 
+ * @param {string} clientMessage 
+ * @param {object} eventPlan 
+ * @returns {Promise<string>} Combined role instructions text.
+ */
+export async function extractActiveRoles(clientMessage, eventPlan = {}) {
+    const entries = await loadApprovedKB();
+    if (!entries || entries.length === 0) return [];
+
+    // Filter only roles
+    const roles = entries.filter(e => e.knowledge_key && e.knowledge_key.startsWith('role_'));
+    if (roles.length === 0) return [];
+
+    const normMsg = normalize(clientMessage);
+    const requestedServices = new Set((eventPlan?.requested_services || []).map(s => normalize(s)));
+    
+    const matchedRoles = []; // Array of structural policy_config objects
+
+    for (const role of roles) {
+        let isMatch = false;
+
+        // Upgrade legacy roles on the fly to structural format
+        const structuredRole = role.policy_config ? role.policy_config : legacyRoleEntryToConfig(role);
+
+        if (!structuredRole.active) {
+            continue; // Ignore inactive roles entirely
+        }
+
+        // 1. Check if the role's service key / sub-tags are requested in the plan or directly present in text
+        const roleTags = (structuredRole.triggers.service_tags || []).map(s => normalize(s));
+        for (const tag of roleTags) {
+            if (requestedServices.has(tag) || (normMsg.length >= MIN_MSG_LENGTH && normMsg.includes(tag))) {
+                isMatch = true;
+                break; // Service tag match has highest activation priority
+            }
+        }
+
+        // 2. If not matched by plan, check chat text against keywords
+        if (!isMatch && normMsg.length >= MIN_MSG_LENGTH) {
+            const minConf = structuredRole.triggers.min_confidence || 0.35;
+            const score = scorePatternMatch(normMsg, structuredRole.triggers.keywords || []);
+            if (score >= minConf) { // Use dynamic confidence threshold
+                isMatch = true;
+            }
+        }
+
+        if (isMatch) {
+            structuredRole.role_id = role.knowledge_key;
+            matchedRoles.push(structuredRole);
+        }
+    }
+
+    // Sort by priority (higher priority wins/comes first)
+    matchedRoles.sort((a, b) => (b.priority || 100) - (a.priority || 100));
+
+    return matchedRoles;
 }

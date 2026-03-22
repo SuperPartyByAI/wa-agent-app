@@ -52,7 +52,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3002;
 const API_KEY = process.env.API_KEY || "SECRET_TOKEN_CHANGE_ME";
 
 const requireApiKey = (req, res, next) => {
@@ -144,7 +144,8 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     longitude,
     contact_name,
     contact_vcard,
-    is_ptt
+    is_ptt,
+    sender_type
   } = req.body;
 
   if (!requestedSessionId || !conversationId) {
@@ -272,7 +273,8 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
       latitude: latitude ? parseFloat(latitude) : null,
       longitude: longitude ? parseFloat(longitude) : null,
       contact_name: contact_name || null,
-      contact_vcard: contact_vcard || null
+      contact_vcard: contact_vcard || null,
+      sender_type: sender_type || null
     };
 
     syncOutboundMessageToSupabase(formattedRoute, contentStr, externalId, activeSessionId, activeSession.client, conversationId, extraMeta).catch(e => {
@@ -555,6 +557,7 @@ app.get("/health", (req, res) => {
   });
 });
 
+console.log("!!! TARGET PORT IS: ", PORT);
 app.listen(PORT, () => {
   console.log(`Baileys Node Engine running securely on port ${PORT}`);
   console.log(

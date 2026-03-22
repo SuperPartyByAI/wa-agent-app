@@ -1,0 +1,121 @@
+[38;5;142m[dotenvx@1.55.1] injecting env (18) from .env[39m
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[Service Catalog] Loaded 12 services (v1.0): animator, ursitoare, vata_zahar, popcorn, arcada_baloane, arcada_suport, arcada_exterior, suport_arcada_baloane, cifre_volumetrice, mos_craciun, parfumerie, gheata_carbonica
+=== STARTING E2E TESTS FOR FAZA 5 ===
+
+[TEST 1] Triggering FollowUpSweep for 24h silent quote...
+[FollowUpJob] Starting sweep at 2026-03-15T11:43:54.402Z
+[FollowUpJob] Found 1 leads potentially needing follow-up.
+[FollowUpJob] Lead 8f0c5d28-db9a-4656-8bd0-7400ba167cf0 -> Executing follow_up_quote_reminder
+[LLM] Gemini Text OK in 0ms
+[FollowUpJob] Sent successfully to 8f0c5d28-db9a-4656-8bd0-7400ba167cf0
+[FollowUpJob] Sweep complete.
+✅ PASS T1: Follow-up 1 sent. New Status: sent_1. Next Follow-Up Due: 2026-03-18T11:43:54.654+00:00
+
+[TEST 2] Processing 'revin eu' client message...
+[TEST] Calling processConversation directly with: Multumesc frumos, revin eu maine!
+[Pipeline] Starting for 9b689b0e-5d0c-4e4c-845f-a9c45866dd7a...
+[Pipeline] Attempting to acquire lock for 9b689b0e-5d0c-4e4c-845f-a9c45866dd7a...
+[Pipeline] Lock acquired for 9b689b0e-5d0c-4e4c-845f-a9c45866dd7a.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: e459ba03)
+[Pipeline] Fetching messages for 9b689b0e-5d0c-4e4c-845f-a9c45866dd7a...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client 8048547b-ba3b-45e3-9fe2-e076afad4c5e: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 2fd30710-f806-4161-a33b-93723cfac1df for conv 9b689b0e-5d0c-4e4c-845f-a9c45866dd7a
+[Pipeline] Goal: new_lead, EventPlan: 2fd30710-f806-4161-a33b-93723cfac1df (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: no_fast_path_match)
+[SRE] Loaded 13 service definitions
+[KBMatcher] Loaded 20 active approved entries
+[NBA Planner] Evaluating playbook with primary_service=mos_craciun, isGreeting=false
+[Playbook] Matched strategy: objection_thinking
+[NBA Planner] Playbook Strategy Result: {
+  playbook_key: 'objection_thinking',
+  strategy: "Lasă ușa deschisă fără a presa. 'Perfect, vă înțeleg! Vă las oferta aici. Dacă aveți întrebări, sunt la dispoziție.' Setează așteptarea că disponibilitatea se poate schimba repede.",
+  tone: 'no_pressure'
+}
+[Agent] State=oferta_trimisa, Score=90(hot), Primary=mos_craciun, NBA=ask_missing_fields, NextState=colectare_date
+[Pipeline] Calling LLM with 68 chars...
+[LLM] Gemini JSON OK in 1ms
+[Pipeline] LLM analysis completed in 1ms
+[Pipeline] Services: [], Entity: unknown (0%), Eligibility: ALLOWED, Cycle: eligible/no_previous_cycle, Decision: confidence=85, stage=discovery
+[KBMatcher] No match (best=0.13)
+[Pipeline] KB: no match found
+[Memory] Updated entity memory for client 8048547b-ba3b-45e3-9fe2-e076afad4c5e: type=unknown (0%), locations=0, services=0
+[Pipeline] Mutation: no_mutation (confidence=100, applied=false)
+[Pipeline] Attempting to execute tool action: reply_only
+[Executor] Received Action: reply_only
+[Pipeline] Follow-up BLOCKED: client will return
+[Agent] Persisted runtime state to DB: colectare_date / ask_missing_fields
+[Pipeline] Service Detection: status=unknown, confirmation=false, confirmed=[], ambiguous=[]
+[Pipeline] Progression: next_step=discover_services, status=collecting_info, missing=5, autonomous=true
+[Pipeline] Autonomy: level=full, allowed=true, action=discover_services
+[Pipeline] Goal: new_lead | NBA: greet_and_discover | Conversație la început — salutăm și descoperim nevoile.
+[Pipeline] Bypassing legacy composer -> Autonomous Phase 3 Reply preserved.
+[Pipeline] Safety: class=safe_autoreply_allowed, mode=safe_autoreply_mode, reasons=all_checks_passed
+[Pipeline] Wave1: cohort=true (cohort_included: bucket=49 < 100%), eligible=true (all_clear)
+[Pipeline] Auto-reply ALLOWED (confidence=85, style=warm_sales, reason=allowed_first_reply). Sending...
+[AutoSend] Message sent for 9b689b0e-5d0c-4e4c-845f-a9c45866dd7a
+[Pipeline] Done 9b689b0e-5d0c-4e4c-845f-a9c45866dd7a. Services: 0, Entity: unknown, Reply: sent, Eligibility: allowed, Quality: okay(70), SvcDetection: unknown, Timing: analysis=1ms composer=0ms total=3323ms
+✅ PASS T2: do_not_followup flagged securely. Pipeline aborts future checks.
+
+[TEST 3] Triggering FollowUpSweep for HOT Lead (Score 90)...
+[FollowUpJob] Starting sweep at 2026-03-15T11:43:58.903Z
+[FollowUpJob] Found 1 leads potentially needing follow-up.
+[FollowUpJob] Lead c15b68de-8e3b-45e6-9c0b-0427356c0a0c -> Executing follow_up_soft
+[LLM] Gemini Text OK in 0ms
+[FollowUpJob] Sent successfully to c15b68de-8e3b-45e6-9c0b-0427356c0a0c
+[FollowUpJob] Sweep complete.
+✅ PASS T3: Hot Lead received proactive soft follow-up.
+
+[TEST 4] Triggering FollowUpSweep on Human Takeover lead...
+[FollowUpJob] Starting sweep at 2026-03-15T11:43:59.676Z
+[FollowUpJob] No pending follow-ups found.
+✅ PASS T4: Sweep ignored lead. Status unchanged because Human Takeover is ACTIVE.
+
+[TEST 5] Processing aggressive discount message...
+[TEST] Calling processConversation directly with: e bataie de joc pretul asta, mai faceti si voi reducere sau merg in alta parte
+[Pipeline] Starting for ed13a6a3-832d-42d4-8564-0472e910f65f...
+[Pipeline] Attempting to acquire lock for ed13a6a3-832d-42d4-8564-0472e910f65f...
+[Pipeline] Lock acquired for ed13a6a3-832d-42d4-8564-0472e910f65f.
+[RuntimeContext] Context pack loaded: v1.1.0 (SHA: e459ba03)
+[Pipeline] Fetching messages for ed13a6a3-832d-42d4-8564-0472e910f65f...
+[Pipeline] Found 1 messages.
+[Pipeline] Entity memory: type=unknown, locations=0, services=0
+[RelationshipMemory] Client e03573bc-f01b-471a-a85f-ead84d160700: convs=1, plans=0, activeBooking=false, recurring=false
+[EventPlan] Created new plan 1939706b-eada-490f-9516-b463222dcd05 for conv ed13a6a3-832d-42d4-8564-0472e910f65f
+[Pipeline] Goal: new_lead, EventPlan: 1939706b-eada-490f-9516-b463222dcd05 (status=draft), Quote: none
+[Pipeline] Full pipeline (no fast path: no_fast_path_match)
+[NBA Planner] Evaluating playbook with primary_service=null, isGreeting=false
+[Playbook] Matched strategy: objection_too_expensive
+[NBA Planner] Playbook Strategy Result: {
+  playbook_key: 'objection_too_expensive',
+  strategy: 'Arată empatie. Nu te contra cu clientul, ci evidențiază valoarea (recuzită premium, animatori profesioniști, fără costuri ascunse). Dacă e cazul, propune un pachet inferior ca preț sau o durată mai scurtă (ex. 1.5 ore în loc de 2 ore). Rămâi politicos și deschis.',
+  tone: 'empathetic_advisor'
+}
+[Agent] State=lead_nou, Score=80(hot), Primary=null, NBA=identify_service, NextState=identificare_serviciu
+[Pipeline] Calling LLM with 113 chars...
+[LLM] Gemini JSON OK in 0ms
+[Pipeline] LLM analysis completed in 0ms
+[Pipeline] Services: [], Entity: unknown (0%), Eligibility: ALLOWED, Cycle: eligible/no_previous_cycle, Decision: confidence=85, stage=discovery
+[KBMatcher] MATCH: key=pricing_general, score=0.80, mode=kb_direct_answer, reason=[pattern=1.00 service=0.50 category=0.50]
+[Pipeline] KB: key=pricing_general, score=0.80, mode=kb_direct_answer, matchedMsg="e bataie de joc pretul asta, mai faceti si voi red"
+[Memory] Updated entity memory for client e03573bc-f01b-471a-a85f-ead84d160700: type=unknown (0%), locations=0, services=0
+[Pipeline] Mutation: no_mutation (confidence=100, applied=false)
+[Pipeline] Attempting to execute tool action: reply_only
+[Executor] Received Action: reply_only
+[Pipeline] Force Handoff: angry_client
+[Agent] Persisted runtime state to DB: identificare_serviciu / identify_service
+[Pipeline] Service Detection: status=unknown, confirmation=false, confirmed=[], ambiguous=[]
+[Pipeline] Progression: next_step=discover_services, status=collecting_info, missing=5, autonomous=true
+[Pipeline] Autonomy: level=full, allowed=true, action=discover_services
+[Pipeline] Goal: new_lead | NBA: greet_and_discover | Conversație la început — salutăm și descoperim nevoile.
+[Pipeline] Bypassing legacy composer -> Autonomous Phase 3 Reply preserved.
+[Pipeline] Safety: class=safe_autoreply_allowed, mode=safe_autoreply_mode, reasons=all_checks_passed
+[Pipeline] Wave1: cohort=true (cohort_included: bucket=30 < 100%), eligible=true (all_clear)
+[Pipeline] Auto-reply ALLOWED (confidence=85, style=warm_sales, reason=allowed_first_reply). Sending...
+[AutoSend] Message sent for ed13a6a3-832d-42d4-8564-0472e910f65f
+[Pipeline] Done ed13a6a3-832d-42d4-8564-0472e910f65f. Services: 0, Entity: unknown, Reply: sent, Eligibility: allowed, Quality: okay(70), SvcDetection: unknown, Timing: analysis=0ms composer=0ms total=3257ms
+✅ PASS T5: Escalated explicitly with Handoff. Reason: angry_client. State now: operator_owned
+
+=== ALL E2E DB ASSERTS COMPLETED ===

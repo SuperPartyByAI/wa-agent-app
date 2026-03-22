@@ -11,6 +11,8 @@ import { composeHumanReply } from '../replies/composeHumanReply.mjs';
 import { evaluateReplyQuality } from '../replies/evaluateReplyQuality.mjs';
 import { buildReplyContext } from '../replies/buildReplyContext.mjs';
 import { loadClientMemory } from '../memory/loadClientMemory.mjs';
+import { extractActiveRoles } from '../knowledge/knowledgeBase.mjs';
+import { buildActiveCommercialPoliciesBlock } from '../policy/buildActiveCommercialPoliciesBlock.mjs';
 import { loadRelationshipData } from '../memory/loadRelationshipData.mjs';
 import { updateClientMemory } from '../memory/updateClientMemory.mjs';
 import { recordEvent, recordKbMiss } from '../analytics/recordAiEvent.mjs';
@@ -22,8 +24,8 @@ import { evaluateEscalation } from '../policy/evaluateEscalation.mjs';
 import { evaluateFastPath } from './evaluateFastPath.mjs';
 import { buildFastPathReply } from '../replies/buildFastPathReply.mjs';
 import { shouldReplyNow, acquireConversationLock, releaseConversationLock } from '../policy/shouldReplyNow.mjs';
-import { evaluateFollowUpEligibility } from '../policy/evaluateFollowUpEligibility.mjs';
-import { scheduleFollowUp, clearFollowUp } from '../orchestration/scheduleFollowUp.mjs';
+import { evaluateOperatorHandoff, didClientSayReturn } from '../agent/followUpEngine.mjs';
+import { clearFollowUp } from '../orchestration/scheduleFollowUp.mjs';
 import { loadGoalState, transitionGoalState } from '../workflow/goalStateMachine.mjs';
 import { evaluateGoalTransition } from '../workflow/goalTransitions.mjs';
 import { evaluateNextBestAction } from '../workflow/evaluateNextBestAction.mjs';
@@ -50,6 +52,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
  * Send a message to WhatsApp via the whts-up transport API.
  */
 async function sendViaWhatsApp(conversationId, text) {
+    // ── SHADOW MODE GUARD: Block ALL outbound messages ──
+    if (AI_SHADOW_MODE_ENABLED) {
+        console.log(`[AutoSend] SHADOW MODE: Blocked outbound to ${conversationId} (${text.substring(0, 50)}...)`);
+        return false;
+    }
+
     const { data: conv } = await supabase.from('conversations').select('session_id').eq('id', conversationId).single();
     if (!conv?.session_id) {
         console.error('[AutoSend] No session_id for conversation', conversationId);
@@ -143,14 +151,17 @@ export async function processConversation(conversation_id, message_id = null, op
         const clientId = convData?.client_id;
         const conversationCreatedAt = convData?.created_at;
 
-        // Fetch messages
-        console.log(`[Pipeline] Fetching messages for ${conversation_id}...`);
+        // Fetch ALL conversations for this client to act as the global Notebook memory
+        const { data: clientConvs } = await supabase.from('conversations').select('id').eq('client_id', clientId);
+        const convIds = clientConvs && clientConvs.length > 0 ? clientConvs.map(c => c.id) : [conversation_id];
+
+        console.log(`[Pipeline] Fetching messages across ${convIds.length} conversations for client ${clientId}...`);
         const { data: messages, error: msgErr } = await supabase
             .from('messages')
             .select('content, direction, created_at, sender_type')
-            .eq('conversation_id', conversation_id)
+            .in('conversation_id', convIds)
             .order('created_at', { ascending: false })
-            .limit(50);
+            .limit(100);
 
         if (msgErr) {
             console.error(`[Pipeline] Failed to fetch messages`, msgErr);
@@ -162,9 +173,49 @@ export async function processConversation(conversation_id, message_id = null, op
         }
         console.log(`[Pipeline] Found ${messages.length} messages.`);
 
-        // ── 2. Load entity memory ──
+        // ── 1.1. Check Close States & Reopen Logic ──
+        const { data: earlyRuntime } = await supabase
+            .from('ai_lead_runtime_states')
+            .select('closed_status, lead_state')
+            .eq('conversation_id', conversation_id)
+            .maybeSingle();
+
+        if (earlyRuntime && earlyRuntime.closed_status && earlyRuntime.closed_status !== 'open') {
+            const REOPEN_WORDS = ['revin', 'm-am razgandit', 'm-am răzgândit', 'vreau', 'totusi', 'totuși', 'sunt interesat', 'mai este valabil'];
+            const lowerMsg = messages[0]?.content?.toLowerCase() || ''; // newest message is index 0
+            const wantsReopen = REOPEN_WORDS.some(w => lowerMsg.includes(w));
+
+            if (wantsReopen) {
+                console.log(`[Pipeline] Reopen triggered for ${conversation_id} from state ${earlyRuntime.closed_status}`);
+                await supabase.from('ai_lead_runtime_states')
+                    .update({ 
+                        closed_status: 'open', 
+                        handoff_to_operator: false,
+                        do_not_followup: false,
+                        lead_state: 'salut_initial'
+                    })
+                    .eq('conversation_id', conversation_id);
+                // Also log it
+                await supabase.from('ai_lead_audit_trail').insert({ conversation_id, event_type: 'state_change', old_state: earlyRuntime.closed_status, new_state: 'open', reason: 'reopen_triggered' });
+            } else {
+                console.log(`[Pipeline] Early exit: Conversation is closed (${earlyRuntime.closed_status}). Reopen not triggered.`);
+                return;
+            }
+        }
+
+        // ── 2. Load entity memory & Multi-Event Context ──
         const existingMemory = await loadClientMemory(clientId);
-        console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, locations=${existingMemory.usual_locations.length}, services=${existingMemory.usual_services.length}`);
+        
+        let clientContext = null;
+        if (clientId) {
+            const { data: clientRow } = await supabase.from('clients').select('real_phone_e164').eq('id', clientId).single();
+            const phoneE164 = clientRow?.real_phone_e164;
+            if (phoneE164) {
+                const { loadClientContext } = await import('../agent/clientMemoryLoader.mjs');
+                clientContext = await loadClientContext(phoneE164, conversation_id);
+            }
+        }
+        console.log(`[Pipeline] Entity memory: type=${existingMemory.entity_type}, Multi-Event: ${clientContext ? clientContext.active_events_count + ' active events' : 'none'}`);
 
         // ── 2.0.1. Load Relationship Data ──
         const relationshipData = await loadRelationshipData(clientId);
@@ -197,12 +248,14 @@ export async function processConversation(conversation_id, message_id = null, op
         }
 
         // ── 4. Build transcript and call LLM ──
-        const transcript = messages.reverse().map(m =>
+        // CLONE the array using [...messages] because .reverse() mutates the array in-place!
+        // If we mutate it, the later .find() logic will extract the oldest message instead of the newest.
+        const transcript = [...messages].reverse().map(m =>
             `[${new Date(m.created_at).toISOString()}] ${m.sender_type === 'agent' ? 'Superparty (Noi)' : 'Client'}: ${m.content}`
         ).join('\n');
 
         // Extract last client message for service confidence guard
-        const lastClientMsg = [...messages].reverse().find(m => m.sender_type === 'client');
+        const lastClientMsg = messages.find(m => m.sender_type === 'client');
         const lastClientMessageText = lastClientMsg?.content || '';
 
         // ── 3.5. Fast Path Check ──
@@ -282,30 +335,7 @@ export async function processConversation(conversation_id, message_id = null, op
             if (replyDecision.decision === 'reply_now') {
                 await clearFollowUp(conversation_id, 'ai_replied_now_fastpath');
             } else if (['wait_for_more_messages', 'wait_for_missing_info'].includes(replyDecision.decision)) {
-                const fpFollowUpElig = evaluateFollowUpEligibility({
-                    replyDecision: replyDecision.decision,
-                    lastClientMessage: lastClientMessageText,
-                    conversationStage: convStateForFP?.current_stage || 'lead',
-                    nextStep: fastPath.fast_path_type,
-                    conversationStatus: convStateForFP?.current_stage,
-                    closingSignalDetected: replyDecision.closingSignalDetected,
-                    customerPausedDetected: replyDecision.customerPausedDetected,
-                    humanTakeoverActive: replyDecision.humanTakeoverActive,
-                    aiCommitmentPending: replyDecision.aiCommitmentPending
-                });
-                if (fpFollowUpElig.eligible) {
-                    const schedResult = await scheduleFollowUp({
-                        conversationId: conversation_id,
-                        followUpReason: fpFollowUpElig.followUpType,
-                        openQuestionDetected: fpFollowUpElig.openQuestionDetected,
-                        customerIntentUnanswered: fpFollowUpElig.customerIntentUnanswered,
-                        missingFields: fpFollowUpElig.missingFields,
-                        triggerMessageId: message_id,
-                        nextStep: fastPath.fast_path_type,
-                        lastCustomerMessageAt: new Date().toISOString()
-                    });
-                    console.log(`[FastPath] Follow-up: ${schedResult.scheduled ? 'SCHEDULED' : 'NOT scheduled'} (${schedResult.reason})`);
-                }
+                // Fast path wait: minimal logic, follow-up will be evaluated autonomously by FollowUpEngine Job if eligible.
             }
 
             // Update conversation state
@@ -406,16 +436,218 @@ export async function processConversation(conversation_id, message_id = null, op
             userMessage += `\n\n--- INSTRUCTIUNE OPERATOR ---\n${operator_prompt}\nAplicam instructiunea de mai sus la generarea raspunsului sugerat.`;
         }
 
-        const systemPrompt = buildSystemPrompt(existingMemory, { eventPlan, goalState, contextPack, relationshipData });
+        // ── AUTONOMOUS COMMERCIAL AGENT: Phase 1 Runtime ──
+        const { loadLeadRuntimeState } = await import('../agent/loadLeadRuntimeState.mjs');
+        const { saveLeadRuntimeState } = await import('../agent/saveLeadRuntimeState.mjs');
+        const { computeMissingFields } = await import('../agent/missingFieldsEngine.mjs');
+        const { computeNextBestAction } = await import('../agent/nextBestActionPlanner.mjs');
 
-        console.log(`[Pipeline] Calling LLM with ${transcript.length} chars${operator_prompt ? ' + operator prompt' : ''}...`);
+        // ── AUTONOMOUS COMMERCIAL AGENT: Phase 3 Party Builder ──
+        const { loadPartyDraft } = await import('../party/loadPartyDraft.mjs');
+        const { savePartyDraft } = await import('../party/savePartyDraft.mjs');
+        const { syncPartyToVertexEvents } = await import('../party/syncToVertexEvents.mjs');
+        const { updatePartyDraftFromMessage } = await import('../party/updatePartyDraftFromMessage.mjs');
+        const { computeMissingPartyFields } = await import('../party/partyMissingFieldsEngine.mjs');
+
+        const runtimeState = await loadLeadRuntimeState(conversation_id);
+        let partyDraft = await loadPartyDraft(conversation_id, clientId);
+
+        const activeRoles = await extractActiveRoles(lastClientMessageText, eventPlan);
+        const activeRolesText = activeRoles && activeRoles.length > 0 ? buildActiveCommercialPoliciesBlock(activeRoles) : null;
+        const activeRoleKeys = activeRoles ? activeRoles.map(r => r.role_id) : [];
+        
+        if (!runtimeState.primary_service && eventPlan?.selected_package) {
+            runtimeState.primary_service = eventPlan.selected_package;
+        }
+        if (activeRoles && activeRoles.length > 0) {
+            const newSvc = activeRoles[0].service_key;
+            if (!runtimeState.primary_service || runtimeState.primary_service !== newSvc) {
+                runtimeState.primary_service = newSvc;
+            }
+            runtimeState.active_roles = activeRoles.map(r => r.role_id);
+        }
+
+        // Fix: Replace V1 legacy missingFieldsEngine with V2 partyMissingFieldsEngine
+        let rolesToEvaluate = activeRoleKeys;
+        if (rolesToEvaluate.length === 0 && runtimeState.primary_service) {
+            // Fallback mapper for primary_service string -> role array
+            rolesToEvaluate = [`role_${runtimeState.primary_service}`];
+        }
+
+        // ── Phase 0: Proactive skeleton party draft ──
+        // Create a minimal draft as soon as we detect a service, even before any tool is called.
+        // This ensures the right panel shows the service immediately.
+        if (runtimeState.primary_service && partyDraft && !partyDraft.id) {
+            try {
+                partyDraft.serviciu_principal = runtimeState.primary_service;
+                if (!partyDraft.servicii_active || partyDraft.servicii_active.length === 0) {
+                    partyDraft.servicii_active = [runtimeState.primary_service];
+                }
+                if (activeRoleKeys.length > 0) {
+                    partyDraft.comercial.roluri_active = activeRoleKeys;
+                }
+                await savePartyDraft(partyDraft).catch(e =>
+                    console.warn('[Phase0] Skeleton draft save failed:', e.message)
+                );
+                console.log(`[Phase0] Created skeleton party draft for service: ${runtimeState.primary_service}`);
+                // Sync skeleton to Vertex too (shows service in right panel immediately)
+                const clientPhoneP0 = contextPack?.client_context?.client?.real_phone_e164 || null;
+                if (clientPhoneP0) {
+                    await syncPartyToVertexEvents(partyDraft, clientPhoneP0).catch(e =>
+                        console.warn('[Phase0] Vertex sync failed:', e.message)
+                    );
+                }
+            } catch (e) {
+                console.warn(`[Phase0] Skeleton draft error: ${e.message}`);
+            }
+        }
+        
+        const missingMetrics = computeMissingPartyFields(partyDraft, rolesToEvaluate);
+
+        const plannerContext = {
+            runtimeState,
+            missingMetrics,
+            humanTakeover: false, // TODO: Wire human takeover logic dynamically
+            isAcknowledgment: isAck,
+            isGreeting: lastClientMessageText && /^(bun[aă]|salut|hey|hello|hi|bun[aă]\s*(seara|ziua|dimineata|dimineața)|sal|hei|ce\s*faci|servus)\s*[!.,?]*$/i.test(lastClientMessageText.trim()),
+            clientMessageText: lastClientMessageText
+        };
+        const nextTarget = computeNextBestAction(plannerContext);
+        
+        // ── AUTONOMOUS COMMERCIAL AGENT: Phase 2 Intelligence ──
+        const { deriveGoalFromState } = await import('../agent/goalEngine.mjs');
+        const { calculateLeadScore } = await import('../agent/leadScoring.mjs');
+        
+        const goalDirective = deriveGoalFromState(runtimeState.lead_state);
+        const scoring = calculateLeadScore({ runtimeState, missingMetrics, relationshipData, hasActiveBooking: relationshipData?.hasActiveBooking });
+        
+        runtimeState.lead_score = scoring.score; // Store in state for later persistence
+        
+        console.log(`[Agent] State=${runtimeState.lead_state}, Score=${scoring.score}(${scoring.temperature}), Primary=${runtimeState.primary_service}, NBA=${nextTarget.action}, NextState=${nextTarget.nextState}`);
+
+        const { getActiveNotebook, buildNotebookPromptSection, updateNotebookIfRequired } = await import('../agent/notebookFiller.mjs');
+        const activeNotebookContext = await getActiveNotebook(contextPack?.client_context?.client?.real_phone_e164 || 'unknown', runtimeState.primary_service);
+        const notebookPromptExtra = buildNotebookPromptSection(activeNotebookContext);
+
+        const baseSystemPrompt = await buildSystemPrompt(existingMemory, { eventPlan, partyDraft, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
+        const systemPrompt = baseSystemPrompt + '\n' + notebookPromptExtra;
+        
+        
+        console.log(`[Pipeline] Calling NotebookLM Adapter (${transcript.length} chars)...`);
+        const { askNotebookLM } = await import('../integrations/notebookLmAdapter.mjs');
+        
+        let instructions = operator_prompt ? `Operator Prompt (STRICT INSTRUCTION): ${operator_prompt}` : "Analyze the context and return your JSON decision.";
+        
+        const nbPayload = {
+            profile: existingMemory,
+            events: partyDraft || eventPlan || [],
+            memorySummary: `Lead State: ${runtimeState.lead_state}\nPrimary Service: ${runtimeState.primary_service}\nExtra Instructions: ${instructions}`,
+            transcript: transcript,
+            knowledgeBase: activeRolesText || "No active specific commercial policies"
+        };
+        
         const t_llm_start = Date.now();
-        let analysis = await callLocalLLM(systemPrompt, userMessage);
-        const t_llm_ms = Date.now() - t_llm_start;
-        console.log(`[Pipeline] LLM analysis completed in ${t_llm_ms}ms`);
+        let analysis = null;
+        try {
+            const nbResult = await askNotebookLM(nbPayload);
+            const t_llm_ms = Date.now() - t_llm_start;
+            console.log(`[Pipeline] NotebookLM analysis completed in ${t_llm_ms}ms`, nbResult);
+            
+            if (nbResult) {
+                analysis = {
+                    assistant_reply: nbResult.replyDraft,
+                    tool_action: { name: nbResult.recommendedAction || 'reply_only', arguments: nbResult.extractedFields || {} },
+                    decision: {
+                        can_auto_reply: nbResult.confidence > 70 && !nbResult.needsConfirmation,
+                        needs_human_review: nbResult.needsConfirmation || nbResult.needsClarification,
+                        confidence_score: nbResult.confidence || 85,
+                        reply_status: 'pending',
+                        next_step: nbResult.recommendedAction || 'reply_only',
+                        escalation_reason: nbResult.needsClarification ? 'notebook_lm_clarification_needed' : null
+                    },
+                    notebook_updates: nbResult.extractedFields || {},
+                    service_requirements: []
+                };
+            }
+        } catch (err) {
+            console.error(`[Pipeline] NotebookLM exception:`, err);
+        }
+
+        // --- SHADOW QUICK PATCH (V2 Architecture) ---
+        try {
+            const { evaluateMutationIntent } = await import('../agent/mutationGatekeeper.mjs');
+            const { renderPlaybook, mapAndValidate } = await import('../agent/shadowArchitecture.mjs');
+            
+            const shadowPlaybook = { strategy: nextTarget?.instruction || '', tone: 'shadow_tone' };
+            const shadowPrompt = renderPlaybook(shadowPlaybook, { fields: missingMetrics });
+            
+            console.log(`\n=== [SHADOW V2] systemPrompt ===\n${shadowPrompt}\n===============================\n`);
+            
+            // Robust parsing emulation
+            const rawLlmText = JSON.stringify(analysis || {});
+            const jsonMatch = rawLlmText.match(/\{[\s\S]*\}$/);
+            let parsedLlm = analysis || {};
+            if (!jsonMatch) {
+                console.warn("[SHADOW V2] Fallback: LLM Output didn't match strict JSON regex.");
+            } else {
+                parsedLlm = JSON.parse(jsonMatch[0]);
+            }
+            console.log(`\n=== [SHADOW V2] LLM JSON Output ===\n${JSON.stringify(parsedLlm, null, 2)}\n===============================\n`);
+            
+            const extractedFields = { _raw_text: userMessage, ...parsedLlm };
+            const mapped = mapAndValidate(extractedFields, userMessage);
+            
+            // --- NOTEBOOK AI: Save Slots from Whatsapp Chat INDEPENDENTLY ---
+            if (parsedLlm.notebook_updates) {
+                try {
+                    const phoneForNotebook = contextPack?.client_context?.client?.real_phone_e164 || 'unknown';
+                    await updateNotebookIfRequired(phoneForNotebook, runtimeState.primary_service, parsedLlm.notebook_updates);
+                } catch(nErr) {
+                    console.error('[Notebook AI] Update error:', nErr);
+                }
+            }
+            
+            // evaluateMutationIntent expects llmIntent, clientContext
+            const gateRes = await evaluateMutationIntent(parsedLlm, { events: [] });
+            console.log(`[SHADOW V2] Gatekeeper Status: ${gateRes.action} (Reason: ${gateRes.reason})`);
+        } catch(err) {
+            console.error('[SHADOW V2] Error in patch:', err);
+        }
+        // --- END SHADOW ---
 
         if (!analysis) {
-            console.warn(`[Pipeline] LLM unreachable or returned invalid JSON for conv ${conversation_id}. Aborting.`);
+            console.warn(`[Pipeline] LLM unreachable or returned invalid JSON for conv ${conversation_id}. Triggering Graceful Fallback.`);
+            const fallbackText = 'Sistemul meu întâmpină o întârziere momentană. Un coleg te va prelua în cel mai scurt timp pentru a te ajuta!';
+            
+            // Send actual outbound message to WhatsApp Queue!
+            console.log(`[Pipeline] Sending Outbound Fallback Message to ${conversation_id}`);
+            const sent = await sendViaWhatsApp(conversation_id, fallbackText);
+
+            // Graceful Degradation: Notify the client and block auto-reply, escalate to human.
+            await supabase.from('ai_reply_decisions').insert({
+                conversation_id,
+                suggested_reply: fallbackText,
+                can_auto_reply: true,
+                needs_human_review: true,
+                confidence_score: 0,
+                conversation_stage: 'discovery', // safe default fallback
+                reply_status: sent ? 'sent' : 'blocked',
+                sent_by: 'reply_engine',
+                next_step: 'escalate',
+                progression_status: 'llm_fallback_timeout',
+                escalation_reason: 'llm_unreachable_timeout'
+            });
+            await supabase.from('ai_conversation_state').upsert({
+                conversation_id,
+                current_stage: 'discovery',
+                updated_at: new Date().toISOString()
+            });
+            
+            // Clear any pending follow-up since we just replied
+            if(sent) {
+                 await clearFollowUp(conversation_id, 'ai_replied_now_fallback');
+            }
+            
             releaseConversationLock(conversation_id);
             return;
         }
@@ -424,10 +656,11 @@ export async function processConversation(conversation_id, message_id = null, op
         // The LLM now strictly returns { assistant_reply, tool_action }.
         // The properties below are legacy fallback stubs kept temporarily to satisfy
         // the remaining orchestration pipeline without triggering large rewrites.
-        const serviceData = postProcessServices(analysis);
-        serviceData.service_requirements = analysis.service_requirements || [];
+        const safeAnalysis = analysis || {};
+        const serviceData = postProcessServices(safeAnalysis);
+        serviceData.service_requirements = safeAnalysis.service_requirements || [];
 
-        const decision = analysis.decision || {
+        const decision = safeAnalysis.decision || {
             can_auto_reply: true,   // Trust the tool_action pathway
             needs_human_review: false,
             escalation_reason: null,
@@ -436,7 +669,30 @@ export async function processConversation(conversation_id, message_id = null, op
         };
 
         let suggestedReply = analysis.assistant_reply || analysis.suggested_reply || 'Nu am putut genera un raspuns.';
-        const toolAction = analysis.tool_action || { name: 'reply_only', arguments: { reason: 'No tool action provided' } };
+        let toolAction = analysis.tool_action || { name: 'reply_only', arguments: { reason: 'No tool action provided' } };
+        
+        // ── AUTONOMOUS COMMERCIAL AGENT: Phase 2 Self-Check ──
+        const { runSelfCheckAudit, AUDIT_RESULTS } = await import('../agent/replySelfCheck.mjs');
+        const audit = runSelfCheckAudit(suggestedReply, { eventPlan, missingMetrics });
+        
+        if (!audit.passed) {
+            console.warn(`[Agent] Self-check FAILED: ${audit.reason}. Rewriting reply to safe fallback.`);
+            decision.can_auto_reply = false;
+            decision.needs_human_review = true;
+            decision.escalation_reason = `self_check_failed_${audit.reason}`;
+            
+            if (audit.reason === AUDIT_RESULTS.BLOCK_PREMATURE_CONFIRMATION) {
+                suggestedReply = 'Confirmarea oficială urmează să fie realizată de un coleg din echipă imediat ce avem toate detaliile.';
+            } else if (audit.reason === AUDIT_RESULTS.BLOCK_UNAUTHORIZED_DISCOUNT) {
+                 suggestedReply = 'Vom verifica detaliile ofertei și un coleg vă va confirma varianta finală de preț.';
+            } else if (audit.reason === AUDIT_RESULTS.BLOCK_HALLUCINATED_PRICE) {
+                 suggestedReply = 'Pentru a structura un preț corect și final, mai avem nevoie de câteva detalii logistice. Revin imediat cu informația clară.';
+            } else {
+                 suggestedReply = '[Mesaj recalculat pentru revizie umană]';
+            }
+            
+            toolAction = { name: 'reply_only', arguments: { reason: 'self_check_fallback' } };
+        }
         
         // Legacy stubs
         const clientMemory = analysis.client_memory || { priority_level: 'normal', internal_notes_summary: '' };
@@ -486,9 +742,9 @@ export async function processConversation(conversation_id, message_id = null, op
         // Try ALL recent unprocessed client messages (not just last) for KB match
         // This handles debounced multi-message scenarios
         const { searchKnowledgeBase, getLearningContext } = await import('../knowledge/knowledgeBase.mjs');
-        const recentClientMsgs = [...messages].reverse()
+        const recentClientMsgs = messages
             .filter(m => m.sender_type === 'client')
-            .slice(0, 5) // max 5 recent client messages
+            .slice(0, 2) // max 2 most recent client messages
             .map(m => m.content || '');
 
         let kbMatch = null;
@@ -536,8 +792,11 @@ export async function processConversation(conversation_id, message_id = null, op
         // Let the normal composer reply with "Cu ce vă pot ajuta?" first
         const GREETING_ONLY = /^(bun[aă]|salut|hey|hello|hi|bun[aă]\s*(seara|ziua|dimineata|dimineața)|sal|hei|ce\s*faci|servus)\s*[!.,?]*$/i;
         const isGreeting = lastClientMessageText && GREETING_ONLY.test(lastClientMessageText.trim());
+        
+        // Faza 4 Business Playbook Bypass: Never hijack with a KB direct answer if the Playbook has a specific strategy
+        const isPlaybookAction = !!nextTarget?.playbookKey;
 
-        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility) && !isGreeting) {
+        if (kbMatch && effectiveKbMode === 'kb_direct_answer' && (eligibility.eligible || kbBypassEligibility) && !isGreeting && !isPlaybookAction) {
             // Package presenter — detect intent + format reply (summary/detail/compare/pricing/duration)
             const { detectPackageIntent, formatPackageReply, hasStructuredPackages } = await import('../knowledge/packagePresenter.mjs');
             let kbReply;
@@ -674,6 +933,32 @@ export async function processConversation(conversation_id, message_id = null, op
         const mutation = detectEventMutation(analysis, existingDraftRow);
         let mutationResult = { applied: false };
 
+        // ── 8.1 Multi-Event Gatekeeper ──
+        if (clientContext) {
+            const { evaluateMutationIntent, commitEventMutation } = await import('../agent/mutationGatekeeper.mjs');
+            
+            const intentObj = analysis.mutation_intent || { 
+                mutation: mutation.mutation_type !== 'no_mutation' ? { 
+                    target_event_id: analysis.target_event_id || null, 
+                    field: mutation.changed_field || mutation.mutation_type, 
+                    new_value: mutation.new_value 
+                } : null,
+                requires_disambiguation: analysis.requires_disambiguation === true,
+                client_confirmed_mutation: analysis.client_confirmed_mutation === true
+            };
+            
+            const gatekeeperResult = await evaluateMutationIntent(intentObj, clientContext);
+            
+            if (gatekeeperResult.action === 'block_ask_disambiguation' || gatekeeperResult.action === 'block_ask_confirmation') {
+                console.log(`[Pipeline] Gatekeeper blocked DB Write: ${gatekeeperResult.reason}`);
+                // Intersectam mutation-ul nativ si il anulam sa nu modifice un Plan de Event orbeste.
+                mutation.mutation_type = 'no_mutation'; 
+            } else if (gatekeeperResult.action === 'apply_mutation') {
+                 await commitEventMutation(gatekeeperResult, clientId);
+                 console.log(`[Pipeline] Gatekeeper approved & logged mutation: ${gatekeeperResult.field}`);
+            }
+        }
+
         if (mutation.mutation_type !== 'no_mutation') {
             mutationResult = await applyEventMutation({
                 mutation,
@@ -746,6 +1031,52 @@ export async function processConversation(conversation_id, message_id = null, op
             // but for now we degrade gracefully and keep the reply.
         }
 
+        // ── Phase 3: Synchronize Party Draft Post Action ──
+        if (toolAction.name === 'update_event_plan' && partyDraft) {
+            try {
+                let finalRolesToEvaluate = rolesToEvaluate;
+                if (serviceData && serviceData.selected_services && serviceData.selected_services.length > 0) {
+                    const CATALOG_TO_ROLE = {
+                        'animator': 'role_animatie',
+                        'ursitoare': 'role_ursitoare',
+                        'vata_zahar': 'role_vata_de_zahar',
+                        'popcorn': 'role_popcorn',
+                        'arcada_baloane': 'role_arcada_fara_suport',
+                        'arcada_suport': 'role_arcada_pe_suport',
+                        'arcada_exterior': 'role_arcada_pe_suport', // rough map
+                        'suport_arcada_baloane': 'role_arcada_pe_suport',
+                        'cifre_volumetrice': 'role_arcada_cu_cifre_volumetrice',
+                        'mos_craciun': 'role_mos_craciun',
+                        'parfumerie': 'role_parfumerie',
+                        'gheata_carbonica': 'role_gheata_carbonica'
+                    };
+                    const detectedRoles = serviceData.selected_services
+                        .map(s => CATALOG_TO_ROLE[s] || `role_${s}`);
+                    finalRolesToEvaluate = [...new Set([...rolesToEvaluate, ...detectedRoles])];
+                }
+
+                partyDraft = updatePartyDraftFromMessage(partyDraft, toolAction.arguments, finalRolesToEvaluate);
+                const p3Eval = computeMissingPartyFields(partyDraft, finalRolesToEvaluate);
+                
+                partyDraft.comercial.campuri_obligatorii_lipsa = p3Eval.missingForBooking;
+                partyDraft.comercial.gata_pentru_oferta = p3Eval.isReadyForQuote;
+                
+                const saveSuccess = await savePartyDraft(partyDraft);
+                if (saveSuccess) {
+                    console.log(`[Phase3 PartyBuilder] Synced Party Draft. Missing booking fields: ${p3Eval.missingForBooking.length}. Ready for quote: ${p3Eval.isReadyForQuote}`);
+                    // Sync to Vertex Supabase client_events (populates right panel in dashboard)
+                    const clientPhone = contextPack?.client_context?.client?.real_phone_e164 || null;
+                    if (clientPhone) {
+                        await syncPartyToVertexEvents(partyDraft, clientPhone).catch(e => 
+                            console.warn('[Phase3] Vertex sync failed:', e.message)
+                        );
+                    }
+                }
+            } catch (e) {
+                console.error(`[Phase3 PartyBuilder] Sync exception: ${e.message}`);
+            }
+        }
+
         const statePayload = {
             conversation_id,
             current_intent: convState.current_intent,
@@ -755,6 +1086,53 @@ export async function processConversation(conversation_id, message_id = null, op
         };
         if (message_id) statePayload.last_processed_message_id = message_id;
         await supabase.from('ai_conversation_state').upsert(statePayload);
+
+        // ── 8.4.2. Persist Autonomous Runtime State ──
+        if (typeof runtimeState !== 'undefined') {
+            const handoffReason = evaluateOperatorHandoff({
+                runtimeState: runtimeState,
+                clientMessageText: lastClientMessageText
+            });
+            const saidReturn = didClientSayReturn(lastClientMessageText);
+
+            let updates = {};
+            if (typeof nextTarget !== 'undefined') {
+                updates.lead_state = nextTarget.nextState;
+                updates.last_agent_goal = nextTarget.instruction.substring(0, 200);
+                updates.next_best_action = nextTarget.action;
+            }
+            updates.primary_service = runtimeState.primary_service;
+            updates.active_roles = runtimeState.active_roles;
+            updates.missing_fields = missingMetrics?.missing || [];
+            updates.human_takeover = runtimeState.human_takeover;
+
+            if (handoffReason) {
+                updates.handoff_to_operator = true;
+                updates.handoff_reason = handoffReason;
+                updates.closed_status = 'operator_owned';
+                updates.operator_owned_at = new Date().toISOString();
+                console.log(`[Pipeline] Force Handoff: ${handoffReason}`);
+            }
+            if (saidReturn) {
+                updates.do_not_followup = true;
+                updates.do_not_followup_reason = 'client_said_revin_eu';
+                console.log(`[Pipeline] Follow-up BLOCKED: client will return`);
+            }
+            // Set 24h follow-up due if we reached an offer/quote state and need to wait
+            if (typeof nextTarget !== 'undefined' && nextTarget.nextState === 'oferta_trimisa') {
+                const due = new Date();
+                due.setHours(due.getHours() + 24);
+                updates.follow_up_due_at = due.toISOString();
+                updates.followup_status = 'pending';
+            }
+
+            await saveLeadRuntimeState(conversation_id, updates);
+            if (typeof nextTarget !== 'undefined') {
+                console.log(`[Agent] Persisted runtime state to DB: ${nextTarget.nextState} / ${nextTarget.action}`);
+            } else {
+                console.log(`[Agent] Persisted runtime state to DB (Wait/FastPath).`);
+            }
+        }
 
         // ── 8.5. Service Detection Confidence Guard ──
         const serviceConfidence = evaluateServiceConfidence({
@@ -887,7 +1265,8 @@ export async function processConversation(conversation_id, message_id = null, op
             services: {
                 selected: serviceData.selected_services,
                 detection_status: serviceConfidence?.service_detection_status
-            }
+            },
+            playbookKey: nextTarget?.playbookKey
         });
 
         // ── 8.8.3. Auto-Generate Quote Draft (if NBA says so) ──
@@ -933,36 +1312,24 @@ export async function processConversation(conversation_id, message_id = null, op
             suggestedReply = hybridPackageReply;
             composerResult = { reply: hybridPackageReply, replyStyle: 'warm_sales', composerUsed: true, specificity: 'kb_packages', serviceDetectionStatus: 'confirmed' };
             console.log(`[Pipeline] Using hybrid package reply (${hybridPackageReply.length} chars), skipping general composer`);
-        } else if (eligibility.eligible || !decision.needs_human_review) {
+        } else if ((kbGroundingContext || latestQuote) && (eligibility.eligible || !decision.needs_human_review)) {
             const t_comp_start = Date.now();
 
-            // If KB grounded mode, use KB answer as base truth
-            if (kbGroundingContext) {
-                composerResult = await composeHumanReply({
-                    analysis,
-                    entityMemory,
-                    salesCycle,
-                    conversationStage: dbStage || decision.conversation_stage,
-                    conversationText: userMessage,
-                    serviceConfidence,
-                    progression,
-                    kbGrounding: kbGroundingContext,
-                    latestQuote
-                });
-                console.log(`[Pipeline] Composer used KB grounding: key=${kbGroundingContext.knowledgeKey}`);
-            } else {
-                composerResult = await composeHumanReply({
-                    analysis,
-                    entityMemory,
-                    salesCycle,
-                    conversationStage: dbStage || decision.conversation_stage,
-                    conversationText: userMessage,
-                    serviceConfidence,
-                    progression,
-                    learnedContext,
-                    latestQuote
-                });
-            }
+            // Run composer ONLY for KB injection or freshly generated Quotes.
+            composerResult = await composeHumanReply({
+                analysis,
+                entityMemory,
+                salesCycle,
+                conversationStage: dbStage || decision.conversation_stage,
+                conversationText: userMessage,
+                serviceConfidence,
+                progression,
+                kbGrounding: kbGroundingContext,
+                learnedContext,
+                latestQuote,
+                nextBestActionGoal: nextTarget
+            });
+            console.log(`[Pipeline] Composer run for ${kbGroundingContext ? 'KB Grounding' : 'Quote Presentation'} with Playbook: ${nextTarget?.playbookKey || 'None'}`);
 
             suggestedReply = composerResult.reply;
             t_composer_ms = Date.now() - t_comp_start;
@@ -1009,6 +1376,9 @@ export async function processConversation(conversation_id, message_id = null, op
                     hasLearnedContext: learnedContext.length > 0
                 });
             }
+        } else {
+            console.log(`[Pipeline] Bypassing legacy composer -> Autonomous Phase 3 Reply preserved.`);
+            composerResult = { reply: suggestedReply, replyStyle: 'warm_sales', composerUsed: false, specificity: 'autonomous_phase3', serviceDetectionStatus: 'unknown' };
         }
 
         // ── 8.10. Evaluate reply quality ──
@@ -1126,11 +1496,58 @@ export async function processConversation(conversation_id, message_id = null, op
                 lastClientMessage: lastClientMessageText,
                 escalation: effectiveEscalation,
                 decision: effectiveDecision,
+                playbookKey: nextTarget.playbookKey,
                 serviceConfidence
             });
 
             if (replyDecisionResult.decision === 'reply_now') {
-                // Smart anti-duplicate: block only if no new client msg after recent outbound
+                // ── HARDENING FAZA 6: Anti-Hallucination Audit V2 ──
+                // Bypass audit if we already bypassed the composer via KB rules,
+                // OR if the composer failed its own fact-check and fell back to the safe KB factual string
+                const fallbackComposerBypass = composerResult.composerUsed === 'kb_direct_answer';
+                let auditIsSafe = true;
+                if (!kbComposerBypass && !fallbackComposerBypass) {
+                    const { auditReplyV2 } = await import('../agent/replyAuditorV2.mjs');
+                    console.log(`[Pipeline] Running strict LLM AuditV2 on reply...`);
+                    // Fallback reference context 
+                    let rvcActiveService = null; try{ if(typeof runtimeState !== 'undefined') rvcActiveService = runtimeState?.primary_service; }catch(e){}
+                    let rvcDraft = null; try{ if(typeof partyDraft !== 'undefined') rvcDraft = partyDraft; }catch(e){}
+                    let rvcNba = null; try{ if(typeof nextTarget !== 'undefined') rvcNba = nextTarget?.action; }catch(e){}
+    
+                    const auditRes = await auditReplyV2({
+                        replyText: suggestedReply,
+                        activeService: rvcActiveService,
+                        draft: rvcDraft,
+                        nextBestAction: rvcNba,
+                        kbContext: kbGroundingContext || null
+                    });
+                    
+                    if (!auditRes.is_safe) {
+                        console.warn(`[Pipeline] 🚨 AUDIT FAILED: ${auditRes.reason}`);
+                        
+                        try {
+                            const { saveLeadRuntimeState } = await import('../agent/saveLeadRuntimeState.mjs');
+                            await saveLeadRuntimeState(conversation_id, {
+                                 handoff_to_operator: true,
+                                 handoff_reason: `AuditV2 Failed: ${auditRes.reason}`,
+                                 closed_status: 'operator_owned',
+                                 operator_owned_at: new Date().toISOString()
+                            });
+                        } catch (err) {
+                            console.error('Audit Handoff Save Fail:', err);
+                        }
+                        
+                        // FIX: Block the reply instead of replacing the text and sending it anyway
+                        auditIsSafe = false;
+                        replyStatus = 'blocked';
+                        sentBy = 'audit_v2';
+                        replyDecisionResult = { decision: 'blocked_audit_failed', reason: `safety_violation: ${auditRes.reason}` };
+                    }
+                } // End of Audit V2 block
+
+                // Only evaluate sending if Audit V2 considers it safe
+                if (auditIsSafe) {
+                    // Smart anti-duplicate: block only if no new client msg after recent outbound
                 const { data: recentOutbound } = await supabase
                     .from('messages')
                     .select('id, created_at')
@@ -1168,38 +1585,14 @@ export async function processConversation(conversation_id, message_id = null, op
                     confidence: decision.confidence_score, style: composerResult.replyStyle
                 });
                 } // end anti-duplicate else
+                } // end auditIsSafe if
             } else {
                 replyStatus = 'blocked';
                 sentBy = 'reply_engine';
                 console.log(`[Pipeline] Auto-reply BLOCKED: ${replyDecisionResult.decision} — ${replyDecisionResult.reason} (${replyDecisionResult.details || ''})`);
 
-                // Evaluate follow-up eligibility for wait decisions
-                const followUpElig = evaluateFollowUpEligibility({
-                    replyDecision: replyDecisionResult.decision,
-                    lastClientMessage: lastClientMessageText,
-                    conversationStage: decision.conversation_stage,
-                    existingDraft: existingDraftRow,
-                    nextStep: progression.next_step,
-                    conversationStatus: dbStage,
-                    closingSignalDetected: replyDecisionResult.closingSignalDetected,
-                    customerPausedDetected: replyDecisionResult.customerPausedDetected,
-                    humanTakeoverActive: replyDecisionResult.humanTakeoverActive,
-                    aiCommitmentPending: replyDecisionResult.aiCommitmentPending
-                });
-
-                if (followUpElig.eligible) {
-                    const schedResult = await scheduleFollowUp({
-                        conversationId: conversation_id,
-                        followUpReason: followUpElig.followUpType,
-                        openQuestionDetected: followUpElig.openQuestionDetected,
-                        customerIntentUnanswered: followUpElig.customerIntentUnanswered,
-                        missingFields: followUpElig.missingFields,
-                        triggerMessageId: message_id,
-                        nextStep: progression.next_step,
-                        lastCustomerMessageAt: new Date().toISOString()
-                    });
-                    console.log(`[Pipeline] Follow-up: ${schedResult.scheduled ? 'SCHEDULED' : 'NOT scheduled'} (${schedResult.reason})`);
-                }
+                // Evaluate follow-up eligibility for wait decisions: 
+                // Handled natively by FollowUpEngine Job tracking `follow_up_due_at` on runtime DB.
             }
         } else if (decision.escalation_reason) {
             console.log(`[Pipeline] Escalation: ${decision.escalation_reason}`);

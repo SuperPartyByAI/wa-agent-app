@@ -1,3 +1,5 @@
+import { loadVertexConfig } from '../vertex/vertexClient.mjs';
+
 /**
  * Builds the reply composer prompt for humanized WhatsApp replies.
  * Now respects the Service Detection Confidence Guard:
@@ -12,21 +14,12 @@
  * @param {string} params.draftReply    - analysis draft (reference only)
  * @returns {string} composer prompt
  */
-export function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycle, replyStyle, draftReply, progression }) {
+export async function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycle, replyStyle, draftReply, progression, nextBestActionGoal }) {
+    
+    const cfg = await loadVertexConfig();
 
-    // ── Style-specific personality ──
-    const styleInstructions = {
-        warm_sales: `Esti operator Superparty pe WhatsApp. Esti cald, prietenos, sigur pe tine.
-Vorbesti ca un om real care iubeste ce face, nu ca un robot.`,
-        returning_client: `Clientul te cunoaste deja. Fii familiar si direct.
-Nu te prezinta din nou. Confirma ce stii deja si muta conversatia mai departe.`,
-        collaborator: `Vorbesti cu un colaborator/partener. Profesionist dar eficient.
-Mai putin "cald", mai mult "operativ rapid". Direct la subiect.`,
-        ops_followup: `Follow-up operativ. Confirma scurt si muta conversatia inainte.
-Maxim 1-2 propozitii.`
-    };
-
-    const style = styleInstructions[replyStyle] || styleInstructions.warm_sales;
+    // ── Structural Context ──
+    const style = `Vorbești natural, ca un om real, nu ca un robot.`;
 
     // ── Build concrete context block ──
     let contextBlock = '';
@@ -39,8 +32,9 @@ Maxim 1-2 propozitii.`
         contextBlock += `\nSERVICII: NEDETECTATE SAU AMBIGUE.`;
         contextBlock += `\n→ INTERZIS: Nu enumera serviciile noastre (fără "avem animator, ursitoare...").`;
         contextBlock += `\n→ INTERZIS: Nu presupune ce vrea clientul.`;
-        contextBlock += `\n→ OBLIGATORIU: Fii cald și natural. Pune o întrebare deschisă simplă:`;
-        contextBlock += `\n   "Suntem aici, cu ce vă putem ajuta?" sau "Despre ce fel de eveniment este vorba?"`;
+        contextBlock += `\n→ OBLIGATORIU: Fii cald și natural, dar intră DEZVOLTAT direct în subiectul petrecerilor. Pune o întrebare specifică:`;
+        contextBlock += `\n   Ex: "Bună! Suntem Superparty. Ce petrecere doriți să organizați?" sau "Despre ce fel de eveniment este vorba?"`;
+        contextBlock += `\n→ INTERZIS ABSOLUT: NU folosi NICIODATĂ formule generice și servile precum "Cu ce vă pot ajuta astăzi?", "Ce pot face pentru dumneavoastră?", "Cum vă pot fi de folos?". Acestea sunt STRICT INTERZISE! Focus pe organizarea petrecerii.`;
     } else if (svcStatus === 'partial') {
         // Some confirmed, some ambiguous
         if (replyContext.hasServices) {
@@ -90,39 +84,12 @@ Maxim 1-2 propozitii.`
         cycleContext = '\nACESTA E UN CLIENT CARE REVINE. Saluta-l familiar, nu ca pe un strain.';
     }
 
-    // ── Discovery-specific examples ──
-    let exampleBlock;
+    // ── Discovery/Clear Mode Safety Guards ──
+    let safetyBlock = '';
     if (svcStatus === 'unknown' || svcStatus === 'ambiguous') {
-        exampleBlock = `=== EXEMPLE BUNE (DISCOVERY — fara presupuneri, foarte uman) ===
-
-✅ "Bună! Sigur, vă ajutăm cu drag 😊 Despre ce fel de eveniment este vorba?"
-✅ "Salut! Cu mare drag. Ne poți da câteva detalii despre evenimentul tău? 😊"
-✅ "Bună! Ne bucurăm că ne scrieți 😊 Spuneți-ne ce planuri aveți și vedem cum vă putem ajuta!"
-✅ "Hey! Aveți deja ceva în minte pentru petrecere sau abia ați început planificarea? 😊"
-
-=== EXEMPLE PROASTE (INTERZISE in modul discovery) ===
-
-❌ "Sigur, va putem ajuta cu animator..." (presupune animator)
-❌ "Avem disponibilitate pentru animator pe..." (presupune animator)
-❌ "Va putem oferi animator si vata de zahar..." (inventeaza servicii)
-❌ "Pentru un animator, avem nevoie de data si locatie..." (presupune si cere detalii)`;
+        safetyBlock = `\nINTERZIS: Nu presupune servicii. Nu folosi cuvântul "animator" dacă nu a fost explicit cerut. Nu da liste nesolicitate.`;
     } else {
-        exampleBlock = `=== EXEMPLE BUNE (uman + concret) ===
-
-✅ "Buna! Sigur, va putem ajuta cu animator 😊 Pentru ce data aveti petrecerea?"
-✅ "Salut! Da, avem animator si vata de zahar. Cam pe ce data va ganditi? 😊"
-✅ "Buna! Ne ocupam cu drag de animator 🎉 Pentru ce data ar fi evenimentul?"
-✅ "Hey! Avem disponibilitate pentru ursitoare si arcada baloane. Ce data aveti? 😊"
-✅ "Sigur, ne ocupam! Petrecerea e tot la [locatie] sau de data asta in alta parte?"
-
-=== EXEMPLE PROASTE (de evitat) ===
-
-❌ "Buna! Va multumim pentru mesaj. Sigur, va putem ajuta cu ce aveti in minte astazi? 😊"
-   (prea generic — nu confirma nimic concret)
-❌ "Buna! Spuneti-ne mai multe detalii."
-   (inutila — nu arata ca a inteles ceva)
-❌ "Buna! Pentru animator si vata de zahar avem nevoie de data, locatia, ora si numarul de copii."
-   (prea robotic — lista de cerinte)`;
+        safetyBlock = `\nREGULĂ: Fii concret. Confirmă scurt ce ai înțeles din serviciile cerute.`;
     }
 
     // Progression context
@@ -142,47 +109,49 @@ Maxim 1-2 propozitii.`
         }
     }
 
-    return `${style}
-${cycleContext}
-${contextBlock}
-${progressionBlock}
+    let playbookBlock = '';
+    if (nextBestActionGoal && nextBestActionGoal.instruction && nextBestActionGoal.playbookKey) {
+        // Extract the playbook injection from NBA instruction
+        const match = nextBestActionGoal.instruction.match(/\[PLAYBOOK OVERRIDE[^\n]+/i);
+        if (match) {
+            playbookBlock = `\n\n=== OVERRIDE PLAYBOOK ADMIN (PRIORITATE MAXIMA) ===\n${match[0]}\nACEASTA ESTE REGULA ABSOLUTA PT ACEST RASPUNS! Ignora exemplele generice daca se contrazic cu ea.`;
+        }
+    }
 
-DRAFT INTERN (doar referinta, NU copia):
-"${draftReply}"
+    const customRules = cfg.prompt_orchestrator_reply || `=== REGULI STRICTE ===
 
-=== REGULI STRICTE ===
-
-1. CONFIRMA CONCRET ce ai inteles — dar DOAR daca serviciile sunt CONFIRMATE in context
-   - NU "va putem ajuta cu ce aveti in minte"
-   - DA "va putem ajuta cu animator si vata de zahar" (doar daca CONFIRMATE mai sus)
+1. CONFIRMA CONCRET ce ai inteles — dar DOAR daca serviciile sunt CONFIRMATE in context.
    - Daca serviciile NU SUNT confirmate, NU le mentiona. Intreaba deschis.
 
-2. INTERZIS: Nu presupune NICIODATA "animator" ca fallback/default.
-   Daca clientul nu a cerut explicit un serviciu, NU il mentiona.
+2. IMPACT CRITIC: Daca "DRAFT INTERN" contine un raspuns oficial, ESTI OBLIGAT sa incluzi acea informatie exact asa cum este in reply-ul tau final!
 
-3. INTREABA DOAR 1 lucru
-   - pune DOAR intrebarea urmatoare din contextul de mai sus
-   - nu mai pune altceva
-   - restul se afla in mesajele urmatoare
+3. INTERZIS: Nu presupune NICIODATA "animator" ca fallback/default.
 
-4. SCURT — max 2-3 propozitii. Punct.
+4. INTREABA DOAR 1 lucru! Pune DOAR intrebarea urmatoare sau cere doar 1 detaliu critic. Restul se afla in mesajele urmatoare.
 
-5. EMOJI subtile — max 1 emoji per mesaj (😊 sau 🎉)
+5. Fii Scurt — max 2-3 propozitii.
 
-6. VARIAZA deschiderile. NU incepe mereu cu "Buna! Sigur".
-   Optiuni: "Buna!", "Salut!", "Hey!", "Da,", "Sigur,", "Cu placere,"
-
-${exampleBlock}
-
-=== EXEMPLE COLAB/RECURENT (variante) ===
-
-Colaborator: "Salut! Da, putem acoperi animatorul pentru weekend. Ce data exact?"
-Recurent: "Buna! Ne bucuram ca reveniti 😊 Petrecerea e tot la Kiddo Fun? Ce data?"
+=== EXEMPLE COLAB/RECURENT (doar daca est caz special) ===
+Colaborator: "Salut! Da, putem acoperi serviciul. Ce data exact?"
+Recurent: "Buna! Ne bucuram ca reveniti! Petrecerea e tot la locatie?"
 
 === REPLY FINAL ===
 
 Scrie DOAR mesajul final, fara explicatii, fara ghilimele, fara prefixuri.
 Raspunde in ROMANA. MAX 2-3 propozitii.`;
+
+    return `${style}
+${cycleContext}
+${contextBlock}
+${progressionBlock}
+${playbookBlock}
+
+DRAFT INTERN (doar referinta, NU copia):
+"${draftReply}"
+
+${safetyBlock}
+
+${customRules}`;
 }
 
 /**

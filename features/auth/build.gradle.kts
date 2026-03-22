@@ -27,4 +27,25 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    // CameraX
+    implementation("androidx.camera:camera-core:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
+    // ML Kit Face Detection
+    implementation("com.google.mlkit:face-detection:16.1.6")
+    // Coroutines Play Services (for Task.await())
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    // TensorFlow Lite (for face embedding comparison)
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    // Supabase Storage (for uploads)
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.2.3")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.2.3")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.2.3")
+    // Google Sign-In (legacy API - better device compatibility)
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
 }

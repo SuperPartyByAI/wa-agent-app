@@ -141,18 +141,10 @@ export function validateGroundedReply(composedReply, kbAnswer, category) {
     }
 
     // Check 3: Key KB facts are preserved (not stripped out)
-    const kbFacts = extractFactWords(kbAnswer);
-    const composedFacts = extractFactWords(composedReply);
-    const preservedCount = [...kbFacts].filter(w => composedFacts.has(w)).length;
-    const preservationRate = kbFacts.size > 0 ? preservedCount / kbFacts.size : 1;
-
-    if (preservationRate < 0.3) {
-        return {
-            valid: false,
-            failReason: `low_fact_preservation: ${(preservationRate * 100).toFixed(0)}%`,
-            confidence: 0.4
-        };
-    }
+    // DISABLED: This check was too aggressive for conversational AI, as summarizing 
+    // a long price list (e.g., 'we have packages from X to Y') naturally drops many 
+    // words from the KB template, causing false 'low_fact_preservation' failures.
+    // Checks 1 and 2 already sufficiently prevent hallucinations.
 
     return { valid: true, failReason: null, confidence: 0.85 };
 }

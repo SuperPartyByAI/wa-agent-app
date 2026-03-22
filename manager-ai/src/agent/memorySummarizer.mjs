@@ -181,19 +181,62 @@ export function buildMemorySection(summary) {
 // ─── Clean Notebook V2: extrage JSON structurat și salvează în client_notebooks_v2 ───
 const CLEAN_NOTEBOOK_MODEL = 'gemini-2.0-flash-lite';
 
-async function callGeminiExtractJSON(prompt) {
+// Câmpuri comune prezente indiferent de rol
+const BASE_FIELDS = ['data_eveniment', 'ora_eveniment', 'locatie', 'pret_discutat', 'metoda_plata', 'observatii'];
+
+// ─── Încarcă roleMap din DB: { role, keywords[], fields[] } ───
+async function loadRoleMap() {
+    try {
+        const { data } = await supabase
+            .from('ai_knowledge_base')
+            .select('knowledge_key, policy_config')
+            .ilike('knowledge_key', 'role_%')
+            .eq('active', true);
+
+        if (!data?.length) return [];
+
+        return data.map(row => ({
+            role: row.knowledge_key.replace('role_', ''),
+            label: row.policy_config?.label || row.knowledge_key,
+            keywords: row.policy_config?.triggers?.keywords || [],
+            fields: row.policy_config?.constraints?.must_collect_fields || []
+        }));
+    } catch (err) {
+        console.warn('[CleanNotebook] loadRoleMap failed (non-fatal):', err.message);
+        return [];
+    }
+}
+
+// ─── Detectează rolul din transcript prin keyword matching ───
+function detectRoleFromTranscript(transcript, roleMap) {
+    const text = transcript.toLowerCase();
+    for (const role of roleMap) {
+        const hit = role.keywords.some(kw => kw && text.includes(kw.toLowerCase()));
+        if (hit) return role;
+    }
+    return null;
+}
+
+// ─── Apel Gemini pentru extracție JSON cu câmpuri dinamice ───
+async function callGeminiExtractJSON(prompt, fieldsToExtract, detectedRoleLabel) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${CLEAN_NOTEBOOK_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+    const roleContext = detectedRoleLabel
+        ? `Serviciu detectat: ${detectedRoleLabel}.`
+        : 'Serviciu neidentificat — extrage câmpurile de bază.';
+
     const body = {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         systemInstruction: {
             role: 'system',
             parts: [{ text: `Ești un sistem de extracție date pentru Superparty (firma de petreceri copii).
+${roleContext}
 Analizezi conversația și returnezi DOAR un JSON valid cu câmpurile găsite.
 NU inventa date care nu există în conversație.
 Returnează EXCLUSIV JSON, fără text suplimentar, fără markdown.
-Câmpuri posibile: data_eveniment, ora_eveniment, serviciu, personaj, locatie, pret_discutat, nr_copii, varsta_copil, metoda_plata, observatii, status_confirmat` }]
+Câmpuri de extras: ${fieldsToExtract.join(', ')}` }]
         },
-        generationConfig: { temperature: 0.0, maxOutputTokens: 256, responseMimeType: 'application/json' }
+        generationConfig: { temperature: 0.0, maxOutputTokens: 512, responseMimeType: 'application/json' }
     };
 
     const res = await fetch(url, {
@@ -213,7 +256,7 @@ Câmpuri posibile: data_eveniment, ora_eveniment, serviciu, personaj, locatie, p
 export async function updateCleanNotebook(phoneE164, waNumber, conversationId) {
     if (!phoneE164 || !conversationId) return;
     try {
-        // Citim ultimele 100 mesaje pentru extracție
+        // 1. Citim ultimele 100 mesaje pentru extracție
         const { data: msgs } = await supabase
             .from('messages')
             .select('content, sender_type, created_at')
@@ -227,7 +270,23 @@ export async function updateCleanNotebook(phoneE164, waNumber, conversationId) {
             .map(m => `[${m.sender_type === 'agent' ? 'AI' : 'Client'}]: ${m.content || ''}`)
             .join('\n');
 
-        // Citim notebook-ul curat existent (merge cu datele noi)
+        // 2. Încărcăm harta de roluri (triggers + câmpuri) din DB
+        const roleMap = await loadRoleMap();
+
+        // 3. Detectăm rolul prin keyword matching în transcript
+        const detectedRole = detectRoleFromTranscript(transcript, roleMap);
+
+        // 4. Construim lista de câmpuri: bază + specifice rolului detectat
+        const roleFields = detectedRole?.fields || [];
+        const fieldsToExtract = [...new Set([...BASE_FIELDS, ...roleFields])];
+
+        if (detectedRole) {
+            console.log(`[CleanNotebook] Rol detectat: ${detectedRole.role} (${detectedRole.label}) → ${fieldsToExtract.length} câmpuri`);
+        } else {
+            console.log(`[CleanNotebook] Niciun rol detectat → câmpuri de bază (${fieldsToExtract.length})`);
+        }
+
+        // 5. Citim notebook-ul curat existent (merge cu datele noi)
         const { data: existing } = await supabase
             .from('client_notebooks_v2')
             .select('clean_notebook')
@@ -241,12 +300,18 @@ export async function updateCleanNotebook(phoneE164, waNumber, conversationId) {
             : '';
 
         const prompt = `${existingStr}CONVERSAȚIE (extrage/actualizează câmpurile relevante):\n${transcript}`;
-        const extracted = await callGeminiExtractJSON(prompt);
+
+        // 6. Extragere JSON cu câmpuri dinamice specifice rolului
+        const extracted = await callGeminiExtractJSON(prompt, fieldsToExtract, detectedRole?.label);
         if (!extracted || Object.keys(extracted).length === 0) return;
 
-        // Merge: datele noi suprascriu cele vechi pentru același câmp
+        // 7. Merge: datele noi suprascriu cele vechi pentru același câmp
         const merged = { ...existingData, ...extracted };
-        // Curăță câmpurile goale sau null
+        // Adăugăm rolul detectat dacă nu există deja
+        if (detectedRole && !merged.rol_detectat) {
+            merged.rol_detectat = detectedRole.role;
+        }
+        // Curățăm câmpurile goale sau null
         Object.keys(merged).forEach(k => {
             if (merged[k] === null || merged[k] === '' || merged[k] === 'null') delete merged[k];
         });
@@ -259,8 +324,9 @@ export async function updateCleanNotebook(phoneE164, waNumber, conversationId) {
             summary_updated_at: new Date().toISOString()
         }, { onConflict: 'phone_number,wa_number' });
 
-        console.log(`[CleanNotebook] ✅ Actualizat pt ${phoneE164.substring(0, 8)}*** (${Object.keys(merged).length} câmpuri)`);
+        console.log(`[CleanNotebook] ✅ Actualizat pt ${phoneE164.substring(0, 8)}*** → rol: ${detectedRole?.role || 'generic'}, ${Object.keys(merged).length} câmpuri`);
     } catch (err) {
         console.warn(`[CleanNotebook] Non-fatal:`, err.message);
     }
 }
+

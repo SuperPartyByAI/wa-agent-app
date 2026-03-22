@@ -15,7 +15,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const GEMINI_API_KEY = process.env.VERTEX_AI_API_KEY || process.env.GEMINI_API_KEY;
-const EMBEDDING_MODEL = 'gemini-embedding-001';
+const EMBEDDING_MODEL = 'text-embedding-004';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -49,8 +49,7 @@ export async function embedText(text) {
             body: JSON.stringify({
                 model: `models/${EMBEDDING_MODEL}`,
                 content: { parts: [{ text: text.substring(0, 2048) }] },
-                taskType: 'SEMANTIC_SIMILARITY',
-                outputDimensionality: 768
+                taskType: 'SEMANTIC_SIMILARITY'
             })
         });
 

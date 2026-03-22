@@ -162,84 +162,30 @@ REGULI PENTRU "decision":
 // ─────────────────────────────────────────
 // RETROACTIVE EXTRACTION — prompt & helper
 // ─────────────────────────────────────────
-// Role sources cache
-let _roleSourcesCache = null;
-let _roleSourcesLastLoad = 0;
+const RETROACTIVE_EXTRACT_PROMPT = `Esti un extractor de date pentru Superparty — companie animatii si petreceri copii.
+Analizezi o conversatie WhatsApp si extragi detaliile evenimentului cerut de client.
+Nu inventa NIMIC. Extrage DOAR informatii explicit mentionate in conversatie.
 
-async function loadRoleSources() {
-    const now = Date.now();
-    if (_roleSourcesCache && now - _roleSourcesLastLoad < 5 * 60 * 1000) return _roleSourcesCache;
-    try {
-        const r = await fetch('http://localhost:3005/api/vertex/sources?brand=GLOBAL');
-        const d = await r.json();
-        _roleSourcesCache = (d.sources || []).map(src => {
-            const lines = (src.content || '').split('\n');
-            let serviciu = '', taguri = [], detalii = [];
-            for (const l of lines) {
-                const ll = l.toLowerCase();
-                if (ll.startsWith('serviciu:')) serviciu = l.split(':').slice(1).join(':').trim();
-                else if (ll.startsWith('tag-uri:')) taguri = l.split(':').slice(1).join(':').trim().split(',').map(t => t.trim().toLowerCase());
-                else if (ll.includes('obligatorii')) detalii = l.split(':').slice(1).join(':').trim().split(',').map(ff => ff.trim()).filter(Boolean);
-            }
-            return { serviciu, taguri, detalii };
-        }).filter(s => s.serviciu);
-        _roleSourcesLastLoad = now;
-        console.log(`[Worker] Loaded ${_roleSourcesCache.length} role sources`);
-    } catch(e) { console.warn('[Worker] Could not load role sources:', e.message); }
-    return _roleSourcesCache || [];
-}
-
-function getMandatoryFields(sources, roleTitle) {
-    const lower = (roleTitle || '').toLowerCase();
-    const match = sources.find(s =>
-        s.serviciu.toLowerCase().includes(lower) ||
-        s.taguri.some(t => lower.includes(t) || t.includes(lower))
-    );
-    return match ? match.detalii : [];
-}
-
-async function buildExtractionPrompt() {
-    const sources = await loadRoleSources();
-    // Build comprehensive field list from all roles
-    const allFields = new Set([
-        'Data Evenimentului', 'Ora de Inceput', 'Locatia', 'Personajul Dorit',
-        'Numar Copii', 'Durata (ore)', 'Nume Sarbatorit', 'Varsta Sarbatorit',
-        'Data Nasterii Sarbatorit', 'Metoda de Plata (Cash/Card)', 'Situatie Incasare',
-        'Numar Invitati', 'Culori Baloane', 'Dimensiune Arcada', 'Tip Locatie', 'Ocazie'
-    ]);
-    for (const src of sources) {
-        for (const ff of src.detalii) allFields.add(ff);
-    }
-    const roleNames = [...new Set(sources.map(s => s.serviciu.split('(')[0].trim()))].join(', ');
-    const fieldsJson = [...allFields].map(ff => `      "${ff}": "valoarea din conversatie sau null"`).join(',\n');
-    return `Esti un extractor de date pentru Superparty.
-Analizezi o conversatie WhatsApp si extragi detaliile evenimentului cerut.
-Nu inventa NIMIC. Extrage DOAR ce e explicit mentionat.
-
-Roluri posibile: ${roleNames}
-
-Returneaza JSON:
+Returneaza JSON strict in formatul urmator:
 {
   "has_event": true,
   "servicii": [
     {
-      "role_title": "numele rolului cerut (ex: Animatie, Popcorn, Ursitoare)",
-${fieldsJson}
+      "role_title": "Animatie|Candy Bar|Decoratiuni|Fotograf|DJ|Videograf|Trupa Cover|Sonorizare|Moderator|Inchiriere echipamente",
+      "personaj": "numele personajului sau null",
+      "data": "data evenimentului (ex: 29 martie 2025) sau null",
+      "ora_start": "ora de inceput (ex: 18:00) sau null",
+      "locatie": "restaurantul/sala sau null",
+      "durata": "durata in ore (ex: 2) sau null",
+      "nr_copii": "numarul de copii sau null",
+      "nume_sarbatorit": "numele copilului serbat sau null",
+      "varsta": "varsta copilului sau null",
+      "notes": "alte detalii relevante sau null"
     }
   ]
 }
-Daca nu e niciun eveniment concret, returneaza {"has_event": false, "servicii": []}.
-Daca sunt mai multe servicii, listeaza-le separat.`;
-}
-
-// Will be loaded dynamically on first use
-let RETROACTIVE_EXTRACT_PROMPT_DYNAMIC = null;
-async function getExtractionPrompt() {
-    if (!RETROACTIVE_EXTRACT_PROMPT_DYNAMIC) {
-        RETROACTIVE_EXTRACT_PROMPT_DYNAMIC = await buildExtractionPrompt();
-    }
-    return RETROACTIVE_EXTRACT_PROMPT_DYNAMIC;
-}
+Daca nu exista niciun eveniment concret in conversatie, returneaza {"has_event": false, "servicii": []}.
+Daca sunt mai multe servicii cerute pentru acelasi eveniment, listeaza-le separat in array-ul servicii.`;
 
 /**
  * Builds a synthetic message from LLM-extracted service data
@@ -251,31 +197,15 @@ function buildSyntheticMessage(extraction) {
     const parts = extraction.servicii.map(s => {
         const tokens = [];
         if (s.role_title) tokens.push(s.role_title);
-        // Support both old English keys and new Romanian keys
-        const personaj = s['Personajul Dorit'] || s.personaj;
-        const data = s['Data Evenimentului'] || s.data;
-        const ora = s['Ora de Inceput'] || s['Ora de Început'] || s.ora_start;
-        const loc = s['Locatia'] || s['Locația'] || s.locatie;
-        const durata = s['Durata (ore)'] || s.durata;
-        const copii = s['Numar Copii'] || s['Număr Copii'] || s.nr_copii;
-        const numeSarb = s['Nume Sarbatorit'] || s['Nume Sărbătorit'] || s.nume_sarbatorit;
-        const varsta = s['Varsta Sarbatorit'] || s['Vârsta Sărbătorit'] || s.varsta;
-        if (personaj) tokens.push(`cu ${personaj}`);
-        if (data) tokens.push(`pe ${data}`);
-        if (ora) tokens.push(`la ora ${ora}`);
-        if (loc) tokens.push(`la ${loc}`);
-        if (durata) tokens.push(`${durata} ore`);
-        if (copii) tokens.push(`${copii} copii`);
-        if (numeSarb) tokens.push(`sarbatorit: ${numeSarb}`);
-        if (varsta) tokens.push(`varsta ${varsta} ani`);
-        // Include any other non-null Romanian fields as notes
-        const extraFields = Object.entries(s).filter(([k,v]) => 
-            !['role_title','personaj','data','ora_start','locatie','durata','nr_copii','nume_sarbatorit','varsta','notes',
-              'Personajul Dorit','Data Evenimentului','Ora de Inceput','Ora de Inceput','Locatia','Locatia',
-              'Durata (ore)','Numar Copii','Numar Copii','Nume Sarbatorit','Nume Sarbatorit','Varsta Sarbatorit','Varsta Sarbatorit'
-            ].includes(k) && v && v !== 'null'
-        );
-        for (const [k,v] of extraFields) tokens.push(`${k}: ${v}`);
+        if (s.personaj)   tokens.push(`cu ${s.personaj}`);
+        if (s.data)       tokens.push(`pe ${s.data}`);
+        if (s.ora_start)  tokens.push(`la ora ${s.ora_start}`);
+        if (s.locatie)    tokens.push(`la ${s.locatie}`);
+        if (s.durata)     tokens.push(`${s.durata} ore`);
+        if (s.nr_copii)   tokens.push(`${s.nr_copii} copii`);
+        if (s.nume_sarbatorit) tokens.push(`sarbatorit: ${s.nume_sarbatorit}`);
+        if (s.varsta)     tokens.push(`varsta ${s.varsta} ani`);
+        if (s.notes)      tokens.push(s.notes);
         return tokens.join(', ');
     }).filter(Boolean);
     
@@ -426,125 +356,7 @@ export async function processConversation(conversation_id, message_id = null, op
         const missingClientMessages = realClientCount > shadowClientCount ? realMessages.slice(shadowClientCount) : [];
         
         if (missingClientMessages.length === 0) {
-            console.log(`[AI Worker] No unsimulated real client messages found for ${conversation_id}. Checking for missing events...`);
-            
-            // ── PIPELINE 2: Retroactive extraction ──────────────────────────────
-            // Shadow is up-to-date but we may still have 0 events in ai_client_events.
-            // In that case, run LLM on full conversation and call Vertex with a
-            // synthetic message so noteaza_petrecere saves the events.
-            try {
-                const { data: convMeta } = await supabase
-                    .from('conversations').select('client_id').eq('id', conversation_id).single();
-                const clientId = convMeta?.client_id;
-                if (!clientId) return;
-
-                const { data: existingEvents } = await supabase
-                    .from('ai_client_events')
-                    .select('id, data_eveniment')
-                    .eq('client_id', clientId)
-                    .limit(1);
-
-                // Skip only if events exist WITH a confirmed date (fully populated)
-                const hasCompleteEvent = existingEvents?.some(e => e.data_eveniment);
-                if (existingEvents && existingEvents.length > 0 && hasCompleteEvent) {
-                    return;
-                }
-
-                console.log(`[AI Worker Retro] Client ${clientId} has 0 events. Running retroactive extraction for conv ${conversation_id}...`);
-
-                // Fetch full conversation (client + operator) for context
-                const { data: allMsgs } = await supabase
-                    .from('messages')
-                    .select('content, sender_type, created_at')
-                    .eq('conversation_id', conversation_id)
-                    .order('created_at', { ascending: true })
-                    .limit(60);
-
-                if (!allMsgs || allMsgs.length < 2) return;
-
-                const convText = allMsgs.map(m => {
-                    const who = m.sender_type === 'client' ? 'CLIENT' : 'OPERATOR';
-                    return `${who}: ${m.content}`;
-                }).join('\n');
-
-                const extraction = await callLocalLLM(await getExtractionPrompt(), convText);
-                if (!extraction || !extraction.has_event || !extraction.servicii?.length) {
-                    console.log(`[AI Worker Retro] No event found in conv ${conversation_id}. Skipping.`);
-                    return;
-                }
-
-                const syntheticMsg = buildSyntheticMessage(extraction);
-                if (!syntheticMsg) {
-                    console.log(`[AI Worker Retro] Could not build synthetic message for conv ${conversation_id}.`);
-                    return;
-                }
-
-                const { data: clientData } = await supabase
-                    .from('clients').select('real_phone_e164').eq('id', clientId).single();
-                const phoneE164 = clientData?.real_phone_e164;
-                if (!phoneE164) {
-                    console.log(`[AI Worker Retro] No phone for client ${clientId}. Skipping.`);
-                    return;
-                }
-
-                // ── Direct DB Update: fill in structured fields from LLM extraction ──
-                for (const svc of extraction.servicii) {
-                    try {
-                        const vtxSupa = (await import('@supabase/supabase-js')).createClient(
-                            process.env.VERTEX_SUPABASE_URL, process.env.VERTEX_SUPABASE_SERVICE_ROLE_KEY
-                        );
-                        const roleTitle = svc.role_title || 'Animatie';
-                        // Dynamic: use ALL fields from LLM extraction as event_details keys
-                        // The dynamic prompt returns Romanian field names directly from vertex_sources
-                        const SKIP = new Set(['role_title', 'has_event']);
-                        const ENGLISH_TO_RO = {
-                            'data': 'Data Evenimentului', 'ora_start': 'Ora de Inceput',
-                            'locatie': 'Locatia', 'durata': 'Durata (ore)', 'personaj': 'Personajul Dorit',
-                            'nr_copii': 'Numar Copii', 'varsta': 'Varsta Sarbatorit',
-                            'nume_sarbatorit': 'Nume Sarbatorit', 'notes': 'Note'
-                        };
-                        const eventDetails = {};
-                        for (const [k, v] of Object.entries(svc)) {
-                            if (SKIP.has(k) || !v || v === 'null') continue;
-                            const key = ENGLISH_TO_RO[k] || k;
-                            eventDetails[key] = v;
-                        }
-                        const { data: exEv } = await vtxSupa.from('client_events')
-                            .select('id, event_details').eq('client_phone', phoneE164)
-                            .eq('role_title', roleTitle).eq('status', 'active').maybeSingle();
-                        if (exEv) {
-                            const merged = { ...(exEv.event_details || {}) };
-                            for (const [k, v] of Object.entries(eventDetails)) {
-                                if (v !== null && v !== undefined) merged[k] = v;
-                            }
-                            await vtxSupa.from('client_events').update({ event_details: merged }).eq('id', exEv.id);
-                        } else {
-                            await vtxSupa.from('client_events').insert({
-                                client_phone: phoneE164, role_title: roleTitle,
-                                event_details: eventDetails, total_amount: 0, notes: '', status: 'active'
-                            });
-                        }
-                        console.log(`[AI Worker Retro] ✅ Synced ${roleTitle} to Vertex for ${phoneE164}`);
-                    } catch(vtxErr) {
-                        console.warn(`[AI Worker Retro] Vertex sync failed:`, vtxErr.message);
-                    }
-                }
-
-                // Also update ai_client_events data fields if first service has data
-                const firstSvc = extraction.servicii[0];
-                if (firstSvc?.data) {
-                    await supabase.from('ai_client_events')
-                        .update({ data_eveniment: firstSvc.data, locatie: firstSvc.locatie, ora_eveniment: firstSvc.ora_start })
-                        .eq('client_id', clientId);
-                }
-
-                console.log(`[AI Worker Retro] Injecting synthetic: "${syntheticMsg.substring(0, 120)}"`);
-                await processWithVertexAI(phoneE164, syntheticMsg);
-                console.log(`[AI Worker Retro] ✅ Retroactive extraction done for conv ${conversation_id} (client ${clientId})`);
-
-            } catch (retroErr) {
-                console.error(`[AI Worker Retro] Retroactive extraction failed for ${conversation_id}:`, retroErr.message);
-            }
+            // console.log(`[AI Worker] No unsimulated real client messages found for ${conversation_id}.`);
             return;
         }
 

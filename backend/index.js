@@ -144,7 +144,8 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
     longitude,
     contact_name,
     contact_vcard,
-    is_ptt
+    is_ptt,
+    sender_type
   } = req.body;
 
   if (!requestedSessionId || !conversationId) {
@@ -245,49 +246,47 @@ app.post("/api/messages/send", requireApiKey, async (req, res) => {
         baileysPayload = { contacts: { displayName: contact_name, contacts: [{ vcard: contact_vcard }] } };
     }
 
-    // ASYNC KICK-OFF: Return HTTP success immediately for UI speed
+    for (let i = 0; i < 3; i++) {
+        try {
+            // Baileys structure
+            result = await activeSession.client.sendMessage(targetJid, baileysPayload);
+            success = true;
+            break;
+        } catch (err) {
+            lastError = err;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+
+    if (!success) {
+      logger(activeSessionId, "error", `Sending failed after retries to ${formattedRoute}. Error: ${lastError?.message || lastError}`);
+      return res.status(500).json({ error: "Failed to send message after retries.", details: lastError?.message || String(lastError) });
+    }
+
+    // Explicit format mapping for external message ID resolution in Baileys
+    const externalId = result?.key?.id || null;
+    const extraMeta = {
+      message_type,
+      media_url: media_url || null,
+      mime_type: mime_type || null,
+      file_name: file_name || null,
+      latitude: latitude ? parseFloat(latitude) : null,
+      longitude: longitude ? parseFloat(longitude) : null,
+      contact_name: contact_name || null,
+      contact_vcard: contact_vcard || null,
+      sender_type: sender_type || null
+    };
+
+    syncOutboundMessageToSupabase(formattedRoute, contentStr, externalId, activeSessionId, activeSession.client, conversationId, extraMeta).catch(e => {
+        logger(activeSessionId, "error", `Failed to sync outbound message to Supabase: ${e.message}`);
+    });
+
     res.json({
         success: true,
-        message: "Message queued for asynchronous delivery.",
+        message: "Message sent successfully.",
         resolvedSessionId: activeSessionId,
         fallbackUsed: fallbackUsed
     });
-
-    (async () => {
-      for (let i = 0; i < 3; i++) {
-          try {
-              // Baileys structure
-              result = await activeSession.client.sendMessage(targetJid, baileysPayload);
-              success = true;
-              break;
-          } catch (err) {
-              lastError = err;
-              await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-      }
-
-      if (!success) {
-        logger(activeSessionId, "error", `Sending failed after retries to ${formattedRoute}. Error: ${lastError?.message || lastError}`);
-        return;
-      }
-
-      // Explicit format mapping for external message ID resolution in Baileys
-      const externalId = result?.key?.id || null;
-      const extraMeta = {
-        message_type,
-        media_url: media_url || null,
-        mime_type: mime_type || null,
-        file_name: file_name || null,
-        latitude: latitude ? latitude : null,
-        longitude: longitude ? longitude : null,
-        contact_name: contact_name || null,
-        contact_vcard: contact_vcard || null
-      };
-
-      syncOutboundMessageToSupabase(formattedRoute, contentStr, externalId, activeSessionId, activeSession.client, conversationId, extraMeta).catch(e => {
-          logger(activeSessionId, "error", `Failed to sync outbound message to Supabase: ${e.message}`);
-      });
-    })();
   } catch (err) {
     logger(activeSessionId, "error", `General error sending message to ${formattedRoute}: ${err.message}`);
     res.status(500).json({ error: "Failed to send message.", details: err.message });

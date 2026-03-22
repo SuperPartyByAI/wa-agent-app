@@ -75,8 +75,25 @@ app.post('/webhook/whts-up', async (req, res) => {
         // Răspundem imediat la webhook (nu blocăm WhatsApp)
         res.status(200).json({ status: 'processing' });
         
+        // --- FALLBACK REZOLVARE NUMĂR TELEFON LIPSĂ (PENTRU CATCH-UP & METADATE VECHI) ---
+        let resolvedPhone = sender_phone;
+        if (!resolvedPhone && conversation_id) {
+            try {
+                const { data: convData } = await supabase.from('conversations').select('client_id').eq('id', conversation_id).maybeSingle();
+                if (convData?.client_id) {
+                    const { data: cliData } = await supabase.from('clients').select('real_phone_e164').eq('id', convData.client_id).maybeSingle();
+                    if (cliData?.real_phone_e164) {
+                        resolvedPhone = cliData.real_phone_e164;
+                    }
+                }
+            } catch (err) {
+                console.error(`[Webhook] Eroare rezolvare telefon fallback: ${err.message}`);
+            }
+        }
+        const phoneNumber = resolvedPhone || conversation_id;
+        // ----------------------------------------------------------------------------------
+
         // Debounce: așteptăm puțin în caz că vin mai multe mesaje rapid
-        const phoneNumber = sender_phone || conversation_id;
         const existing = debounceTimers.get(phoneNumber);
         
         if (existing) {
@@ -138,50 +155,56 @@ app.post('/webhook/whts-up', async (req, res) => {
 
                 // Trimitem răspunsul pe WhatsApp sau în Simulator
                 if (result.reply) {
-                    // ÎNTOTDEAUNA salvăm în Simulator (Shadow Chat) pentru a avea istoricul AI vizibil în Dashboard
                     const clientRecordTime = new Date().toISOString();
                     const aiRecordTime = new Date(new Date().getTime() + 1000).toISOString();
                     
-                    await supabase.from('ai_training_messages').insert([
-                        {
-                            conversation_id: entry.conversation_id,
-                            sender_type: 'client',
-                            content: combinedMessage,
-                            created_at: clientRecordTime
-                        },
-                        {
-                            conversation_id: entry.conversation_id,
-                            sender_type: 'ai',
-                            content: result.reply,
-                            created_at: aiRecordTime
+                    let shouldSendOnWa = isAiLive;
+                    let humanIntervened = false;
+                    
+                    if (isAiLive) {
+                        // Verificăm dacă omul a răspuns deja în fereastra de debounce
+                        const { data: recentMsgs } = await supabase
+                            .from('messages')
+                            .select('sender_type')
+                            .eq('conversation_id', entry.conversation_id)
+                            .order('created_at', { ascending: false })
+                            .limit(1);
+
+                        if (recentMsgs && recentMsgs.length > 0 && recentMsgs[0].sender_type === 'agent') {
+                            console.log(`[Pipeline] 🛑 AI Activ, dar un Om a răspuns deja! Mutăm exclusiv în Shadow.`);
+                            shouldSendOnWa = false;
+                            humanIntervened = true;
                         }
+                    }
+
+                    // ÎNTOTDEAUNA salvăm în Simulator (Shadow Chat) pentru a avea istoricul vizibil în Dashboard
+                    await supabase.from('ai_training_messages').insert([
+                        { conversation_id: entry.conversation_id, sender_type: 'client', content: combinedMessage, created_at: clientRecordTime },
+                        { conversation_id: entry.conversation_id, sender_type: 'ai', content: result.reply, created_at: aiRecordTime }
                     ]);
                     
-                    // Legăm simularea de Dashboard UI (Coloana 3) salvând decizia AI-ului direct!
-                    // Astfel rezolvăm problema "simulatorului neconectat / toate răspunsurile sunt la fel".
+                    // Legăm simularea de Dashboard UI salvând decizia AI-ului direct!
                     await supabase.from('ai_reply_decisions').insert({
                         conversation_id: entry.conversation_id,
                         suggested_reply: result.reply,
                         can_auto_reply: isAiLive,
-                        needs_human_review: !isAiLive,
-                        confidence_score: 95, // Vertex AI standard confidence
+                        needs_human_review: !isAiLive || humanIntervened,
+                        confidence_score: 95,
                         conversation_stage: "vertex-agent",
-                        reply_status: isAiLive ? "sent" : "shadow_mode",
-                        sent_by: isAiLive ? "vertex" : "pending",
+                        reply_status: shouldSendOnWa ? "sent" : (humanIntervened ? "cancelled_by_human" : "shadow_mode"),
+                        sent_by: shouldSendOnWa ? "vertex" : (humanIntervened ? "human_intervened" : "pending"),
                         created_at: new Date().toISOString()
                     });
                     
-                    if (isAiLive) {
-                        // AI-ul este ON -> Trimite și clientului pe WhatsApp
-                        console.log(`[Pipeline] 🟢 AI Activ. Trimit pe WhatsApp.`);
+                    if (shouldSendOnWa) {
+                        console.log(`[Pipeline] 🟢 AI Activ. Nicio intervenție umană. Trimit pe WhatsApp.`);
                         await sendWhatsAppReply(entry.conversation_id, result.reply);
                     } else {
-                        // AI-ul este OFF -> Doar Simulator
-                        console.log(`[Simulator] 🛑 WhatsApp Oprit. Răspuns salvat exclusiv în Shadow Chat pentru conv ${entry.conversation_id}`);
+                        console.log(`[Simulator] 🛑 WhatsApp Oprit sau Uman Ocupat. Răspuns logat in Shadow Chat pentru conv ${entry.conversation_id}`);
                     }
                 }
             } catch (err) {
-                console.error(`[Pipeline] ❌ Eroare:`, err.message);
+                console.error(`[Pipeline] ❌ Eroare CRITICA:\n`, err.stack || err);
             }
         }, DEBOUNCE_MS);
         
@@ -220,7 +243,8 @@ async function sendWhatsAppReply(conversationId, text) {
                 sessionId: conv.session_id,
                 conversationId: conversationId,
                 text: text,
-                message_type: 'text'
+                message_type: 'text',
+                sender_type: 'ai'
             })
         });
         
@@ -389,6 +413,41 @@ app.post('/api/ai/test', async (req, res) => {
         const result = await processWithVertexAI(phone, message);
         res.json(result);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── SHADOW AI SANDBOX MODE ───
+// Chemat intern de Dashboard, execută procesarea fără a scrie în DB!
+app.post('/api/internal/shadow-run', async (req, res) => {
+    try {
+        const { phone, message, brand, messages } = req.body;
+        if (!phone || !message) {
+            return res.status(400).json({ error: 'phone and message are required' });
+        }
+        
+        let sessionMessages = [];
+        if (messages && Array.isArray(messages)) {
+            sessionMessages = messages.map(m => ({
+                role: (m.role === 'ai' || m.role === 'model' || m.sender_type === 'ai' || m.sender_type === 'agent') ? 'model' : 'user',
+                content: m.text || m.content || ''
+            }));
+            
+            // Pop out the last message if it's identical to the incoming message to avoid duplication
+            if (sessionMessages.length > 0 && sessionMessages[sessionMessages.length - 1].content === message) {
+                sessionMessages.pop();
+            }
+        }
+
+        const result = await processWithVertexAI(phone, message, {
+            simulationMode: true,
+            sessionMessages,
+            brand: brand || 'GLOBAL'
+        });
+        
+        res.json(result);
+    } catch (err) {
+        console.error('[Shadow Run] Error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });

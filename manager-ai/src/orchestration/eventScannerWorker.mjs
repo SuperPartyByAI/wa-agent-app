@@ -15,6 +15,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import { loadVertexConfig } from '../vertex/vertexClient.mjs';
 dotenv.config();
 
 // ─── Config ───
@@ -31,9 +32,9 @@ const vertexDb = VERTEX_SUPABASE_URL && VERTEX_SUPABASE_KEY
     : null;
 
 const SCAN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
-const LOOKBACK_HOURS = 72;
-const MAX_CONVS_PER_SCAN = 100;
-const MAX_MSGS_PER_CLIENT = 300;
+const LOOKBACK_HOURS = 48;          // Redus de la 72h → mai putini tokeni
+const MAX_CONVS_PER_SCAN = 60;     // Redus de la 100 → max 60 conversatii
+const MAX_MSGS_PER_CLIENT = 80;    // Redus de la 300 → max 80 mesaje per client
 
 const log = (msg) => console.log(`[EventScanner] ${msg}`);
 const logErr = (msg, err) => console.error(`[EventScanner] ${msg}`, err?.message || err);
@@ -151,8 +152,9 @@ const SCANNER_TOOLS = [{
 }];
 
 // ─── System Prompt ───
-function buildSystemPrompt(existingEvents) {
-    const base = `Ești un analist CRM pentru firma Superparty (servicii de petreceri: animatori, candy bar, decorațiuni, fotografi, DJ etc).
+async function buildSystemPrompt(existingEvents) {
+    const cfg = await loadVertexConfig();
+    const base = cfg.prompt_worker_retroactive || `Ești un analist CRM pentru firma Superparty (servicii de petreceri: animatori, candy bar, decorațiuni, fotografi, DJ etc).
 
 SARCINA TA: Citește conversația și extrage TOATE serviciile/rolurile cerute.
 
@@ -231,9 +233,10 @@ noteaza_roluri cu 2 roluri:
 async function callGeminiForScan(transcript, existingEvents) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     
+    const systemInstructionText = await buildSystemPrompt(existingEvents);
     const body = {
         contents: [{ role: 'user', parts: [{ text: transcript }] }],
-        systemInstruction: { role: 'system', parts: [{ text: buildSystemPrompt(existingEvents) }] },
+        systemInstruction: { role: 'system', parts: [{ text: systemInstructionText }] },
         tools: SCANNER_TOOLS,
         toolConfig: { functionCallingConfig: { mode: 'ANY' } },
         generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }

@@ -102,7 +102,7 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
       conversation_id: convId,
       session_id: sessionId,
       direction: 'outbound',
-      sender_type: 'agent',
+      sender_type: extraMeta.sender_type || 'agent',
       content: text,
       external_message_id: externalId || null,
       status: 'sent',
@@ -114,7 +114,7 @@ async function syncOutboundMessageToSupabase(phoneNumberOrIdentifier, text, exte
       message_id: externalId,
       conversation_id: convId,
       content: text,
-      sender_type: 'agent',
+      sender_type: extraMeta.sender_type || 'agent',
       timestamp: new Date().toISOString()
     });
 
@@ -307,7 +307,8 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
     const { data: existingMsg } = await supabase.from('messages').select('id').eq('external_message_id', msgId).eq('session_id', sessionId).limit(1).maybeSingle();
     console.log(`[Diagnostic] Attempting to insert msg ${msgId} (Exist: ${!!existingMsg}) to conv ${convId}`);
     if (!existingMsg) {
-      const msgTimestamp = msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : new Date();
+      // Daca Baileys nu returneaza timestamp, punem un NULL ca sa nu inventam ore aiurea din prezent (care ar distruge ordonarea cronologica)
+      const msgTimestamp = msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000) : null;
       
       const { error: insertErr } = await supabase.from('messages').insert({
         conversation_id: convId,
@@ -317,7 +318,7 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
         content: content,
         external_message_id: msgId,
         status: isOutbound ? 'sent' : 'delivered',
-        created_at: msgTimestamp.toISOString(),
+        created_at: msgTimestamp ? msgTimestamp.toISOString() : null, // Use null if timestamp is missing
         message_type: messageType,
         media_url: mediaUrl,
         mime_type: mimeType,
@@ -342,10 +343,18 @@ async function syncHistoricalMessageToSupabase(msg, sessionId, sock = null) {
         });
       }
 
-      if (msgTimestamp.getTime() > currentUpdatedAt) {
+      // Evit poluarea cu date curente: Adaug un sanity-check care ignoră actualizarea capătului "last_message_at" dacă WhatsApp-ul returnează mesaje "fantoma" fără metadata temporală oficială.
+      if (msgTimestamp && msgTimestamp.getTime() > currentUpdatedAt) {
         await supabase.from('conversations').update({ 
           session_id: sessionId,
-          updated_at: msgTimestamp.toISOString() 
+          updated_at: msgTimestamp.toISOString(),
+          last_message_at: msgTimestamp.toISOString()
+        }).eq('id', convId);
+      } else if (!msgTimestamp) {
+        // If no timestamp, we still update session_id to keep the conversation "active" for routing,
+        // but we don't touch updated_at or last_message_at to avoid polluting with current time.
+        await supabase.from('conversations').update({ 
+          session_id: sessionId
         }).eq('id', convId);
       }
       

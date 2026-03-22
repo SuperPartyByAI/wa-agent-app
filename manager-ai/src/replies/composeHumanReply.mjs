@@ -37,7 +37,7 @@ export async function composeHumanReply({
     const replyContext = buildReplyContext({ analysis, entityMemory, serviceConfidence });
 
     // Build composer prompt with concrete context
-    let composerPrompt = buildReplyComposerPrompt({
+    let composerPrompt = await buildReplyComposerPrompt({
         replyContext,
         entityMemory,
         salesCycle,

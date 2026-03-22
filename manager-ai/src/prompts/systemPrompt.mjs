@@ -48,7 +48,10 @@ function buildToolsFromLiveRegistry() {
  *
  * @param {object} existingMemory - from loadClientMemory() for reuse in prompting
  */
-export function buildSystemPrompt(existingMemory = null, { clientContext = null, eventPlan = null, partyDraft = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null, goalDirective = null } = {}) {
+export async function buildSystemPrompt(existingMemory = null, { clientContext = null, eventPlan = null, partyDraft = null, goalState = null, latestQuote = null, contextPack = null, relationshipData = null, activeRolesText = null, nextBestActionGoal = null, goalDirective = null } = {}) {
+    const { loadVertexConfig } = await import('../vertex/vertexClient.mjs');
+    const cfg = await loadVertexConfig();
+
     const catalogBlock = buildCatalogPromptBlock();
 
     let clientContextBlock = '';
@@ -202,19 +205,13 @@ IMPORTANT: Comporta-te conform etapei. Nu sari peste pasi. Daca esti in event_qu
     let strategyBlock = '';
     if (goalDirective) {
         strategyBlock = `\n=== OBIECTIV STRATEGIC CURENT ===\nObiectiv: ${goalDirective.goal}\nStrategie de comunicare: ${goalDirective.strategy}\n=== SFARSIT OBIECTIV STRATEGIC ===\n`;
-    }
-
-    return `Esti asistentul AI al Superparty — companie de organizare evenimente si petreceri.
+    const systemPromptRules = cfg.prompt_orchestrator_system || `Esti asistentul AI al Superparty — companie de organizare evenimente si petreceri.
 Analizeaza conversatia WhatsApp de mai jos dintre echipa noastra (Superparty) si un Client.
 Extrage detaliile principale folosind DOAR informatiile explicite din conversatie. Nu inventa nimic.
 
-IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.
+IMPORTANT: Toate valorile text din JSON TREBUIE sa fie in limba ROMANA.`;
 
-=== CATALOGUL NOSTRU DE SERVICII ===
-${catalogBlock}
-=== SFARSIT CATALOG ===
-${roleBlock}${memoryBlock}${relationBlock}${planBlock}${goalBlock}${quoteBlock}${strategyBlock}${contextNbaBlock}
-SARCINA TA:
+    const instructionsReply = cfg.prompt_orchestrator_reply || `SARCINA TA:
 1. Identifica ce SERVICII din catalogul nostru sunt cerute sau mentionate in conversatie.
 2. Pentru fiecare serviciu detectat, extrage campurile obligatorii completate sau pune null daca lipsesc.
 3. Calculeaza ce campuri lipsesc PER SERVICIU.
@@ -233,7 +230,15 @@ Returneaza un obiect JSON STRICT conform acestui format cu 3 chei principale:
       "cheie": "valoare_extrasa"
     }
   }
-}
+}`;
+
+    return `${systemPromptRules}
+
+=== CATALOGUL NOSTRU DE SERVICII ===
+${catalogBlock}
+=== SFARSIT CATALOG ===
+${clientContextBlock}${roleBlock}${memoryBlock}${relationBlock}${planBlock}${goalBlock}${quoteBlock}${strategyBlock}${contextNbaBlock}
+${instructionsReply}
 
 === UNELTE DISPONIBILE PENTRU tool_action.name ===
 ${buildToolsBlock(contextPack)}
@@ -247,7 +252,7 @@ REGULI GENERALE:
 - Foloseste "update_event_plan" DOAR cu campurile pe care le stii / s-au schimbat.
 - CRITIC: Cand folosesti update_event_plan, PUNE in arguments FIECARE CAMP extras din mesaj.
   Exemplu 1: daca clientul zice "vreau pe 20 aprilie in Bucuresti", arguments TREBUIE sa contina:
-  { "data_evenimentului": "2026-04-20", "localitate": "București" }
+  { "data_evenimentului": "2026-04-20", "localitate": "București" }`;urești" }
   Exemplu 2: daca clientul cere "arcada organica de 3 metri", extrage obligatoriu { "metri_liniari": 3, "model_arcada": "organica" }.
   NU lasa arguments gol — daca ai ales update_event_plan, PUNE datele in arguments!
 - Formate recomandate: data_evenimentului=YYYY-MM-DD, numar_copii=numar, metoda_de_plata=text, doreste_factura=boolean. Respectă tipurile!

@@ -64,6 +64,12 @@ export function buildActiveCommercialPoliciesBlock(activeRoles) {
             if (role.copy_blocks.raw_legacy_logic) {
                 block += `- LEGACY INSTRUCTIONS (Fallback): "${role.copy_blocks.raw_legacy_logic}"\n`;
             }
+            if (role.copy_blocks.custom_prompts && Object.keys(role.copy_blocks.custom_prompts).length > 0) {
+                block += `- HOW TO ASK FOR MISSING FIELDS:\n`;
+                for (const [field, prompt] of Object.entries(role.copy_blocks.custom_prompts)) {
+                    if (prompt) block += `  * Daca informatia pentru "${field}" lipseste, intreaba EXACT cu aceaste cuvinte limitate: "${prompt}"\n`;
+                }
+            }
             block += `\n`;
         }
 

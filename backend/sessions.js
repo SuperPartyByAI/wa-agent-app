@@ -62,7 +62,8 @@ async function startSession(sessionId) {
       auth: state,
       printQRInTerminal: false,
       logger: pino({ level: 'silent' }),
-      browser: ['SuperpartyCRM', 'Chrome', '145.0.0']
+      browser: ['SuperpartyCRM', 'Chrome', '145.0.0'],
+      syncFullHistory: true
     });
 
     sessions.set(sessionId, { status: "STARTING", client: sock, qrCode: null });

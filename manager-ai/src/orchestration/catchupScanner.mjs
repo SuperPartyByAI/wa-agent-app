@@ -1,63 +1,57 @@
 #!/usr/bin/env node
 /**
- * Catch-Up Scanner — Unanswered Message Recovery
+ * Catch-Up Scanner — Unanswered Message Recovery (V2 Single Core)
  *
- * Scans for conversations where:
- *  - Client sent a message
- *  - AI never responded (no sent reply after that message)
- *  - Message is NOT a closing signal / ack / customer paused
- *
- * Triggers the pipeline for each unanswered conversation.
- *
- * Run modes:
- *   - Cron:  node catchupScanner.mjs --once
- *   - Loop:  node catchupScanner.mjs (polls every 2 min)
- *   - PM2:   pm2 start catchupScanner.mjs --name catchup-scanner
+ * Scanează periodic baza de date pentru conversații orfane în care:
+ *  - Clientul a dat un mesaj în ultimele X minute.
+ *  - Niciun Om sau AI nu au mai dat un reply DUPĂ acel mesaj.
+ *  - Mesajul NU e o confirmare banală (ok, mersi, revin).
+ * 
+ * Injectează silențios ultimul mesaj orfan în endpoint-ul webhook intern
+ * pentru ca AI Muncitor să le proceseze normal, ascunzând downtime-ul.
  */
 
 import dotenv from 'dotenv';
-dotenv.config();
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '../config/env.mjs';
-import { detectClosingSignal } from '../policy/shouldReplyNow.mjs';
-import { processConversation } from './processConversation.mjs';
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-const LOOKBACK_MS = Number.parseInt(process.env.AI_CATCHUP_LOOKBACK_MINUTES || '60', 10) * 60 * 1000;
-const POLL_INTERVAL = Number.parseInt(process.env.AI_CATCHUP_POLL_SECONDS || '120', 10) * 1000;
-const MIN_AGE_MS = 60_000; // Don't catch up messages less than 1 min old (give webhook time)
 
-// Track recently processed to avoid re-triggering
+const LOOKBACK_MS = Number.parseInt(process.env.AI_CATCHUP_LOOKBACK_MINUTES || '60', 10) * 60 * 1000;
+const POLL_INTERVAL = Number.parseInt(process.env.AI_CATCHUP_POLL_SECONDS || '300', 10) * 1000; // Default: 300s = 5m
+const MIN_AGE_MS = 60_000; // Așteptăm măcar 1 minut să-și facă webhhook-ul obișnuit treaba
+const WEBHOOK_URL = 'http://localhost:3001/webhook/whts-up';
+
 const recentlyProcessed = new Set();
 
-/**
- * Scan for unanswered conversations and process them.
- */
 export async function scanUnanswered() {
-    if (process.env.AI_AUTOREPLY_ENABLED !== 'true') {
-        return; // Don't catch up if autoreply is off
-    }
-
     const cutoff = new Date(Date.now() - LOOKBACK_MS).toISOString();
     const maxAge = new Date(Date.now() - MIN_AGE_MS).toISOString();
 
-    // Find recent inbound client messages
+    // 1. Extrag mesajele clienților
     const { data: recentMsgs, error } = await supabase
         .from('messages')
-        .select('conversation_id, content, created_at, id')
+        .select('conversation_id, content, created_at, id, external_message_id')
         .eq('sender_type', 'client')
         .eq('direction', 'inbound')
         .gt('created_at', cutoff)
-        .lt('created_at', maxAge) // At least 1 min old
+        .lt('created_at', maxAge)
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error('[CatchUp] Query error:', error.message);
+        console.error('[CatchUp] Eroare baze de date:', error.message);
         return;
     }
 
-    // Deduplicate by conversation (keep latest message per conv)
+    // 2. Extrage doar cel mai recent mesaj per conversație
     const latestByConv = new Map();
     for (const m of (recentMsgs || [])) {
         if (!latestByConv.has(m.conversation_id)) {
@@ -68,84 +62,83 @@ export async function scanUnanswered() {
     let caught = 0;
 
     for (const [convId, lastMsg] of latestByConv) {
-        // Skip recently processed
         if (recentlyProcessed.has(convId)) continue;
 
-        // Check if AI already replied after this message
+        // 3. AI-ul a răspuns după acest mesaj?
         const { data: aiReply } = await supabase
             .from('ai_reply_decisions')
             .select('id')
             .eq('conversation_id', convId)
             .eq('reply_status', 'sent')
-            .eq('sent_by', 'ai')
+            .in('sent_by', ['vertex', 'ai'])
             .gt('created_at', lastMsg.created_at)
             .limit(1);
 
-        if (aiReply && aiReply.length > 0) continue; // Already replied
+        if (aiReply && aiReply.length > 0) continue;
 
-        // Check if operator already replied
+        // Omul (Operatorul) a răspuns după acest mesaj?
         const { data: opReply } = await supabase
             .from('messages')
             .select('id')
             .eq('conversation_id', convId)
             .eq('direction', 'outbound')
-            .in('sender_type', ['agent', 'operator', 'human'])
+            .in('sender_type', ['agent', 'operator', 'human', 'system'])
             .gt('created_at', lastMsg.created_at)
             .limit(1);
 
-        if (opReply && opReply.length > 0) continue; // Operator handled it
+        if (opReply && opReply.length > 0) continue;
 
-        // Check for closing signal / ack / customer paused
         const content = lastMsg.content || '';
         const normalized = content.toLowerCase().trim().replace(/[!?.]+$/g, '').trim();
 
-        // Skip acks
-        const ACK = ['ok','okay','bine','da','mhm','aha','mersi','multumesc','ms','merci','k','super','perfect','sigur'];
+        // Evită răspunsuri goale (Ack/Încheieri)
+        const ACK = ['ok','okay','bine','da','mhm','aha','mersi','multumesc','ms','merci','k','super','perfect','sigur', 'gata'];
         if (normalized.length <= 25 && ACK.some(a => normalized === a)) continue;
 
-        // Skip pure closing signals
-        const closing = detectClosingSignal(content);
-        if (closing.detected && !closing.hasOpenQuestion && !closing.hasActiveIntent) continue;
-
-        // Skip customer paused
         const PAUSE = /^(revin eu|revin|ma mai gandesc|ok.*revin|bine.*revin|te anunt eu|mai vorbim|va anunt)$/i;
         if (normalized.length <= 35 && PAUSE.test(normalized)) continue;
 
-        // This conversation needs a response!
-        console.log(`[CatchUp] Unanswered: ${convId.substring(0, 8)} | "${content.substring(0, 40)}" | ${new Date(lastMsg.created_at).toISOString().substring(11, 19)}`);
+        console.log(`[CatchUp] 🎣 Conversație orfană depistată: ${convId.substring(0, 8)} | "${content.substring(0, 40)}..."`);
 
+        // 4. Salvează și injectează către Webhook Intern
         try {
-            await processConversation(convId, `catchup-${Date.now()}`);
+            const payload = {
+                message_id: lastMsg.external_message_id || `catchup-${Date.now()}`,
+                conversation_id: convId,
+                sender_phone: null, // Motorul API se prinde prin UUIDfallback
+                content: content,
+                sender_type: 'client'
+            };
+
+            await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
             caught++;
             recentlyProcessed.add(convId);
-            // Clean up set periodically
-            if (recentlyProcessed.size > 100) {
+            if (recentlyProcessed.size > 200) {
                 const arr = [...recentlyProcessed];
                 arr.slice(0, 50).forEach(id => recentlyProcessed.delete(id));
             }
         } catch (err) {
-            console.error(`[CatchUp] Error processing ${convId.substring(0, 8)}:`, err.message);
+            console.error(`[CatchUp] Eraore injecție webhook ${convId}:`, err.message);
         }
     }
 
     if (caught > 0) {
-        console.log(`[CatchUp] Processed ${caught} unanswered conversation(s)`);
+        console.log(`[CatchUp] ✅ Am trimis ${caught} conversații ignorate direct la AI!`);
     }
 }
 
-// ── Runner ──
 const isOnce = process.argv.includes('--once');
 
 async function run() {
-    // Prevent unhandled rejections from crashing the process
-    process.on('unhandledRejection', (err) => {
-        console.error('[CatchUp] Unhandled rejection (suppressed):', err?.message || err);
-    });
-    process.on('uncaughtException', (err) => {
-        console.error('[CatchUp] Uncaught exception (suppressed):', err?.message || err);
-    });
+    process.on('unhandledRejection', (err) => console.error('[CatchUp] Unhandled rejection:', err?.message || err));
+    process.on('uncaughtException', (err) => console.error('[CatchUp] Uncaught exception:', err?.message || err));
 
-    console.log(`[CatchUp] Starting (mode=${isOnce ? 'once' : 'loop'}, lookback=${LOOKBACK_MS/60000}min, poll=${POLL_INTERVAL/1000}s)`);
+    console.log(`[CatchUp] 🚀 Paznic Activat (Interval: ${POLL_INTERVAL/1000}s, Privește: ${LOOKBACK_MS/60000}m)`);
 
     if (isOnce) {
         await scanUnanswered();
@@ -154,16 +147,10 @@ async function run() {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-        try {
-            await scanUnanswered();
-        } catch (err) {
-            console.error('[CatchUp] Loop error:', err.message);
-        }
+        try { await scanUnanswered(); } catch (err) { console.error('[CatchUp] Buclă eroare:', err.message); }
         await new Promise(r => setTimeout(r, POLL_INTERVAL));
     }
 }
 
-const isMain = process.argv[1]?.endsWith('catchupScanner.mjs');
-if (isMain) {
-    run().catch(err => { console.error('[CatchUp] Fatal (staying alive):', err.message); });
-}
+// Rulăm bucla principală necondiționat, deoarece acest script este un executabil dedicat
+run().catch(err => console.error('[CatchUp] Crăpare fatală:', err.message));

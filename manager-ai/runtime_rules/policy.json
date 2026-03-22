@@ -1,6 +1,6 @@
 {
-  "version": "v1773975335148",
-  "loaded_at": "2026-03-20T02:55:35.148Z",
+  "version": "v1774148506645",
+  "loaded_at": "2026-03-22T03:01:46.645Z",
   "rules": [
     {
       "id": "faa62715-4471-4b73-b866-00981f2a002d",
@@ -1134,6 +1134,93 @@
       }
     },
     {
+      "id": "89512685-8229-4d1e-9985-7944b6236bfb",
+      "knowledge_key": "role_arcada_cu_cifre_volumetrice",
+      "category": "services",
+      "service_tags": [
+        "arcada_cu_cifre_volumetrice",
+        "cifre",
+        "arcada"
+      ],
+      "question_patterns": [
+        "arcada cu cifre",
+        "cifre volumetrice",
+        "baloane cu cifre",
+        "decor aniversare"
+      ],
+      "answer_template": "role_arcada_cu_cifre_volumetrice",
+      "metadata": {},
+      "required_context": [],
+      "applicability_rules": {},
+      "approval_status": "approved",
+      "active": true,
+      "version": 1,
+      "source": "manual",
+      "owner": "system",
+      "verified_by": null,
+      "valid_from": "2026-03-14T16:50:09.616697+00:00",
+      "valid_until": null,
+      "times_used": 0,
+      "created_at": "2026-03-14T16:50:09.616697+00:00",
+      "updated_at": "2026-03-22T01:15:42.612+00:00",
+      "policy_config": {
+        "label": "Arcadă cu cifre volumetrice",
+        "active": true,
+        "priority": 110,
+        "triggers": {
+          "keywords": [
+            "arcada_cu_cifre_volumetrice",
+            "cifre",
+            "arcada",
+            "arcada cu cifre",
+            "cifre volumetrice",
+            "baloane cu cifre",
+            "decor aniversare"
+          ],
+          "service_tags": [
+            "arcada_cu_cifre_volumetrice",
+            "cifre",
+            "arcada"
+          ],
+          "min_confidence": 0.35
+        },
+        "constraints": {
+          "allow_discounts": false,
+          "must_collect_fields": [
+            "date",
+            "location",
+            "duration"
+          ],
+          "must_not_confirm_availability": true,
+          "must_not_override_approved_prices": true
+        },
+        "copy_blocks": {
+          "intro": "Putem realiza decor cu arcadă și cifre volumetrice, ideal pentru aniversări și petreceri tematice.",
+          "upsell": "Se poate combina cu panou personalizat și alte elemente foto.",
+          "custom_prompts": {}
+        },
+        "pricing_rules": {
+          "currency": "RON",
+          "base_price": 500,
+          "fixed_price": 0,
+          "pricing_model": "linear_meter",
+          "allowed_models": [
+            "organica",
+            "anorganica"
+          ],
+          "transport_rules": {
+            "if": 50,
+            "bucharest": 0,
+            "outside_if": "manual_quote"
+          },
+          "extra_hour_price": 0,
+          "allow_model_choice": true,
+          "price_per_linear_meter": 180,
+          "included_duration_hours": 1
+        }
+      }
+    },
+    {
       "id": "ae236668-49ed-4aa2-b746-165c559d4d61",
       "knowledge_key": "role_arcada_fara_suport",
       "category": "services",
@@ -1217,93 +1304,6 @@
           "extra_hour_price": 0,
           "allow_model_choice": true,
           "price_per_linear_meter": 200,
-          "included_duration_hours": 1
-        },
-        "approval_status": "approved"
-      }
-    },
-    {
-      "id": "89512685-8229-4d1e-9985-7944b6236bfb",
-      "knowledge_key": "role_arcada_cu_cifre_volumetrice",
-      "category": "services",
-      "service_tags": [
-        "arcada_cu_cifre_volumetrice",
-        "cifre",
-        "arcada"
-      ],
-      "question_patterns": [
-        "arcada cu cifre",
-        "cifre volumetrice",
-        "baloane cu cifre",
-        "decor aniversare"
-      ],
-      "answer_template": "",
-      "metadata": {},
-      "required_context": [],
-      "applicability_rules": {},
-      "approval_status": "approved",
-      "active": true,
-      "version": 1,
-      "source": "manual",
-      "owner": "system",
-      "verified_by": null,
-      "valid_from": "2026-03-14T16:50:09.616697+00:00",
-      "valid_until": null,
-      "times_used": 0,
-      "created_at": "2026-03-14T16:50:09.616697+00:00",
-      "updated_at": "2026-03-14T21:57:46.015+00:00",
-      "policy_config": {
-        "label": "Arcadă cu cifre volumetrice",
-        "active": true,
-        "priority": 110,
-        "role_key": "role_arcada_cu_cifre_volumetrice",
-        "triggers": {
-          "keywords": [
-            "arcada cu cifre",
-            "cifre volumetrice",
-            "baloane cu cifre",
-            "decor aniversare"
-          ],
-          "service_tags": [
-            "arcada_cu_cifre_volumetrice",
-            "cifre",
-            "arcada"
-          ],
-          "min_confidence": 0.35
-        },
-        "constraints": {
-          "allow_discounts": false,
-          "must_collect_fields": [
-            "date",
-            "location",
-            "duration"
-          ],
-          "must_not_confirm_availability": true,
-          "must_not_override_approved_prices": true
-        },
-        "copy_blocks": {
-          "intro": "Putem realiza decor cu arcadă și cifre volumetrice, ideal pentru aniversări și petreceri tematice.",
-          "upsell": "Se poate combina cu panou personalizat și alte elemente foto.",
-          "closing_question": "Pentru ce vârstă, ce dată și ce locație pregătim decorul?"
-        },
-        "service_key": "arcada_cu_cifre_volumetrice",
-        "pricing_rules": {
-          "currency": "RON",
-          "base_price": 500,
-          "fixed_price": 0,
-          "pricing_model": "linear_meter",
-          "allowed_models": [
-            "organica",
-            "anorganica"
-          ],
-          "transport_rules": {
-            "if": 50,
-            "bucharest": 0,
-            "outside_if": "manual_quote"
-          },
-          "extra_hour_price": 0,
-          "allow_model_choice": true,
-          "price_per_linear_meter": 180,
           "included_duration_hours": 1
         },
         "approval_status": "approved"
@@ -2017,5 +2017,5 @@
       }
     }
   ],
-  "checksum": "b8ff358753c1147d8e84e5a675d07f74894fc60b789bd1e072a4f7bae03628bd"
+  "checksum": "b269af1c2795c4254a44ee6b10f335a36193192b6ef6d7af5b5d4840ff7e230f"
 }

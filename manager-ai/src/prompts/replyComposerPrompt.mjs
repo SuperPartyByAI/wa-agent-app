@@ -1,3 +1,5 @@
+import { loadVertexConfig } from '../vertex/vertexClient.mjs';
+
 /**
  * Builds the reply composer prompt for humanized WhatsApp replies.
  * Now respects the Service Detection Confidence Guard:
@@ -12,7 +14,9 @@
  * @param {string} params.draftReply    - analysis draft (reference only)
  * @returns {string} composer prompt
  */
-export function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycle, replyStyle, draftReply, progression, nextBestActionGoal }) {
+export async function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycle, replyStyle, draftReply, progression, nextBestActionGoal }) {
+    
+    const cfg = await loadVertexConfig();
 
     // ── Structural Context ──
     const style = `Vorbești natural, ca un om real, nu ca un robot.`;
@@ -28,8 +32,9 @@ export function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycl
         contextBlock += `\nSERVICII: NEDETECTATE SAU AMBIGUE.`;
         contextBlock += `\n→ INTERZIS: Nu enumera serviciile noastre (fără "avem animator, ursitoare...").`;
         contextBlock += `\n→ INTERZIS: Nu presupune ce vrea clientul.`;
-        contextBlock += `\n→ OBLIGATORIU: Fii cald și natural. Pune o întrebare deschisă simplă:`;
-        contextBlock += `\n   "Suntem aici, cu ce vă putem ajuta?" sau "Despre ce fel de eveniment este vorba?"`;
+        contextBlock += `\n→ OBLIGATORIU: Fii cald și natural, dar intră DEZVOLTAT direct în subiectul petrecerilor. Pune o întrebare specifică:`;
+        contextBlock += `\n   Ex: "Bună! Suntem Superparty. Ce petrecere doriți să organizați?" sau "Despre ce fel de eveniment este vorba?"`;
+        contextBlock += `\n→ INTERZIS ABSOLUT: NU folosi NICIODATĂ formule generice și servile precum "Cu ce vă pot ajuta astăzi?", "Ce pot face pentru dumneavoastră?", "Cum vă pot fi de folos?". Acestea sunt STRICT INTERZISE! Focus pe organizarea petrecerii.`;
     } else if (svcStatus === 'partial') {
         // Some confirmed, some ambiguous
         if (replyContext.hasServices) {
@@ -113,18 +118,7 @@ export function buildReplyComposerPrompt({ replyContext, entityMemory, salesCycl
         }
     }
 
-    return `${style}
-${cycleContext}
-${contextBlock}
-${progressionBlock}
-${playbookBlock}
-
-DRAFT INTERN (doar referinta, NU copia):
-"${draftReply}"
-
-${safetyBlock}
-
-=== REGULI STRICTE ===
+    const customRules = cfg.prompt_orchestrator_reply || `=== REGULI STRICTE ===
 
 1. CONFIRMA CONCRET ce ai inteles — dar DOAR daca serviciile sunt CONFIRMATE in context.
    - Daca serviciile NU SUNT confirmate, NU le mentiona. Intreaba deschis.
@@ -145,6 +139,19 @@ Recurent: "Buna! Ne bucuram ca reveniti! Petrecerea e tot la locatie?"
 
 Scrie DOAR mesajul final, fara explicatii, fara ghilimele, fara prefixuri.
 Raspunde in ROMANA. MAX 2-3 propozitii.`;
+
+    return `${style}
+${cycleContext}
+${contextBlock}
+${progressionBlock}
+${playbookBlock}
+
+DRAFT INTERN (doar referinta, NU copia):
+"${draftReply}"
+
+${safetyBlock}
+
+${customRules}`;
 }
 
 /**

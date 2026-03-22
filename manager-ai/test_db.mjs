@@ -1,20 +1,10 @@
-import { vertexDb } from './src/vertex/vertexClient.mjs';
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from './src/config/env.mjs';
+import { createClient } from '@supabase/supabase-js';
 
-async function test() {
-    try {
-        console.log('Testing vertexDb query...');
-        if (!vertexDb) {
-            console.error('vertexDb is null!');
-            return;
-        }
-        const { data, error } = await vertexDb.from('ai_notebook_templates').select('*');
-        if (error) {
-            console.error('Supabase Error:', error);
-        } else {
-            console.log('Success!', data);
-        }
-    } catch (e) {
-        console.error('Runtime Exception:', e);
-    }
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+async function check() {
+    const { data, error } = await supabase.from('ai_knowledge_base').select('*').limit(3);
+    console.log(JSON.stringify(data[0], null, 2));
 }
-test();
+check();

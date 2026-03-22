@@ -529,7 +529,7 @@ export async function processConversation(conversation_id, message_id = null, op
         const activeNotebookContext = await getActiveNotebook(contextPack?.client_context?.client?.real_phone_e164 || 'unknown', runtimeState.primary_service);
         const notebookPromptExtra = buildNotebookPromptSection(activeNotebookContext);
 
-        const baseSystemPrompt = buildSystemPrompt(existingMemory, { eventPlan, partyDraft, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
+        const baseSystemPrompt = await buildSystemPrompt(existingMemory, { eventPlan, partyDraft, goalState, contextPack, relationshipData, activeRolesText, nextBestActionGoal: nextTarget, goalDirective });
         const systemPrompt = baseSystemPrompt + '\n' + notebookPromptExtra;
         
         

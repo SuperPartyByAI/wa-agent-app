@@ -179,7 +179,7 @@ export function buildMemorySection(summary) {
 }
 
 // ─── Clean Notebook V2: extrage JSON structurat și salvează în client_notebooks_v2 ───
-const CLEAN_NOTEBOOK_MODEL = 'gemini-2.0-flash-lite';
+const CLEAN_NOTEBOOK_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 
 // Câmpuri comune prezente indiferent de rol
 const BASE_FIELDS = ['rezumat_ai', 'data_eveniment', 'ora_eveniment', 'locatie', 'pret_discutat', 'metoda_plata', 'observatii'];

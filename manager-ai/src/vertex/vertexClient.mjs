@@ -14,7 +14,7 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { findRelevantContext, indexMessage } from '../rag/embeddingService.mjs';
-import { loadMemorySummary, updateMemorySummary, shouldUpdateSummary, buildMemorySection } from '../agent/memorySummarizer.mjs';
+import { loadMemorySummary, updateMemorySummary, shouldUpdateSummary, buildMemorySection, updateCleanNotebook } from '../agent/memorySummarizer.mjs';
 dotenv.config();
 
 // ─── Config ───
@@ -720,19 +720,45 @@ async function getOrCreateSession(phoneE164) {
     return { ...newSession, isNew: true };
 }
 
-async function loadSessionHistory(sessionId, limit = 20) {
+async function loadSessionHistory(sessionId, limit = 100) {
     if (!vertexDb || !sessionId) return [];
 
     const { data } = await vertexDb.from('vertex_messages')
         .select('role, content, function_name, function_args, function_result')
         .eq('session_id', sessionId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(limit);
 
-    return (data || []).map(m => ({
+    // Returnăm în ordine cronologică (ascending) pentru context corect
+    return ((data || []).reverse()).map(m => ({
         role: m.role === 'model' ? 'model' : 'user',
         content: m.content || `[Function: ${m.function_name}]`
     }));
+}
+
+// ─── Clean Notebook: citire notebook curat per (phone, wa_number) ───
+async function loadCleanNotebook(phoneE164, waNumber) {
+    if (!mainDb || !phoneE164) return null;
+    try {
+        const { data } = await mainDb.from('client_notebooks_v2')
+            .select('clean_notebook, summary_updated_at')
+            .eq('phone_number', phoneE164)
+            .eq('wa_number', waNumber || '')
+            .maybeSingle();
+        return data?.clean_notebook || null;
+    } catch (err) {
+        console.warn('[VertexAI] Clean notebook load failed (non-fatal):', err.message);
+        return null;
+    }
+}
+
+function buildCleanNotebookSection(notebook) {
+    if (!notebook || Object.keys(notebook).length === 0) return '';
+    const lines = Object.entries(notebook)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `  - ${k}: ${v}`);
+    if (lines.length === 0) return '';
+    return `\n\n--- [Memorie Persistentă Client] ---\n${lines.join('\n')}\n--- [Sfârșit Memorie] ---`;
 }
 
 async function saveMessage(sessionId, role, content, extras = {}, options = {}) {
@@ -815,16 +841,24 @@ export async function processWithVertexAI(phoneE164, userMessageText, options = 
         console.warn('[VertexAI] RAG context fetch failed (non-fatal):', ragErr.message);
     }
 
-    // 4b. Load client memory summary (Notebook) and inject into context
-    let memorySummary = '';
+    // 4b. Load clean notebook (Notebook CURAT) + memory summary și injectează în context
     try {
-        memorySummary = await loadMemorySummary(phoneE164);
-        if (memorySummary) {
+        // Notebook CURAT: JSON distilat persistent per (phone, wa_number)
+        const myWaNumber = options.myWaNumber || '';
+        const cleanNotebook = await loadCleanNotebook(phoneE164, myWaNumber);
+        if (cleanNotebook) {
+            ragContext += buildCleanNotebookSection(cleanNotebook);
+            console.log(`[VertexAI] Clean Notebook: injectat pentru ${phoneE164}@${myWaNumber} (${Object.keys(cleanNotebook).length} câmpuri)`);
+        }
+
+        // Memory summary vechi (fallback dacă nu există notebook curat)
+        const memorySummary = await loadMemorySummary(phoneE164);
+        if (memorySummary && !cleanNotebook) {
             ragContext += buildMemorySection(memorySummary);
-            console.log(`[VertexAI] Memory: summary injectat (${memorySummary.length} chars)`);
+            console.log(`[VertexAI] Memory summary (fallback): injectat (${memorySummary.length} chars)`);
         }
     } catch (memErr) {
-        console.warn('[VertexAI] Memory summary load failed (non-fatal):', memErr.message);
+        console.warn('[VertexAI] Memory/Notebook load failed (non-fatal):', memErr.message);
     }
 
     const messages = [
@@ -842,7 +876,12 @@ export async function processWithVertexAI(phoneE164, userMessageText, options = 
             const convId = convRow?.id;
             if (convId) {
                 shouldUpdateSummary(phoneE164, convId).then(needsUpdate => {
-                    if (needsUpdate) updateMemorySummary(phoneE164, convId).catch(() => {});
+                    if (needsUpdate) {
+                        // Update legacy text summary
+                        updateMemorySummary(phoneE164, convId).catch(() => {});
+                        // Update clean notebook V2 (JSON structurat)
+                        updateCleanNotebook(phoneE164, options.myWaNumber || '', convId).catch(() => {});
+                    }
                 }).catch(() => {});
             }
         } catch { /* non-fatal */ }

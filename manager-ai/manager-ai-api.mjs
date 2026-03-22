@@ -10,6 +10,11 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+dotenv.config();
+
+// Enforce strictly gemini-2.5-flash-lite via fetch interceptor
+import './src/config/enforceModelLimit.mjs';
+
 import cors from 'cors';
 import crypto from 'crypto';
 import multer from 'multer';

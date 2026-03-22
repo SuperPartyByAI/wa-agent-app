@@ -16,6 +16,10 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { loadVertexConfig } from '../vertex/vertexClient.mjs';
+
+// Enforce strictly gemini-2.5-flash-lite via fetch interceptor
+import '../config/enforceModelLimit.mjs';
+
 dotenv.config();
 
 // ─── Config ───

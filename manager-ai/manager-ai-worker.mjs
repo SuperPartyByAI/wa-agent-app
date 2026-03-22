@@ -1,8 +1,13 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+// Enforce strictly gemini-2.5-flash-lite
+import './src/config/enforceModelLimit.mjs';
+
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import dotenv from 'dotenv';
 import { processWithVertexAI } from './src/vertex/vertexClient.mjs';
 dotenv.config();
 

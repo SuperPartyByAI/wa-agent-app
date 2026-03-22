@@ -1,0 +1,19 @@
+[dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[VertexAI] Processing message from +40700000888: "Buna ziua. Vreau o ursitoare...."
+[VertexAI] Session: fbc8953c-0954-45f2-8fc2-5c1779f113d2 (existing)
+[VertexAI] Intent detected (aggressive logic) — retrying with forced tools
+[VertexAI] Tool call #1: noteaza_petrecere
+[VertexAI] Executing function: noteaza_petrecere {"role_title":"Ursitoare","event_details_string":"{\"Metodă de Plată\": \"Necunoscut\", \"Situație Încasare\": \"Necunoscut\", \"Numele Bebelușului\": \"Necunoscut\", \"Data Evenimentului\": \"Necunos
+[VertexAI] Executing function: noteaza_petrecere {
+  role_title: 'Ursitoare',
+  event_details_string: '{"Metodă de Plată": "Necunoscut", "Situație Încasare": "Necunoscut", "Numele Bebelușului": "Necunoscut", "Data Evenimentului": "Necunoscut", "Locația": "Necunoscut"}'
+}
+[VertexAI] Reply in 3796ms (1 tool calls): "Bună ziua! Sigur, vă pot ajuta cu o ursitoare. Pentru a cont..."
+{
+  "name": "noteaza_petrecere",
+  "args": {
+    "role_title": "Ursitoare",
+    "event_details_string": "{\"Metodă de Plată\": \"Necunoscut\", \"Situație Încasare\": \"Necunoscut\", \"Numele Bebelușului\": \"Necunoscut\", \"Data Evenimentului\": \"Necunoscut\", \"Locația\": \"Necunoscut\"}"
+  }
+}

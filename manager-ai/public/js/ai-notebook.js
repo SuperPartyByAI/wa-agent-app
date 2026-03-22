@@ -105,40 +105,88 @@ async function loadNotebooks() {
             
             let slotsHtml = '';
             tplProps.forEach(p => {
-                const isFilled = filledData.hasOwnProperty(p.nume) && filledData[p.nume] !== null;
-                const val = isFilled ? filledData[p.nume] : 'Lipstă din discuție...';
+                const isFilled = filledData.hasOwnProperty(p.nume) && filledData[p.nume] !== null && filledData[p.nume] !== '';
+                const val = isFilled ? filledData[p.nume] : '<span class="text-muted italic">Lipsă...</span>';
                 const classBadge = isFilled ? 'slot-filled' : 'slot-empty';
-                const icon = isFilled ? 'fa-check-circle' : 'fa-circle-xmark';
+                const icon = isFilled ? 'fa-check-circle' : 'fa-circle-question';
                 
                 slotsHtml += `
                     <div class="mb-2">
                         <span class="slot-badge ${classBadge}"><i class="fa-solid ${icon} me-1"></i>${p.nume}</span>
-                        <div class="ms-3 small fw-semibold">${val}</div>
+                        <div class="ms-3 small fw-semibold text-wrap">${val}</div>
                     </div>
                 `;
             });
 
+            // If no slots filled but we have transcript, show a note
+            if (slotsHtml === '' && n.last_transcript) {
+                slotsHtml = '<div class="alert alert-info py-1 small">Conversație activă (fără date extrase încă)</div>';
+            }
+
             const card = document.createElement('div');
-            card.className = 'col-md-4 mb-4';
+            card.className = 'col-md-6 col-lg-4 mb-4';
             card.innerHTML = `
-                <div class="card h-100 border">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 fw-bold text-success"><i class="fa-brands fa-whatsapp me-2"></i> ${n.phone_number}</h6>
-                        <span class="badge bg-primary">${n.template_key}</span>
+                <div class="card h-100 border shadow-sm client-card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+                        <h6 class="mb-0 fw-bold text-primary"><i class="fa-solid fa-user-circle me-2"></i> ${n.phone_number}</h6>
+                        <span class="badge bg-light text-dark border">${n.brand_key || 'Global'}</span>
                     </div>
-                    <div class="card-body">
-                        ${slotsHtml}
+                    <div class="card-body p-3">
+                        <div class="mb-3">${slotsHtml}</div>
+                        
+                        ${n.last_transcript ? `
+                            <button class="btn btn-outline-secondary btn-sm w-100 mt-2 btn-transcript" data-transcript="${encodeURIComponent(n.last_transcript)}">
+                                <i class="fa-solid fa-comments me-1"></i> Vezi Conversația Full
+                            </button>
+                        ` : ''}
                     </div>
-                    <div class="card-footer bg-white text-muted small text-end border-top-0">
-                        Ultima bifare: ${new Date(n.updated_at).toLocaleString()}
+                    <div class="card-footer bg-light text-muted x-small text-end border-top-0 py-1">
+                        Sincronizat: ${new Date(n.updated_at).toLocaleString('ro-RO')}
                     </div>
                 </div>
             `;
             container.appendChild(card);
         });
+
+        // Add event listeners for transcript buttons
+        document.querySelectorAll('.btn-transcript').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const transcript = decodeURIComponent(btn.getAttribute('data-transcript'));
+                showTranscriptModal(transcript);
+            });
+        });
+
     } catch(e) {
-        container.innerHTML = `<div class="col-12 text-danger">Error fetching WhatsApp data: ${e.message}</div>`;
+        container.innerHTML = `<div class="col-12 text-center py-5"><div class="alert alert-danger d-inline-block">Eroare la încărcarea datele: ${e.message}</div></div>`;
     }
+}
+
+function showTranscriptModal(text) {
+    // Create or find modal
+    let modalEl = document.getElementById('transcriptModal');
+    if (!modalEl) {
+        const div = document.createElement('div');
+        div.id = 'transcriptModal';
+        div.className = 'modal fade';
+        div.innerHTML = `
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Istoric Conversație</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body bg-light">
+                        <pre id="transcript-content" class="p-3 text-wrap" style="font-family: inherit; font-size: 0.9rem; white-space: pre-wrap; line-height: 1.5;"></pre>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(div);
+        modalEl = div;
+    }
+    
+    document.getElementById('transcript-content').innerText = text;
+    new bootstrap.Modal(modalEl).show();
 }
 
 async function saveTemplate() {

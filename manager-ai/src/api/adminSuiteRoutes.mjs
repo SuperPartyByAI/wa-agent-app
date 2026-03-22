@@ -616,7 +616,7 @@ router.put('/playbooks/:key', async (req, res) => {
 // 1. Get all templates (Blueprints)
 router.get('/notebook-templates', async (req, res) => {
     try {
-        const { data, error } = await vertexDb.from('ai_notebook_templates')
+        const { data, error } = await supabase.from('ai_notebook_templates')
             .select('*')
             .order('created_at', { ascending: false });
         if (error) throw error;
@@ -628,7 +628,7 @@ router.get('/notebook-templates', async (req, res) => {
 router.post('/notebook-templates', async (req, res) => {
     try {
         const payload = req.body;
-        const { data, error } = await vertexDb.from('ai_notebook_templates')
+        const { data, error } = await supabase.from('ai_notebook_templates')
             .upsert(payload, { onConflict: 'key' })
             .select()
             .single();
@@ -637,16 +637,26 @@ router.post('/notebook-templates', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 3. Get all active client notebooks (Live WhatsApp view)
+// 3. Get all active client notebooks (V2 - Unified)
 router.get('/client-notebooks', async (req, res) => {
     try {
         // Includes the template schema so the UI knows what slots exist
-        const { data, error } = await vertexDb.from('ai_client_notebooks')
+        // Notebooks V2 now come from mainDb
+        const { data, error } = await supabase.from('client_notebooks_v2')
             .select('*, template:ai_notebook_templates(json_schema)')
-            .order('updated_at', { ascending: false })
-            .limit(50);
+            .order('summary_updated_at', { ascending: false })
+            .limit(100);
         if (error) throw error;
-        res.json({ notebooks: data || [] });
+        
+        // Map fields to match V1 UI expectations if needed
+        const mapped = (data || []).map(n => ({
+            ...n,
+            extracted_data: n.clean_notebook, // map V2 field to V1 UI expectancy
+            updated_at: n.summary_updated_at,
+            template_key: n.brand_key // fallback or specific map
+        }));
+
+        res.json({ notebooks: mapped });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

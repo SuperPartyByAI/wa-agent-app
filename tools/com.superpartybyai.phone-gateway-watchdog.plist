@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.superpartybyai.phone-gateway-watchdog</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__HOME__/Library/Application Support/SuperPartyPhoneGateway/phone_gateway_watchdog.sh</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>ADB_BIN</key>
+    <string>/opt/homebrew/bin/adb</string>
+    <key>PHONE_GATEWAY_SERIAL</key>
+    <string>AH3SCP5213201199</string>
+    <key>PHONE_GATEWAY_WATCH_INTERVAL_SECONDS</key>
+    <string>15</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/tmp/superparty-phone-gateway-watchdog.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/superparty-phone-gateway-watchdog.err.log</string>
+</dict>
+</plist>

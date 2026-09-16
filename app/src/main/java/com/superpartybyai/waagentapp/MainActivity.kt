@@ -26,6 +26,7 @@ class MainActivity : ComponentActivity() {
         com.superpartybyai.core.AppConfig.WEB_CLIENT_ID = BuildConfig.WEB_CLIENT_ID
         com.superpartybyai.core.AppConfig.BACKEND_URL = BuildConfig.BACKEND_URL
         com.superpartybyai.core.AppConfig.API_KEY = BuildConfig.API_KEY
+        PhoneGatewayService.start(this)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
